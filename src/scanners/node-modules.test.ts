@@ -8,6 +8,7 @@ import * as fsUtils from '../utils/fs.js';
 vi.mock('../utils/fs.js', () => ({
   exists: vi.fn(),
   getSize: vi.fn(),
+  removeItems: vi.fn().mockResolvedValue({ deleted: 0, freedSpace: 0, errors: [] }),
 }));
 
 describe('NodeModulesScanner', () => {
