@@ -26,7 +26,7 @@ describe('BaseScanner', () => {
   let scanner: TestScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-scanner-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-scanner-test-'));
     scanner = new TestScanner();
   });
 

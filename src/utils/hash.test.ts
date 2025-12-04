@@ -5,7 +5,7 @@ import { tmpdir } from 'os';
 import { getFileHash, getFileHashPartial } from './hash.js';
 
 describe('hash utilities', () => {
-  const testDir = join(tmpdir(), 'clean-my-mac-hash-test');
+  const testDir = join(tmpdir(), 'mac-cleaner-hash-test');
 
   afterEach(async () => {
     await rm(testDir, { recursive: true, force: true });

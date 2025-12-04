@@ -8,7 +8,7 @@ describe('fs utils', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-test-'));
   });
 
   afterEach(async () => {

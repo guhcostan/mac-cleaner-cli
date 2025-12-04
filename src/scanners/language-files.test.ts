@@ -10,7 +10,7 @@ describe('LanguageFilesScanner', () => {
   let scanner: LanguageFilesScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-lang-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-lang-test-'));
     scanner = new LanguageFilesScanner();
   });
 

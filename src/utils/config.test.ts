@@ -5,7 +5,7 @@ import { tmpdir } from 'os';
 import * as config from './config.js';
 
 describe('config utilities', () => {
-  const testConfigDir = join(tmpdir(), 'clean-my-mac-config-test');
+  const testConfigDir = join(tmpdir(), 'mac-cleaner-config-test');
 
   beforeEach(async () => {
     await mkdir(testConfigDir, { recursive: true });

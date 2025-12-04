@@ -1,7 +1,7 @@
 <p align="center">
-  <h1 align="center">🧹 Clean My Mac CLI</h1>
+  <h1 align="center">🧹 Mac Cleaner CLI</h1>
   <p align="center">
-    <strong>Free & Open Source alternative to CleanMyMac</strong>
+    <strong>Free & Open Source Mac cleanup tool</strong>
   </p>
   <p align="center">
     Scan and remove junk files, caches, logs, and more — all from your terminal.
@@ -9,33 +9,33 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/clean-my-mac-cli"><img src="https://img.shields.io/npm/v/clean-my-mac-cli?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/clean-my-mac-cli"><img src="https://img.shields.io/npm/dm/clean-my-mac-cli?color=cb3837&logo=npm" alt="npm downloads"></a>
-  <a href="https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml"><img src="https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/mac-cleaner-cli"><img src="https://img.shields.io/npm/v/mac-cleaner-cli?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/mac-cleaner-cli"><img src="https://img.shields.io/npm/dm/mac-cleaner-cli?color=cb3837&logo=npm" alt="npm downloads"></a>
+  <a href="https://github.com/guhcostan/mac-cleaner-cli/actions/workflows/ci.yml"><img src="https://github.com/guhcostan/mac-cleaner-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 </p>
 
 <p align="center">
-  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/clean-my-mac-cli" alt="Node.js Version"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/mac-cleaner-cli" alt="Node.js Version"></a>
   <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/platform-macOS-000?logo=apple" alt="Platform: macOS"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.3-3178c6?logo=typescript&logoColor=white" alt="TypeScript"></a>
-  <a href="https://socket.dev/npm/package/clean-my-mac-cli"><img src="https://socket.dev/api/badge/npm/package/clean-my-mac-cli" alt="Socket Badge"></a>
+  <a href="https://socket.dev/npm/package/mac-cleaner-cli"><img src="https://socket.dev/api/badge/npm/package/mac-cleaner-cli" alt="Socket Badge"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/guhcostan/clean-my-mac"><img src="https://img.shields.io/github/stars/guhcostan/clean-my-mac?style=social" alt="GitHub Stars"></a>
+  <a href="https://github.com/guhcostan/mac-cleaner-cli"><img src="https://img.shields.io/github/stars/guhcostan/mac-cleaner-cli?style=social" alt="GitHub Stars"></a>
+</p>
+
+<p align="center">
+  <a href="https://ko-fi.com/guhcostan"><img src="https://img.shields.io/badge/Ko--fi-Support_this_project-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Support on Ko-fi"></a>
 </p>
 
 ---
 
-<p align="center">
-  <img src="https://img.shields.io/badge/💰_Save_$90+-CleanMyMac_Alternative-success?style=for-the-badge" alt="Save $90+">
-</p>
-
 ## ⚡ Quick Start
 
 ```bash
-npx clean-my-mac-cli
+npx mac-cleaner-cli
 ```
 
 That's it! No installation needed. The CLI will:
@@ -48,9 +48,9 @@ That's it! No installation needed. The CLI will:
 ## 🎬 See It In Action
 
 ```
-$ npx clean-my-mac-cli
+$ npx mac-cleaner-cli
 
-🧹 Clean My Mac
+🧹 Mac Cleaner CLI
 ──────────────────────────────────────────────────────
 
 Scanning your Mac for cleanable files...
@@ -87,7 +87,7 @@ Summary:
 
 | Feature | Description |
 |---------|-------------|
-| 🚀 **One Command** | Just run `npx clean-my-mac-cli` — no complex flags |
+| 🚀 **One Command** | Just run `npx mac-cleaner-cli` — no complex flags |
 | 🎯 **Interactive** | Select exactly what you want to clean with checkboxes |
 | 🛡️ **Safe by Default** | Risky items hidden unless you use `--risky` |
 | 🔍 **Smart Scanning** | Finds caches, logs, dev files, browser data, and more |
@@ -134,10 +134,10 @@ Summary:
 
 ```bash
 # Interactive mode — scan, select, and clean
-npx clean-my-mac-cli
+npx mac-cleaner-cli
 
 # Include risky categories
-npx clean-my-mac-cli --risky
+npx mac-cleaner-cli --risky
 ```
 
 ### Uninstall Apps
@@ -145,32 +145,32 @@ npx clean-my-mac-cli --risky
 Remove applications completely with all their preferences, caches, and support files:
 
 ```bash
-npx clean-my-mac-cli uninstall
+npx mac-cleaner-cli uninstall
 ```
 
 ### Maintenance Tasks
 
 ```bash
 # Flush DNS cache (may require sudo)
-npx clean-my-mac-cli maintenance --dns
+npx mac-cleaner-cli maintenance --dns
 
 # Free purgeable space
-npx clean-my-mac-cli maintenance --purgeable
+npx mac-cleaner-cli maintenance --purgeable
 ```
 
 ### Other Commands
 
 ```bash
 # List all available categories
-npx clean-my-mac-cli categories
+npx mac-cleaner-cli categories
 
 # Manage configuration
-npx clean-my-mac-cli config --init
-npx clean-my-mac-cli config --show
+npx mac-cleaner-cli config --init
+npx mac-cleaner-cli config --show
 
 # Manage backups
-npx clean-my-mac-cli backup --list
-npx clean-my-mac-cli backup --clean
+npx mac-cleaner-cli backup --list
+npx mac-cleaner-cli backup --clean
 ```
 
 ## 💻 Global Installation
@@ -178,8 +178,8 @@ npx clean-my-mac-cli backup --clean
 If you use this tool frequently:
 
 ```bash
-npm install -g clean-my-mac-cli
-clean-my-mac-cli
+npm install -g mac-cleaner-cli
+mac-cleaner-cli
 ```
 
 ## 🔒 Security
@@ -192,13 +192,13 @@ clean-my-mac-cli
 | ✅ **CI/CD** | Every release tested with TypeScript, ESLint, and automated tests |
 | ✅ **Socket.dev** | Dependencies monitored for supply chain attacks |
 
-Found a vulnerability? Report it via [GitHub Security Advisories](https://github.com/guhcostan/clean-my-mac/security/advisories/new).
+Found a vulnerability? Report it via [GitHub Security Advisories](https://github.com/guhcostan/mac-cleaner-cli/security/advisories/new).
 
 ## 🛠️ Development
 
 ```bash
-git clone https://github.com/guhcostan/clean-my-mac.git
-cd clean-my-mac
+git clone https://github.com/guhcostan/mac-cleaner-cli.git
+cd mac-cleaner-cli
 npm install
 npm run dev      # Run in dev mode
 npm test         # Run tests
@@ -216,6 +216,21 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## 💚 Support
+
+If this tool saved you time or disk space, consider supporting the project!
+
+<p align="center">
+  <a href="https://ko-fi.com/guhcostan"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko-fi"></a>
+</p>
+
+**🇧🇷 Pix (Brazil):**
+```
+guhcostan@gmail.com
+```
+
+Your support helps maintain and improve this tool. Thank you! 🙏
+
 ## 📄 License
 
 MIT License — see [LICENSE](LICENSE) for details.
@@ -228,5 +243,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 </p>
 
 <p align="center">
-  Made with ❤️ by developers who were tired of paying $90 for CleanMyMac
+  Made with ❤️ for Mac users everywhere
 </p>

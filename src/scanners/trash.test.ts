@@ -10,7 +10,7 @@ describe('TrashScanner', () => {
   let scanner: TrashScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-trash-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-trash-test-'));
     scanner = new TrashScanner();
   });
 

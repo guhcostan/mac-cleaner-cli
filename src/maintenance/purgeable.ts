@@ -33,7 +33,7 @@ export async function freePurgeableSpace(): Promise<MaintenanceResult> {
         success: false,
         message: 'Failed to free purgeable space',
         error: needsSudo
-          ? 'Requires sudo. Run: sudo npx clean-my-mac-cli maintenance --purgeable'
+          ? 'Requires sudo. Run: sudo npx mac-cleaner-cli maintenance --purgeable'
           : errorMessage,
       };
     }

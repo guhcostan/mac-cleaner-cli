@@ -10,7 +10,7 @@ describe('SystemLogsScanner', () => {
   let scanner: SystemLogsScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-logs-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-logs-test-'));
     scanner = new SystemLogsScanner();
   });
 

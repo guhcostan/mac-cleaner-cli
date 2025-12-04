@@ -10,7 +10,7 @@ describe('LargeFilesScanner', () => {
   let scanner: LargeFilesScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-large-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-large-test-'));
     scanner = new LargeFilesScanner();
   });
 

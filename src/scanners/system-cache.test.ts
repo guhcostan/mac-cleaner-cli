@@ -10,7 +10,7 @@ describe('SystemCacheScanner', () => {
   let scanner: SystemCacheScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-cache-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-cache-test-'));
     scanner = new SystemCacheScanner();
   });
 
