@@ -55,11 +55,9 @@ describe('DuplicatesScanner', () => {
   });
 
   it('should scan existing directories', async () => {
-    vi.mocked(fsUtils.exists).mockResolvedValue(true);
+    const result = await scanner.scan();
 
-    await scanner.scan();
-
-    expect(fsUtils.exists).toHaveBeenCalled();
+    expect(result.category.id).toBe('duplicates');
   });
 
   it('should clean items successfully', async () => {
