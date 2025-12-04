@@ -1,9 +1,8 @@
 import chalk from 'chalk';
-import ora from 'ora';
 import { confirm, checkbox } from '@inquirer/prompts';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
-import { runAllScans, getScanner } from '../scanners/index.js';
-import { formatSize } from '../utils/size.js';
+import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
+import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
 
 interface CleanCommandOptions {
   all?: boolean;
@@ -11,6 +10,7 @@ interface CleanCommandOptions {
   dryRun?: boolean;
   category?: CategoryId;
   unsafe?: boolean;
+  noProgress?: boolean;
 }
 
 const SAFETY_ICONS: Record<SafetyLevel, string> = {
@@ -28,11 +28,19 @@ interface CategoryChoice {
 }
 
 export async function cleanCommand(options: CleanCommandOptions): Promise<CleanSummary | null> {
-  const spinner = ora('Scanning your Mac...').start();
+  const showProgress = !options.noProgress && process.stdout.isTTY;
+  const scanners = getAllScanners();
+  const scanProgress = showProgress ? createScanProgress(scanners.length) : null;
 
-  const summary = await runAllScans();
+  const summary = await runAllScans({
+    parallel: true,
+    concurrency: 4,
+    onProgress: (completed, _total, scanner) => {
+      scanProgress?.update(completed, `Scanning ${scanner.category.name}...`);
+    },
+  });
 
-  spinner.stop();
+  scanProgress?.finish();
 
   if (summary.totalSize === 0) {
     console.log(chalk.green('\n✓ Your Mac is already clean!\n'));
@@ -105,7 +113,7 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     return null;
   }
 
-  const cleanSpinner = ora('Cleaning...').start();
+  const cleanProgress = showProgress ? createCleanProgress(selectedItems.length) : null;
 
   const cleanResults: CleanSummary = {
     results: [],
@@ -114,18 +122,20 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     totalErrors: 0,
   };
 
+  let cleanedCount = 0;
   for (const { categoryId, items } of selectedItems) {
     const scanner = getScanner(categoryId);
-    cleanSpinner.text = `Cleaning ${scanner.category.name}...`;
+    cleanProgress?.update(cleanedCount, `Cleaning ${scanner.category.name}...`);
 
     const result = await scanner.clean(items, options.dryRun);
     cleanResults.results.push(result);
     cleanResults.totalFreedSpace += result.freedSpace;
     cleanResults.totalCleanedItems += result.cleanedItems;
     cleanResults.totalErrors += result.errors.length;
+    cleanedCount++;
   }
 
-  cleanSpinner.stop();
+  cleanProgress?.finish();
 
   printCleanResults(cleanResults);
 
@@ -232,4 +242,3 @@ function printCleanResults(summary: CleanSummary): void {
 
   console.log();
 }
-

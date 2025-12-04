@@ -11,7 +11,9 @@ export type CategoryId =
   | 'ios-backups'
   | 'mail-attachments'
   | 'language-files'
-  | 'large-files';
+  | 'large-files'
+  | 'node-modules'
+  | 'duplicates';
 
 export type CategoryGroup = 'System Junk' | 'Development' | 'Storage' | 'Browsers' | 'Large Files';
 
@@ -172,6 +174,22 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'Files larger than 500MB for review',
     safetyLevel: 'risky',
     safetyNote: 'Review each file carefully before deleting',
+  },
+  'node-modules': {
+    id: 'node-modules',
+    name: 'Node Modules',
+    group: 'Development',
+    description: 'Orphaned node_modules in old projects',
+    safetyLevel: 'moderate',
+    safetyNote: 'Projects will need npm install to restore',
+  },
+  'duplicates': {
+    id: 'duplicates',
+    name: 'Duplicate Files',
+    group: 'Storage',
+    description: 'Files with identical content',
+    safetyLevel: 'risky',
+    safetyNote: 'Review carefully - keeps newest copy by default',
   },
 };
 

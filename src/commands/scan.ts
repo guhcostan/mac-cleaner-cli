@@ -1,9 +1,8 @@
 import chalk from 'chalk';
-import ora from 'ora';
 import type { CategoryId, CategoryGroup, ScanSummary, ScanResult, SafetyLevel } from '../types.js';
 import { CATEGORIES } from '../types.js';
-import { runAllScans, runScans } from '../scanners/index.js';
-import { formatSize } from '../utils/size.js';
+import { runAllScans, runScans, getAllScanners } from '../scanners/index.js';
+import { formatSize, createScanProgress } from '../utils/index.js';
 
 const SAFETY_ICONS: Record<SafetyLevel, string> = {
   safe: chalk.green('●'),
@@ -14,20 +13,34 @@ const SAFETY_ICONS: Record<SafetyLevel, string> = {
 interface ScanCommandOptions {
   category?: CategoryId;
   verbose?: boolean;
+  noProgress?: boolean;
 }
 
 export async function scanCommand(options: ScanCommandOptions): Promise<ScanSummary> {
-  const spinner = ora('Scanning your Mac...').start();
+  const scanners = options.category ? [options.category] : getAllScanners().map((s) => s.category.id);
+  const total = scanners.length;
+  const showProgress = !options.noProgress && process.stdout.isTTY;
+
+  const progress = showProgress ? createScanProgress(total) : null;
 
   let summary: ScanSummary;
 
+  const scanOptions = {
+    verbose: options.verbose,
+    parallel: true,
+    concurrency: 4,
+    onProgress: (completed: number, _total: number, scanner: { category: { name: string } }) => {
+      progress?.update(completed, `Scanning ${scanner.category.name}...`);
+    },
+  };
+
   if (options.category) {
-    summary = await runScans([options.category], { verbose: options.verbose });
+    summary = await runScans([options.category], scanOptions);
   } else {
-    summary = await runAllScans({ verbose: options.verbose });
+    summary = await runAllScans(scanOptions);
   }
 
-  spinner.stop();
+  progress?.finish();
 
   printScanResults(summary, options.verbose);
 
@@ -132,4 +145,3 @@ export function listCategories(): void {
   console.log(chalk.dim('Safety: ') + `${SAFETY_ICONS.safe} safe  ${SAFETY_ICONS.moderate} moderate  ${SAFETY_ICONS.risky} risky (requires --unsafe)`);
   console.log();
 }
-
