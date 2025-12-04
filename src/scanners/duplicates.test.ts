@@ -78,7 +78,7 @@ describe('DuplicatesScanner', () => {
       { path: '/test/file1.txt', size: 1000, name: 'file1.txt', isDirectory: false },
     ];
 
-    const result = await scanner.clean(items, true);
+    await scanner.clean(items, true);
 
     expect(fsUtils.removeItems).toHaveBeenCalledWith(items, true);
   });
