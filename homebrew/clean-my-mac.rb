@@ -1,19 +1,18 @@
 class CleanMyMac < Formula
   desc "Open source CLI tool to clean your Mac"
-  homepage "https://github.com/yourusername/clean-my-mac"
-  url "https://registry.npmjs.org/clean-my-mac-cli/-/clean-my-mac-cli-1.0.0.tgz"
-  sha256 "PLACEHOLDER_SHA256"
+  homepage "https://github.com/guhcostan/clean-my-mac"
+  url "https://github.com/guhcostan/clean-my-mac/releases/download/v1.0.0/clean-my-mac-1.0.0.tar.gz"
+  sha256 "PLACEHOLDER_SHA256_WILL_BE_UPDATED_BY_CI"
   license "MIT"
 
   depends_on "node@20"
 
   def install
-    system "npm", "install", *std_npm_args
-    bin.install_symlink Dir["#{libexec}/bin/*"]
+    libexec.install Dir["*"]
+    bin.install_symlink libexec/"node_modules/.bin/clean-my-mac" => "clean-my-mac"
   end
 
   test do
-    assert_match "clean-my-mac", shell_output("#{bin}/clean-my-mac --version")
+    assert_match version.to_s, shell_output("#{bin}/clean-my-mac --version")
   end
 end
-

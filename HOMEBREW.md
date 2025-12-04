@@ -1,102 +1,125 @@
 # Publishing to Homebrew
 
-This guide explains how to publish `clean-my-mac` to Homebrew so users can install it with `brew install`.
-
-## Prerequisites
-
-1. A GitHub account
-2. npm account (for publishing to npm registry)
-3. The project must be published to npm first
-
-## Step 1: Publish to npm
+Users will be able to install with:
 
 ```bash
-# Make sure you're logged in to npm
-npm login
-
-# Build and publish
-npm run build
-npm publish
+brew install guhcostan/clean-my-mac/clean-my-mac
 ```
 
-## Step 2: Create a Homebrew Tap
-
-1. Create a new GitHub repository named `homebrew-clean-my-mac`
-2. Clone it locally:
+Or:
 
 ```bash
-git clone https://github.com/yourusername/homebrew-clean-my-mac.git
+brew tap guhcostan/clean-my-mac
+brew install clean-my-mac
+```
+
+## Setup: Create Your Homebrew Tap
+
+### 1. Create a new GitHub repository
+
+Create a repository named **`homebrew-clean-my-mac`** on GitHub.
+
+> The name MUST start with `homebrew-` for Homebrew to recognize it as a tap.
+
+### 2. Add the formula
+
+```bash
+# Clone your tap repo
+git clone https://github.com/guhcostan/homebrew-clean-my-mac.git
 cd homebrew-clean-my-mac
-```
 
-3. Create the Formula directory:
+# Copy the formula
+cp /path/to/clean-my-mac/homebrew/clean-my-mac.rb .
 
-```bash
-mkdir -p Formula
-```
-
-## Step 3: Create the Formula
-
-1. Get the SHA256 of the npm package:
-
-```bash
-# Download the package
-npm pack clean-my-mac-cli
-
-# Get SHA256
-shasum -a 256 clean-my-mac-cli-1.0.0.tgz
-```
-
-2. Copy the formula template and update it:
-
-```bash
-cp /path/to/clean-my-mac/homebrew/clean-my-mac.rb Formula/clean-my-mac.rb
-```
-
-3. Update the formula with:
-   - Your GitHub username in the URLs
-   - The correct SHA256 hash
-   - The correct version number
-
-## Step 4: Push and Test
-
-```bash
-cd homebrew-clean-my-mac
+# Push
 git add .
 git commit -m "Add clean-my-mac formula"
 git push
 ```
 
-## Step 5: Install via Homebrew
+### 3. Done!
 
 Users can now install with:
-
 ```bash
-# Add your tap
-brew tap yourusername/clean-my-mac
-
-# Install
-brew install clean-my-mac
+brew install guhcostan/clean-my-mac/clean-my-mac
 ```
 
-## Updating the Formula
+## Releasing New Versions
 
-When you release a new version:
+### 1. Update version in package.json
 
-1. Publish new version to npm
-2. Update the formula with new version and SHA256
-3. Commit and push to your tap repository
+### 2. Create a tag and push
 
-## Alternative: Homebrew Core
+```bash
+git add .
+git commit -m "chore: release v1.0.0"
+git tag v1.0.0
+git push origin main --tags
+```
 
-For wider distribution, you can submit your formula to homebrew-core:
+### 3. CI will automatically:
+- Run tests
+- Build the project
+- Create a GitHub Release with the tarball
+- Update the formula in your main repo
 
-1. Fork https://github.com/Homebrew/homebrew-core
-2. Add your formula to `Formula/c/clean-my-mac.rb`
-3. Submit a pull request
+### 4. Update your tap repo
 
-Requirements for homebrew-core:
-- Must have 75+ GitHub stars or significant usage
-- Must follow Homebrew's formula conventions
-- Must pass `brew audit --strict`
+After CI updates `homebrew/clean-my-mac.rb`, copy it to your tap:
 
+```bash
+cd homebrew-clean-my-mac
+cp /path/to/clean-my-mac/homebrew/clean-my-mac.rb .
+git add .
+git commit -m "Update to v1.0.0"
+git push
+```
+
+Or set up a GitHub Action to do this automatically!
+
+## Automatic Tap Updates (Optional)
+
+Add this to your tap repo as `.github/workflows/sync.yml`:
+
+```yaml
+name: Sync Formula
+
+on:
+  repository_dispatch:
+    types: [formula-updated]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download formula from main repo
+        run: |
+          curl -o clean-my-mac.rb https://raw.githubusercontent.com/guhcostan/clean-my-mac/main/homebrew/clean-my-mac.rb
+      
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add clean-my-mac.rb
+          git commit -m "Sync formula" || exit 0
+          git push
+```
+
+## Testing Locally
+
+```bash
+# Build
+npm run build
+
+# Create tarball
+tar -czvf clean-my-mac-1.0.0.tar.gz package.json dist/ node_modules/
+
+# Test install
+brew install --build-from-source ./homebrew/clean-my-mac.rb
+
+# Test it works
+clean-my-mac --help
+```

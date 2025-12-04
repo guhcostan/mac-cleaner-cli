@@ -15,20 +15,20 @@ An open-source command-line tool to clean your Mac, inspired by CleanMyMac. Scan
 ### Using Homebrew (Recommended)
 
 ```bash
-brew tap yourusername/clean-my-mac
-brew install clean-my-mac
+brew install guhcostan/clean-my-mac/clean-my-mac
 ```
 
-### Using npm
+Or with tap:
 
 ```bash
-npm install -g clean-my-mac
+brew tap guhcostan/clean-my-mac
+brew install clean-my-mac
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/clean-my-mac.git
+git clone https://github.com/guhcostan/clean-my-mac.git
 cd clean-my-mac
 npm install
 npm run build

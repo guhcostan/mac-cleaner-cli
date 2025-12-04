@@ -37,14 +37,15 @@
   ],
   "author": "",
   "license": "MIT",
+  "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/clean-my-mac.git"
+    "url": "git+https://github.com/guhcostan/clean-my-mac.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/clean-my-mac/issues"
+    "url": "https://github.com/guhcostan/clean-my-mac/issues"
   },
-  "homepage": "https://github.com/yourusername/clean-my-mac#readme",
+  "homepage": "https://github.com/guhcostan/clean-my-mac#readme",
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
     "@types/node": "^20.10.0",
