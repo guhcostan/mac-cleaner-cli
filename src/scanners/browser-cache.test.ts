@@ -10,7 +10,7 @@ describe('BrowserCacheScanner', () => {
   let scanner: BrowserCacheScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-browser-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-browser-test-'));
     scanner = new BrowserCacheScanner();
   });
 

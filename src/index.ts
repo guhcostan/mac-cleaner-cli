@@ -7,7 +7,7 @@ import { initConfig, configExists, listBackups, cleanOldBackups, loadConfig, for
 const program = new Command();
 
 program
-  .name('clean-my-mac')
+  .name('mac-cleaner')
   .description('Open source CLI tool to clean your Mac')
   .version('1.1.0')
   .option('-r, --risky', 'Include risky categories (downloads, iOS backups, etc)')
@@ -72,7 +72,7 @@ program
     if (options.show) {
       const exists = await configExists();
       if (!exists) {
-        console.log('No configuration file found. Run "clean-my-mac config --init" to create one.');
+        console.log('No configuration file found. Run "mac-cleaner-cli config --init" to create one.');
         return;
       }
       const config = await loadConfig();

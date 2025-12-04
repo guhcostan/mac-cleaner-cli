@@ -5,7 +5,7 @@ import { tmpdir } from 'os';
 import * as backup from './backup.js';
 
 describe('backup utilities', () => {
-  const testBackupDir = join(tmpdir(), 'clean-my-mac-backup-test-' + Date.now());
+  const testBackupDir = join(tmpdir(), 'mac-cleaner-backup-test-' + Date.now());
 
   beforeEach(async () => {
     await mkdir(testBackupDir, { recursive: true });
@@ -19,7 +19,7 @@ describe('backup utilities', () => {
     it('should create backup directory', async () => {
       const dir = await backup.ensureBackupDir();
       expect(dir).toBeDefined();
-      expect(dir).toContain('clean-my-mac');
+      expect(dir).toContain('mac-cleaner');
       await rm(dir, { recursive: true, force: true });
     });
   });
@@ -27,7 +27,7 @@ describe('backup utilities', () => {
   describe('getBackupDir', () => {
     it('should return backup directory path', () => {
       const dir = backup.getBackupDir();
-      expect(dir).toContain('.clean-my-mac');
+      expect(dir).toContain('.mac-cleaner-cli');
       expect(dir).toContain('backup');
     });
   });

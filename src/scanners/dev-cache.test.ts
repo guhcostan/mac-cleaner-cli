@@ -10,7 +10,7 @@ describe('DevCacheScanner', () => {
   let scanner: DevCacheScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-dev-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-dev-test-'));
     scanner = new DevCacheScanner();
   });
 

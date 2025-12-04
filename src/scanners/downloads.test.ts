@@ -10,7 +10,7 @@ describe('DownloadsScanner', () => {
   let scanner: DownloadsScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-downloads-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-downloads-test-'));
     scanner = new DownloadsScanner();
   });
 

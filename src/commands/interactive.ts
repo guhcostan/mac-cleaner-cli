@@ -18,7 +18,7 @@ interface InteractiveOptions {
 
 export async function interactiveCommand(options: InteractiveOptions = {}): Promise<CleanSummary | null> {
   console.log();
-  console.log(chalk.bold.cyan('🧹 Clean My Mac'));
+  console.log(chalk.bold.cyan('🧹 Mac Cleaner CLI'));
   console.log(chalk.dim('─'.repeat(50)));
   console.log();
 

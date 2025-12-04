@@ -3,7 +3,7 @@ import { join, dirname } from 'path';
 import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
 
-const BACKUP_DIR = join(homedir(), '.clean-my-mac', 'backup');
+const BACKUP_DIR = join(homedir(), '.mac-cleaner-cli', 'backup');
 const BACKUP_RETENTION_DAYS = 7;
 
 export async function ensureBackupDir(): Promise<string> {

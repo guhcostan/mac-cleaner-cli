@@ -10,7 +10,7 @@ describe('IosBackupsScanner', () => {
   let scanner: IosBackupsScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-ios-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-ios-test-'));
     scanner = new IosBackupsScanner();
   });
 

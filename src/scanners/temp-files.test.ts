@@ -10,7 +10,7 @@ describe('TempFilesScanner', () => {
   let scanner: TempFilesScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-temp-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-temp-test-'));
     scanner = new TempFilesScanner();
   });
 

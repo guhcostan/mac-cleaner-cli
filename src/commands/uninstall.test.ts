@@ -49,7 +49,7 @@ const inquirerPrompts = {
 };
 
 describe('uninstall command', () => {
-  const testDir = join(tmpdir(), 'clean-my-mac-uninstall-test');
+  const testDir = join(tmpdir(), 'mac-cleaner-uninstall-test');
 
   beforeEach(async () => {
     vi.clearAllMocks();

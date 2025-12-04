@@ -10,7 +10,7 @@ describe('MailAttachmentsScanner', () => {
   let scanner: MailAttachmentsScanner;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-mail-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-mail-test-'));
     scanner = new MailAttachmentsScanner();
   });
 

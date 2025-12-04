@@ -4,8 +4,8 @@ import { homedir } from 'os';
 import type { CategoryId } from '../types.js';
 
 const CONFIG_PATHS = [
-  join(homedir(), '.cleanmymacrc'),
-  join(homedir(), '.config', 'clean-my-mac', 'config.json'),
+  join(homedir(), '.maccleanerrc'),
+  join(homedir(), '.config', 'mac-cleaner-cli', 'config.json'),
 ];
 
 export interface Config {

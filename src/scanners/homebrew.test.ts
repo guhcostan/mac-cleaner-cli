@@ -21,7 +21,7 @@ describe('HomebrewScanner', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), 'clean-my-mac-brew-test-'));
+    testDir = await mkdtemp(join(tmpdir(), 'mac-cleaner-brew-test-'));
     scanner = new HomebrewScanner();
     vi.clearAllMocks();
   });
