@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtemp, writeFile, mkdir, rm } from 'fs/promises';
+import { mkdtemp, writeFile, mkdir, rm, chmod } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { SystemLogsScanner } from './system-logs.js';
@@ -42,6 +42,46 @@ describe('SystemLogsScanner', () => {
 
     expect(result.category.id).toBe('system-logs');
     expect(result.items.length).toBe(2);
+  });
+
+  it('should scan system logs directory when accessible', async () => {
+    const userLogs = join(testDir, 'UserLogs');
+    const systemLogs = join(testDir, 'SystemLogs');
+    await mkdir(userLogs);
+    await mkdir(systemLogs);
+    await writeFile(join(userLogs, 'app.log'), 'user log');
+    await writeFile(join(systemLogs, 'system.log'), 'system log');
+
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      userLogs: userLogs,
+      systemLogs: systemLogs,
+    });
+
+    const result = await scanner.scan();
+
+    expect(result.items.length).toBe(2);
+  });
+
+  it('should handle permission denied on system logs', async () => {
+    const userLogs = join(testDir, 'UserLogs');
+    const systemLogs = join(testDir, 'SystemLogs');
+    await mkdir(userLogs);
+    await mkdir(systemLogs);
+    await writeFile(join(userLogs, 'app.log'), 'user log');
+    await chmod(systemLogs, 0o000);
+
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      userLogs: userLogs,
+      systemLogs: systemLogs,
+    });
+
+    const result = await scanner.scan();
+
+    expect(result.items.length).toBe(1);
+    
+    await chmod(systemLogs, 0o755);
   });
 
   it('should handle missing log directories', async () => {

@@ -115,5 +115,50 @@ describe('DevCacheScanner', () => {
 
     expect(result.items.filter(i => i.name.includes('npm'))).toHaveLength(0);
   });
+
+  it('should scan Xcode Archives directory', async () => {
+    const xcodeArchives = join(testDir, 'Archives');
+    await mkdir(xcodeArchives, { recursive: true });
+    await writeFile(join(xcodeArchives, 'MyApp.xcarchive'), 'archive data');
+
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      npmCache: join(testDir, 'nonexistent'),
+      yarnCache: join(testDir, 'nonexistent'),
+      pnpmCache: join(testDir, 'nonexistent'),
+      pipCache: join(testDir, 'nonexistent'),
+      cocoapodsCache: join(testDir, 'nonexistent'),
+      gradleCache: join(testDir, 'nonexistent'),
+      cargoCache: join(testDir, 'nonexistent'),
+      xcodeDerivedData: join(testDir, 'nonexistent'),
+      xcodeArchives: xcodeArchives,
+    });
+
+    const result = await scanner.scan();
+
+    expect(result.items.some(i => i.name.includes('Xcode Archives'))).toBe(true);
+  });
+
+  it('should skip empty Xcode Archives directory', async () => {
+    const xcodeArchives = join(testDir, 'Archives');
+    await mkdir(xcodeArchives, { recursive: true });
+
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      npmCache: join(testDir, 'nonexistent'),
+      yarnCache: join(testDir, 'nonexistent'),
+      pnpmCache: join(testDir, 'nonexistent'),
+      pipCache: join(testDir, 'nonexistent'),
+      cocoapodsCache: join(testDir, 'nonexistent'),
+      gradleCache: join(testDir, 'nonexistent'),
+      cargoCache: join(testDir, 'nonexistent'),
+      xcodeDerivedData: join(testDir, 'nonexistent'),
+      xcodeArchives: xcodeArchives,
+    });
+
+    const result = await scanner.scan();
+
+    expect(result.items.filter(i => i.name.includes('Xcode Archives'))).toHaveLength(0);
+  });
 });
 

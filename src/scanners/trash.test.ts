@@ -43,6 +43,18 @@ describe('TrashScanner', () => {
     expect(result.items.length).toBeGreaterThanOrEqual(0);
   });
 
+  it('should handle nonexistent trash directory', async () => {
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      trash: join(testDir, 'nonexistent-trash'),
+    });
+
+    const result = await scanner.scan();
+
+    expect(result.items).toHaveLength(0);
+    expect(result.totalSize).toBe(0);
+  });
+
   it('should calculate total size correctly', async () => {
     const trashDir = join(testDir, '.Trash');
     await mkdir(trashDir);
