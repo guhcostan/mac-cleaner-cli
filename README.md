@@ -206,7 +206,7 @@ This project takes security seriously:
 
 - **Open Source**: All code is publicly available for audit on [GitHub](https://github.com/guhcostan/clean-my-mac)
 - **No Network Requests**: The CLI operates entirely offline - no data leaves your machine
-- **Minimal Dependencies**: Only 4 runtime dependencies, all from trusted maintainers
+- **Minimal Dependencies**: Only 5 runtime dependencies, all from trusted maintainers
 - **CI/CD Pipeline**: Every release is tested with TypeScript type checking, ESLint, and automated tests
 - **Code Coverage**: High test coverage ensures reliability and catches regressions
 - **Socket.dev Verified**: Dependencies are monitored for supply chain attacks
