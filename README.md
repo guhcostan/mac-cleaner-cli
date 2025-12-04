@@ -1,142 +1,51 @@
-# Clean My Mac CLI
+<p align="center">
+  <h1 align="center">🧹 Clean My Mac CLI</h1>
+  <p align="center">
+    <strong>Free & Open Source alternative to CleanMyMac</strong>
+  </p>
+  <p align="center">
+    Scan and remove junk files, caches, logs, and more — all from your terminal.
+  </p>
+</p>
 
-An open-source command-line tool to clean your Mac, inspired by CleanMyMac. Scan and remove junk files, caches, logs, and more.
+<p align="center">
+  <a href="https://www.npmjs.com/package/clean-my-mac-cli"><img src="https://img.shields.io/npm/v/clean-my-mac-cli?color=cb3837&label=npm&logo=npm" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/clean-my-mac-cli"><img src="https://img.shields.io/npm/dm/clean-my-mac-cli?color=cb3837&logo=npm" alt="npm downloads"></a>
+  <a href="https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml"><img src="https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
 
-[![CI](https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml)
-[![npm version](https://badge.fury.io/js/clean-my-mac-cli.svg)](https://www.npmjs.com/package/clean-my-mac-cli)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/node/v/clean-my-mac-cli)](https://nodejs.org)
-[![Platform: macOS](https://img.shields.io/badge/platform-macOS-blue.svg)](https://www.apple.com/macos/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
-[![Socket Badge](https://socket.dev/api/badge/npm/package/clean-my-mac-cli)](https://socket.dev/npm/package/clean-my-mac-cli)
-[![GitHub Stars](https://img.shields.io/github/stars/guhcostan/clean-my-mac?style=social)](https://github.com/guhcostan/clean-my-mac)
+<p align="center">
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/clean-my-mac-cli" alt="Node.js Version"></a>
+  <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/platform-macOS-000?logo=apple" alt="Platform: macOS"></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.3-3178c6?logo=typescript&logoColor=white" alt="TypeScript"></a>
+  <a href="https://socket.dev/npm/package/clean-my-mac-cli"><img src="https://socket.dev/api/badge/npm/package/clean-my-mac-cli" alt="Socket Badge"></a>
+</p>
 
-## Quick Start
+<p align="center">
+  <a href="https://github.com/guhcostan/clean-my-mac"><img src="https://img.shields.io/github/stars/guhcostan/clean-my-mac?style=social" alt="GitHub Stars"></a>
+</p>
 
-Just run one command - no installation required:
+---
+
+<p align="center">
+  <img src="https://img.shields.io/badge/💰_Save_$90+-CleanMyMac_Alternative-success?style=for-the-badge" alt="Save $90+">
+</p>
+
+## ⚡ Quick Start
 
 ```bash
 npx clean-my-mac-cli
 ```
 
-That's it! The CLI will:
-1. 🔍 Scan your Mac for cleanable files
-2. 📋 Show you what was found
-3. ✅ Let you select what to clean
-4. 🗑️ Clean the selected items
+That's it! No installation needed. The CLI will:
 
-## Features
+1. 🔍 **Scan** your Mac for cleanable files
+2. 📋 **Show** you what was found with sizes
+3. ✅ **Let you select** exactly what to clean
+4. 🗑️ **Clean** the selected items safely
 
-- **One Command**: Just run `npx clean-my-mac-cli` - no complex flags to remember
-- **Interactive**: Select exactly what you want to clean with checkboxes
-- **Safe by Default**: Risky items are hidden unless you explicitly include them
-- **Smart Scanning**: Finds caches, logs, development files, browser data, and more
-- **App Uninstaller**: Remove apps completely with all their associated files
-- **Maintenance Tasks**: Flush DNS cache, free purgeable space
-
-## Usage
-
-### Basic Usage (Recommended)
-
-```bash
-# Interactive mode - scan, select, and clean
-npx clean-my-mac-cli
-
-# Include risky categories (downloads, iOS backups, large files)
-npx clean-my-mac-cli --risky
-```
-
-### Uninstall Apps
-
-Remove applications completely, including their preferences, caches, and support files:
-
-```bash
-npx clean-my-mac-cli uninstall
-```
-
-### Maintenance Tasks
-
-```bash
-# Flush DNS cache (may require sudo)
-npx clean-my-mac-cli maintenance --dns
-
-# Free purgeable space
-npx clean-my-mac-cli maintenance --purgeable
-```
-
-### Other Commands
-
-```bash
-# List all available categories
-npx clean-my-mac-cli categories
-
-# Manage configuration
-npx clean-my-mac-cli config --init
-npx clean-my-mac-cli config --show
-
-# Manage backups
-npx clean-my-mac-cli backup --list
-npx clean-my-mac-cli backup --clean
-```
-
-## Global Installation (Optional)
-
-If you use this tool frequently, install it globally:
-
-```bash
-npm install -g clean-my-mac-cli
-clean-my-mac-cli
-```
-
-## Categories
-
-### System Junk
-
-| Category | Safety | Description |
-|----------|--------|-------------|
-| `system-cache` | 🟡 Moderate | Application caches in ~/Library/Caches |
-| `system-logs` | 🟡 Moderate | System and application logs |
-| `temp-files` | 🟢 Safe | Temporary files in /tmp and /var/folders |
-| `language-files` | 🔴 Risky | Unused language localizations |
-
-### Development
-
-| Category | Safety | Description |
-|----------|--------|-------------|
-| `dev-cache` | 🟡 Moderate | npm, yarn, pip, Xcode DerivedData, CocoaPods |
-| `homebrew` | 🟢 Safe | Homebrew download cache |
-| `docker` | 🟢 Safe | Unused Docker images, containers, volumes |
-| `node-modules` | 🟡 Moderate | Orphaned node_modules in old projects |
-
-### Storage
-
-| Category | Safety | Description |
-|----------|--------|-------------|
-| `trash` | 🟢 Safe | Files in the Trash bin |
-| `downloads` | 🔴 Risky | Downloads older than 30 days |
-| `ios-backups` | 🔴 Risky | iPhone and iPad backup files |
-| `mail-attachments` | 🔴 Risky | Downloaded email attachments |
-| `duplicates` | 🔴 Risky | Duplicate files (keeps newest) |
-
-### Browsers
-
-| Category | Safety | Description |
-|----------|--------|-------------|
-| `browser-cache` | 🟢 Safe | Chrome, Safari, Firefox, Arc cache |
-
-### Large Files
-
-| Category | Safety | Description |
-|----------|--------|-------------|
-| `large-files` | 🔴 Risky | Files larger than 500MB |
-
-## Safety Levels
-
-- 🟢 **Safe**: Always safe to delete. Files are temporary or will be recreated automatically.
-- 🟡 **Moderate**: Generally safe, but may cause minor inconvenience (e.g., apps rebuilding cache).
-- 🔴 **Risky**: May contain important data. Hidden by default, use `--risky` to include.
-
-## Example
+## 🎬 See It In Action
 
 ```
 $ npx clean-my-mac-cli
@@ -174,47 +83,130 @@ Summary:
    Cleaned 802 items
 ```
 
-## Development
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🚀 **One Command** | Just run `npx clean-my-mac-cli` — no complex flags |
+| 🎯 **Interactive** | Select exactly what you want to clean with checkboxes |
+| 🛡️ **Safe by Default** | Risky items hidden unless you use `--risky` |
+| 🔍 **Smart Scanning** | Finds caches, logs, dev files, browser data, and more |
+| 📱 **App Uninstaller** | Remove apps completely with all associated files |
+| 🔧 **Maintenance** | Flush DNS cache, free purgeable space |
+| 🔒 **Privacy First** | 100% offline — no data ever leaves your machine |
+| 📦 **Minimal Dependencies** | Only 5 runtime deps, all from trusted maintainers |
+
+## 🎯 What It Cleans
+
+### 🟢 Safe (always safe to delete)
+
+| Category | What it cleans |
+|----------|---------------|
+| `trash` | Files in the Trash bin |
+| `temp-files` | Temporary files in /tmp and /var/folders |
+| `browser-cache` | Chrome, Safari, Firefox, Arc cache |
+| `homebrew` | Homebrew download cache |
+| `docker` | Unused Docker images, containers, volumes |
+
+### 🟡 Moderate (generally safe)
+
+| Category | What it cleans |
+|----------|---------------|
+| `system-cache` | Application caches in ~/Library/Caches |
+| `system-logs` | System and application logs |
+| `dev-cache` | npm, yarn, pip, Xcode DerivedData, CocoaPods |
+| `node-modules` | Orphaned node_modules in old projects |
+
+### 🔴 Risky (use `--risky` flag)
+
+| Category | What it cleans |
+|----------|---------------|
+| `downloads` | Downloads older than 30 days |
+| `ios-backups` | iPhone and iPad backup files |
+| `mail-attachments` | Downloaded email attachments |
+| `duplicates` | Duplicate files (keeps newest) |
+| `large-files` | Files larger than 500MB |
+| `language-files` | Unused language localizations |
+
+## 📖 Usage
+
+### Basic Usage
 
 ```bash
-# Clone the repo
-git clone https://github.com/guhcostan/clean-my-mac.git
-cd clean-my-mac
+# Interactive mode — scan, select, and clean
+npx clean-my-mac-cli
 
-# Install dependencies
-npm install
-
-# Run in development mode
-npm run dev
-
-# Run tests
-npm test
-
-# Run linter
-npm run lint
-
-# Type check
-npm run typecheck
-
-# Build for production
-npm run build
+# Include risky categories
+npx clean-my-mac-cli --risky
 ```
 
-## Security
+### Uninstall Apps
 
-This project takes security seriously:
+Remove applications completely with all their preferences, caches, and support files:
 
-- **Open Source**: All code is publicly available for audit on [GitHub](https://github.com/guhcostan/clean-my-mac)
-- **No Network Requests**: The CLI operates entirely offline - no data leaves your machine
-- **Minimal Dependencies**: Only 5 runtime dependencies, all from trusted maintainers
-- **CI/CD Pipeline**: Every release is tested with TypeScript type checking, ESLint, and automated tests
-- **Code Coverage**: High test coverage ensures reliability and catches regressions
-- **Socket.dev Verified**: Dependencies are monitored for supply chain attacks
-- **OpenSSF Scorecard**: Security health metrics tracked by the Open Source Security Foundation
+```bash
+npx clean-my-mac-cli uninstall
+```
 
-If you find a security vulnerability, please report it via [GitHub Security Advisories](https://github.com/guhcostan/clean-my-mac/security/advisories/new).
+### Maintenance Tasks
 
-## Contributing
+```bash
+# Flush DNS cache (may require sudo)
+npx clean-my-mac-cli maintenance --dns
+
+# Free purgeable space
+npx clean-my-mac-cli maintenance --purgeable
+```
+
+### Other Commands
+
+```bash
+# List all available categories
+npx clean-my-mac-cli categories
+
+# Manage configuration
+npx clean-my-mac-cli config --init
+npx clean-my-mac-cli config --show
+
+# Manage backups
+npx clean-my-mac-cli backup --list
+npx clean-my-mac-cli backup --clean
+```
+
+## 💻 Global Installation
+
+If you use this tool frequently:
+
+```bash
+npm install -g clean-my-mac-cli
+clean-my-mac-cli
+```
+
+## 🔒 Security
+
+| | |
+|---|---|
+| ✅ **Open Source** | All code publicly available for audit |
+| ✅ **No Network** | Operates 100% offline |
+| ✅ **Minimal Deps** | Only 5 runtime dependencies |
+| ✅ **CI/CD** | Every release tested with TypeScript, ESLint, and automated tests |
+| ✅ **Socket.dev** | Dependencies monitored for supply chain attacks |
+
+Found a vulnerability? Report it via [GitHub Security Advisories](https://github.com/guhcostan/clean-my-mac/security/advisories/new).
+
+## 🛠️ Development
+
+```bash
+git clone https://github.com/guhcostan/clean-my-mac.git
+cd clean-my-mac
+npm install
+npm run dev      # Run in dev mode
+npm test         # Run tests
+npm run lint     # Run linter
+npm run build    # Build for production
+```
+
+## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -224,10 +216,17 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.
 
-## Disclaimer
+---
 
-This tool deletes files from your system. While we've implemented safety measures, always ensure you have backups of important data. Use at your own risk.
+<p align="center">
+  <strong>⚠️ Disclaimer</strong><br>
+  This tool deletes files from your system. While we've implemented safety measures, always ensure you have backups of important data.
+</p>
+
+<p align="center">
+  Made with ❤️ by developers who were tired of paying $90 for CleanMyMac
+</p>
