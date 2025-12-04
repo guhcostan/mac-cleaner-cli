@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { flushDnsCache, type MaintenanceResult } from './dns-cache.js';
+import { flushDnsCache } from './dns-cache.js';
 
 describe('dns-cache', () => {
   describe('flushDnsCache', () => {
