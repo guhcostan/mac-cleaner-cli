@@ -17,6 +17,8 @@ describe('CATEGORIES', () => {
       'mail-attachments',
       'language-files',
       'large-files',
+      'node-modules',
+      'duplicates',
     ];
 
     expect(Object.keys(CATEGORIES).sort()).toEqual(expectedIds.sort());

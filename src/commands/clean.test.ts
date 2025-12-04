@@ -7,6 +7,7 @@ import type { Category } from '../types.js';
 vi.mock('../scanners/index.js', () => ({
   runAllScans: vi.fn(),
   getScanner: vi.fn(),
+  getAllScanners: vi.fn(() => []),
 }));
 
 vi.mock('@inquirer/prompts', () => ({

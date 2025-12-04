@@ -5,7 +5,7 @@ import * as scanners from '../scanners/index.js';
 vi.mock('../scanners/index.js', () => ({
   runAllScans: vi.fn(),
   runScans: vi.fn(),
-  getAllScanners: vi.fn(),
+  getAllScanners: vi.fn(() => [{ category: { id: 'trash', name: 'Trash' } }]),
   getScanner: vi.fn(),
 }));
 
