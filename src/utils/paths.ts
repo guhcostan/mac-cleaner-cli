@@ -36,7 +36,7 @@ export const PATHS = {
   mailDownloads: join(HOME, 'Library', 'Containers', 'com.apple.mail', 'Data', 'Library', 'Mail Downloads'),
 
   applications: '/Applications',
-} as const;
+};
 
 export function expandPath(path: string): string {
   if (path.startsWith('~')) {
