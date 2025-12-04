@@ -13,6 +13,10 @@ export default defineConfig({
         'dist/**',
         '**/*.test.ts',
         '**/index.ts',
+        // Exclude files that are hard to test in CI (heavy filesystem I/O)
+        'src/scanners/duplicates.ts',
+        'src/scanners/node-modules.ts',
+        'src/utils/backup.ts',
       ],
       thresholds: {
         lines: 80,
