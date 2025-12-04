@@ -2,16 +2,30 @@
 
 An open-source command-line tool to clean your Mac, inspired by CleanMyMac. Scan and remove junk files, caches, logs, and more.
 
-## Installation
+[![npm version](https://badge.fury.io/js/clean-my-mac-cli.svg)](https://www.npmjs.com/package/clean-my-mac-cli)
+
+## Quick Start (No Installation)
+
+Run directly with npx - no installation required:
+
+```bash
+# Scan to see what can be cleaned
+npx clean-my-mac-cli scan
+
+# Clean all safe categories
+npx clean-my-mac-cli clean --all --yes
+
+# Preview what would be cleaned (dry run)
+npx clean-my-mac-cli clean --dry-run
+```
+
+## Installation (Optional)
+
+If you prefer to install globally:
 
 ```bash
 npm install -g clean-my-mac-cli
-```
-
-Or run directly with npx:
-
-```bash
-npx clean-my-mac-cli scan
+clean-my-mac scan
 ```
 
 ## Features
@@ -24,49 +38,48 @@ npx clean-my-mac-cli scan
 
 ## Usage
 
+> **Tip:** Replace `clean-my-mac` with `npx clean-my-mac-cli` if you haven't installed globally.
+
 ### Scan for Cleanable Files
 
 ```bash
 # Full scan
-clean-my-mac scan
+npx clean-my-mac-cli scan
 
 # Detailed scan with file breakdown
-clean-my-mac scan --verbose
+npx clean-my-mac-cli scan --verbose
 
 # Scan specific category
-clean-my-mac scan --category dev-cache
+npx clean-my-mac-cli scan --category dev-cache
 
 # List all available categories
-clean-my-mac scan --list
+npx clean-my-mac-cli scan --list
 ```
 
 ### Clean Files
 
 ```bash
 # Interactive cleaning (recommended)
-clean-my-mac clean
+npx clean-my-mac-cli clean
 
-# Preview what would be cleaned
-clean-my-mac clean --dry-run
+# Preview what would be cleaned (safe!)
+npx clean-my-mac-cli clean --dry-run
 
 # Clean all safe and moderate categories
-clean-my-mac clean --all --yes
+npx clean-my-mac-cli clean --all --yes
 
 # Include risky categories (downloads, iOS backups, etc)
-clean-my-mac clean --all --yes --unsafe
+npx clean-my-mac-cli clean --all --yes --unsafe
 ```
 
 ### Maintenance Tasks
 
 ```bash
-# Flush DNS cache
-clean-my-mac maintenance --dns
+# Flush DNS cache (requires sudo)
+npx clean-my-mac-cli maintenance --dns
 
 # Free purgeable space
-clean-my-mac maintenance --purgeable
-
-# Run both
-clean-my-mac maintenance --dns --purgeable
+npx clean-my-mac-cli maintenance --purgeable
 ```
 
 ## Categories
