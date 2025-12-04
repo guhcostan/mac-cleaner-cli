@@ -85,7 +85,7 @@ If you use this tool frequently, install it globally:
 
 ```bash
 npm install -g clean-my-mac-cli
-clean-my-mac
+clean-my-mac-cli
 ```
 
 ## Categories
