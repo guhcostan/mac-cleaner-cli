@@ -1,0 +1,63 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  homebrew:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Get package info
+        id: package
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download npm package and get SHA256
+        id: sha
+        run: |
+          npm pack clean-my-mac-cli@${{ steps.package.outputs.version }}
+          SHA256=$(shasum -a 256 clean-my-mac-cli-${{ steps.package.outputs.version }}.tgz | cut -d ' ' -f 1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+
+      - name: Update Homebrew formula
+        run: |
+          cat > homebrew/clean-my-mac.rb << EOF
+          class CleanMyMac < Formula
+            desc "Open source CLI tool to clean your Mac"
+            homepage "https://github.com/${{ github.repository }}"
+            url "https://registry.npmjs.org/clean-my-mac-cli/-/clean-my-mac-cli-${{ steps.package.outputs.version }}.tgz"
+            sha256 "${{ steps.sha.outputs.sha256 }}"
+            license "MIT"
+
+            depends_on "node@20"
+
+            def install
+              system "npm", "install", *std_npm_args
+              bin.install_symlink Dir["#{libexec}/bin/*"]
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/clean-my-mac --version")
+            end
+          end
+          EOF
+
+      - name: Commit and push formula
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add homebrew/clean-my-mac.rb
+          git commit -m "chore: update homebrew formula to v${{ steps.package.outputs.version }}" || exit 0
+          git push
+

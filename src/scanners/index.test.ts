@@ -34,13 +34,18 @@ describe('scanners index', () => {
     const scanners = getAllScanners();
 
     expect(scanners).toHaveLength(13);
-    expect(scanners.every((s) => s.category && s.scan && s.clean)).toBe(true);
+    for (const scanner of scanners) {
+      expect(scanner.category).toBeDefined();
+      expect(scanner.scan).toBeDefined();
+      expect(scanner.clean).toBeDefined();
+    }
   });
 
   it('should have scan method for all scanners', () => {
     const scanners = getAllScanners();
 
     for (const scanner of scanners) {
+      expect(scanner.scan).toBeDefined();
       expect(typeof scanner.scan).toBe('function');
     }
   });
@@ -49,6 +54,7 @@ describe('scanners index', () => {
     const scanners = getAllScanners();
 
     for (const scanner of scanners) {
+      expect(scanner.clean).toBeDefined();
       expect(typeof scanner.clean).toBe('function');
     }
   });

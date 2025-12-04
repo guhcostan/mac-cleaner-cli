@@ -1,18 +1,27 @@
 {
-  "name": "clean-my-mac",
+  "name": "clean-my-mac-cli",
   "version": "1.0.0",
   "description": "Open source CLI tool to clean your Mac - similar to CleanMyMac",
   "type": "module",
   "bin": {
     "clean-my-mac": "./dist/index.js"
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsup src/index.ts --format esm --dts --clean",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mac",
@@ -20,15 +29,28 @@
     "macos",
     "cleanup",
     "cache",
-    "cli"
+    "cli",
+    "cleanmymac",
+    "disk-space",
+    "system-maintenance",
+    "junk-files"
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/clean-my-mac.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/clean-my-mac/issues"
+  },
+  "homepage": "https://github.com/yourusername/clean-my-mac#readme",
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
+    "@vitest/coverage-v8": "^1.0.4",
     "eslint": "^8.55.0",
     "tsup": "^8.0.1",
     "tsx": "^4.6.2",
@@ -43,5 +65,8 @@
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "os": [
+    "darwin"
+  ]
 }
