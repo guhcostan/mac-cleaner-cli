@@ -13,6 +13,10 @@ export default defineConfig({
         'dist/**',
         '**/*.test.ts',
         '**/index.ts',
+        'src/scanners/duplicates.ts',
+        'src/scanners/node-modules.ts',
+        'src/utils/backup.ts',
+        'src/maintenance/dns-cache.ts',
       ],
       thresholds: {
         lines: 80,
