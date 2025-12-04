@@ -239,3 +239,4 @@ function matchPattern(str: string, pattern: string): boolean {
   return new RegExp(`^${regexPattern}$`, 'i').test(str);
 }
 
+

@@ -2,7 +2,16 @@
 
 An open-source command-line tool to clean your Mac, inspired by CleanMyMac. Scan and remove junk files, caches, logs, and more.
 
+[![CI](https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/guhcostan/clean-my-mac/graph/badge.svg)](https://codecov.io/gh/guhcostan/clean-my-mac)
 [![npm version](https://badge.fury.io/js/clean-my-mac-cli.svg)](https://www.npmjs.com/package/clean-my-mac-cli)
+[![npm downloads](https://img.shields.io/npm/dm/clean-my-mac-cli.svg)](https://www.npmjs.com/package/clean-my-mac-cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/node/v/clean-my-mac-cli)](https://nodejs.org)
+[![Platform: macOS](https://img.shields.io/badge/platform-macOS-blue.svg)](https://www.apple.com/macos/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
+[![Socket Badge](https://socket.dev/api/badge/npm/package/clean-my-mac-cli)](https://socket.dev/npm/package/clean-my-mac-cli)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/guhcostan/clean-my-mac/badge)](https://scorecard.dev/viewer/?uri=github.com/guhcostan/clean-my-mac)
 
 ## Quick Start
 
@@ -192,6 +201,20 @@ npm run typecheck
 # Build for production
 npm run build
 ```
+
+## Security
+
+This project takes security seriously:
+
+- **Open Source**: All code is publicly available for audit on [GitHub](https://github.com/guhcostan/clean-my-mac)
+- **No Network Requests**: The CLI operates entirely offline - no data leaves your machine
+- **Minimal Dependencies**: Only 4 runtime dependencies, all from trusted maintainers
+- **CI/CD Pipeline**: Every release is tested with TypeScript type checking, ESLint, and automated tests
+- **Code Coverage**: High test coverage ensures reliability and catches regressions
+- **Socket.dev Verified**: Dependencies are monitored for supply chain attacks
+- **OpenSSF Scorecard**: Security health metrics tracked by the Open Source Security Foundation
+
+If you find a security vulnerability, please report it via [GitHub Security Advisories](https://github.com/guhcostan/clean-my-mac/security/advisories/new).
 
 ## Contributing
 
