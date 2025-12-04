@@ -2,6 +2,18 @@
 
 An open-source command-line tool to clean your Mac, inspired by CleanMyMac. Scan and remove junk files, caches, logs, and more.
 
+## Installation
+
+```bash
+npm install -g clean-my-mac-cli
+```
+
+Or run directly with npx:
+
+```bash
+npx clean-my-mac-cli scan
+```
+
 ## Features
 
 - **Smart Scanning**: Automatically detects cleanable files across multiple categories
@@ -9,31 +21,6 @@ An open-source command-line tool to clean your Mac, inspired by CleanMyMac. Scan
 - **Interactive Selection**: Choose exactly what to clean with an interactive checkbox interface
 - **Dry Run Mode**: Preview what would be cleaned without actually deleting anything
 - **Multiple Categories**: Clean system caches, logs, browser data, development files, and more
-
-## Installation
-
-### Using Homebrew (Recommended)
-
-```bash
-brew install guhcostan/clean-my-mac/clean-my-mac
-```
-
-Or with tap:
-
-```bash
-brew tap guhcostan/clean-my-mac
-brew install clean-my-mac
-```
-
-### From Source
-
-```bash
-git clone https://github.com/guhcostan/clean-my-mac.git
-cd clean-my-mac
-npm install
-npm run build
-npm link
-```
 
 ## Usage
 
@@ -159,6 +146,10 @@ Safety: 🟢 safe  🟡 moderate  🔴 risky (use --unsafe)
 ## Development
 
 ```bash
+# Clone the repo
+git clone https://github.com/guhcostan/clean-my-mac.git
+cd clean-my-mac
+
 # Install dependencies
 npm install
 
@@ -195,4 +186,3 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Disclaimer
 
 This tool deletes files from your system. While we've implemented safety measures, always use `--dry-run` first to preview changes, and ensure you have backups of important data. Use at your own risk.
-

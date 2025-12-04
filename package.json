@@ -35,9 +35,8 @@
     "system-maintenance",
     "junk-files"
   ],
-  "author": "",
+  "author": "guhcostan",
   "license": "MIT",
-  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/guhcostan/clean-my-mac.git"
