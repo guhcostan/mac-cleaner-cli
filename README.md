@@ -4,82 +4,81 @@ An open-source command-line tool to clean your Mac, inspired by CleanMyMac. Scan
 
 [![npm version](https://badge.fury.io/js/clean-my-mac-cli.svg)](https://www.npmjs.com/package/clean-my-mac-cli)
 
-## Quick Start (No Installation)
+## Quick Start
 
-Run directly with npx - no installation required:
-
-```bash
-# Scan to see what can be cleaned
-npx clean-my-mac-cli scan
-
-# Clean all safe categories
-npx clean-my-mac-cli clean --all --yes
-
-# Preview what would be cleaned (dry run)
-npx clean-my-mac-cli clean --dry-run
-```
-
-## Installation (Optional)
-
-If you prefer to install globally:
+Just run one command - no installation required:
 
 ```bash
-npm install -g clean-my-mac-cli
-clean-my-mac scan
+npx clean-my-mac-cli
 ```
+
+That's it! The CLI will:
+1. 🔍 Scan your Mac for cleanable files
+2. 📋 Show you what was found
+3. ✅ Let you select what to clean
+4. 🗑️ Clean the selected items
 
 ## Features
 
-- **Smart Scanning**: Automatically detects cleanable files across multiple categories
-- **Safety Levels**: Items are classified as safe, moderate, or risky to prevent accidental data loss
-- **Interactive Selection**: Choose exactly what to clean with an interactive checkbox interface
-- **Dry Run Mode**: Preview what would be cleaned without actually deleting anything
-- **Multiple Categories**: Clean system caches, logs, browser data, development files, and more
+- **One Command**: Just run `npx clean-my-mac-cli` - no complex flags to remember
+- **Interactive**: Select exactly what you want to clean with checkboxes
+- **Safe by Default**: Risky items are hidden unless you explicitly include them
+- **Smart Scanning**: Finds caches, logs, development files, browser data, and more
+- **App Uninstaller**: Remove apps completely with all their associated files
+- **Maintenance Tasks**: Flush DNS cache, free purgeable space
 
 ## Usage
 
-> **Tip:** Replace `clean-my-mac` with `npx clean-my-mac-cli` if you haven't installed globally.
-
-### Scan for Cleanable Files
+### Basic Usage (Recommended)
 
 ```bash
-# Full scan
-npx clean-my-mac-cli scan
+# Interactive mode - scan, select, and clean
+npx clean-my-mac-cli
 
-# Detailed scan with file breakdown
-npx clean-my-mac-cli scan --verbose
-
-# Scan specific category
-npx clean-my-mac-cli scan --category dev-cache
-
-# List all available categories
-npx clean-my-mac-cli scan --list
+# Include risky categories (downloads, iOS backups, large files)
+npx clean-my-mac-cli --risky
 ```
 
-### Clean Files
+### Uninstall Apps
+
+Remove applications completely, including their preferences, caches, and support files:
 
 ```bash
-# Interactive cleaning (recommended)
-npx clean-my-mac-cli clean
-
-# Preview what would be cleaned (safe!)
-npx clean-my-mac-cli clean --dry-run
-
-# Clean all safe and moderate categories
-npx clean-my-mac-cli clean --all --yes
-
-# Include risky categories (downloads, iOS backups, etc)
-npx clean-my-mac-cli clean --all --yes --unsafe
+npx clean-my-mac-cli uninstall
 ```
 
 ### Maintenance Tasks
 
 ```bash
-# Flush DNS cache (requires sudo)
+# Flush DNS cache (may require sudo)
 npx clean-my-mac-cli maintenance --dns
 
 # Free purgeable space
 npx clean-my-mac-cli maintenance --purgeable
+```
+
+### Other Commands
+
+```bash
+# List all available categories
+npx clean-my-mac-cli categories
+
+# Manage configuration
+npx clean-my-mac-cli config --init
+npx clean-my-mac-cli config --show
+
+# Manage backups
+npx clean-my-mac-cli backup --list
+npx clean-my-mac-cli backup --clean
+```
+
+## Global Installation (Optional)
+
+If you use this tool frequently, install it globally:
+
+```bash
+npm install -g clean-my-mac-cli
+clean-my-mac
 ```
 
 ## Categories
@@ -100,6 +99,7 @@ npx clean-my-mac-cli maintenance --purgeable
 | `dev-cache` | 🟡 Moderate | npm, yarn, pip, Xcode DerivedData, CocoaPods |
 | `homebrew` | 🟢 Safe | Homebrew download cache |
 | `docker` | 🟢 Safe | Unused Docker images, containers, volumes |
+| `node-modules` | 🟡 Moderate | Orphaned node_modules in old projects |
 
 ### Storage
 
@@ -109,6 +109,7 @@ npx clean-my-mac-cli maintenance --purgeable
 | `downloads` | 🔴 Risky | Downloads older than 30 days |
 | `ios-backups` | 🔴 Risky | iPhone and iPad backup files |
 | `mail-attachments` | 🔴 Risky | Downloaded email attachments |
+| `duplicates` | 🔴 Risky | Duplicate files (keeps newest) |
 
 ### Browsers
 
@@ -126,34 +127,44 @@ npx clean-my-mac-cli maintenance --purgeable
 
 - 🟢 **Safe**: Always safe to delete. Files are temporary or will be recreated automatically.
 - 🟡 **Moderate**: Generally safe, but may cause minor inconvenience (e.g., apps rebuilding cache).
-- 🔴 **Risky**: May contain important data. Requires `--unsafe` flag and individual file selection.
+- 🔴 **Risky**: May contain important data. Hidden by default, use `--risky` to include.
 
-## Example Output
+## Example
 
 ```
-Scanning your Mac...
+$ npx clean-my-mac-cli
 
-Scan Results
-────────────────────────────────────────────────────────────
+🧹 Clean My Mac
+──────────────────────────────────────────────────────
 
-System Junk
-  🟡 User Cache Files                15.5 GB (118 items)
-  🟡 System Log Files               102.4 MB (80 items)
-  🟢 Temporary Files                549.2 MB (622 items)
-  🔴 Language Files                  68.9 MB (535 items)
+Scanning your Mac for cleanable files...
 
-Development
-  🟡 Development Cache               21.9 GB (14 items)
-  🟢 Homebrew Cache                 225.6 MB (1 items)
-  🟢 Docker                           4.9 GB (3 items)
+Found 44.8 GB that can be cleaned:
 
-Browsers
-  🟢 Browser Cache                    1.5 GB (3 items)
+? Select categories to clean (space to toggle, enter to confirm):
+  ◉ 🟢 Trash                            2.1 GB (45 items)
+  ◉ 🟢 Browser Cache                    1.5 GB (3 items)
+  ◉ 🟢 Temporary Files                549.2 MB (622 items)
+  ◉ 🟡 User Cache Files                15.5 GB (118 items)
+  ◉ 🟡 Development Cache               21.9 GB (14 items)
 
-────────────────────────────────────────────────────────────
-Total: 44.8 GB can be cleaned (1377 items)
+Summary:
+  Items to delete: 802
+  Space to free: 41.5 GB
 
-Safety: 🟢 safe  🟡 moderate  🔴 risky (use --unsafe)
+? Proceed with cleaning? (Y/n)
+
+✓ Cleaning Complete!
+──────────────────────────────────────────────────────
+  Trash                          ✓ 2.1 GB freed
+  Browser Cache                  ✓ 1.5 GB freed
+  Temporary Files                ✓ 549.2 MB freed
+  User Cache Files               ✓ 15.5 GB freed
+  Development Cache              ✓ 21.9 GB freed
+
+──────────────────────────────────────────────────────
+🎉 Freed 41.5 GB of disk space!
+   Cleaned 802 items
 ```
 
 ## Development
@@ -167,7 +178,7 @@ cd clean-my-mac
 npm install
 
 # Run in development mode
-npm run dev -- scan
+npm run dev
 
 # Run tests
 npm test
@@ -198,4 +209,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Disclaimer
 
-This tool deletes files from your system. While we've implemented safety measures, always use `--dry-run` first to preview changes, and ensure you have backups of important data. Use at your own risk.
+This tool deletes files from your system. While we've implemented safety measures, always ensure you have backups of important data. Use at your own risk.
