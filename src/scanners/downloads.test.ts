@@ -85,5 +85,17 @@ describe('DownloadsScanner', () => {
     const result30Days = await scanner.scan({ daysOld: 30 });
     expect(result30Days.items).toHaveLength(0);
   });
+
+  it('should handle nonexistent downloads directory', async () => {
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      downloads: join(testDir, 'nonexistent'),
+    });
+
+    const result = await scanner.scan();
+
+    expect(result.items).toHaveLength(0);
+    expect(result.totalSize).toBe(0);
+  });
 });
 

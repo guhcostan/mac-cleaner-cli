@@ -3,14 +3,17 @@ import { mkdtemp, writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { HomebrewScanner } from './homebrew.js';
-import * as childProcess from 'child_process';
+
+const { mockExecAsync } = vi.hoisted(() => {
+  return { mockExecAsync: vi.fn() };
+});
 
 vi.mock('child_process', () => ({
   exec: vi.fn(),
 }));
 
 vi.mock('util', () => ({
-  promisify: vi.fn((fn) => fn),
+  promisify: vi.fn(() => mockExecAsync),
 }));
 
 describe('HomebrewScanner', () => {
@@ -36,10 +39,7 @@ describe('HomebrewScanner', () => {
   });
 
   it('should handle homebrew not installed', async () => {
-    vi.mocked(childProcess.exec).mockImplementation((_cmd, callback) => {
-      (callback as (err: Error | null, stdout: string, stderr: string) => void)(new Error('brew not found'), '', '');
-      return {} as ReturnType<typeof childProcess.exec>;
-    });
+    mockExecAsync.mockRejectedValue(new Error('brew not found'));
 
     const result = await scanner.scan();
 
@@ -51,12 +51,7 @@ describe('HomebrewScanner', () => {
     await mkdir(cacheDir);
     await writeFile(join(cacheDir, 'package.tar.gz'), 'cache data');
 
-    vi.mocked(childProcess.exec).mockImplementation((cmd, callback) => {
-      if (typeof cmd === 'string' && cmd.includes('--cache')) {
-        (callback as (err: Error | null, result: { stdout: string; stderr: string }) => void)(null, { stdout: cacheDir + '\n', stderr: '' });
-      }
-      return {} as ReturnType<typeof childProcess.exec>;
-    });
+    mockExecAsync.mockResolvedValue({ stdout: cacheDir + '\n', stderr: '' });
 
     const result = await scanner.scan();
 
@@ -76,10 +71,7 @@ describe('HomebrewScanner', () => {
   });
 
   it('should clean using brew cleanup successfully', async () => {
-    vi.mocked(childProcess.exec).mockImplementation((_cmd, callback) => {
-      (callback as (err: Error | null, result: { stdout: string; stderr: string }) => void)(null, { stdout: '', stderr: '' });
-      return {} as ReturnType<typeof childProcess.exec>;
-    });
+    mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
     const items = [
       { path: '/usr/local/Homebrew/cache', size: 1000, name: 'Homebrew Cache', isDirectory: true },
@@ -93,10 +85,7 @@ describe('HomebrewScanner', () => {
   });
 
   it('should handle brew cleanup failure', async () => {
-    vi.mocked(childProcess.exec).mockImplementation((_cmd, callback) => {
-      (callback as (err: Error | null, result: { stdout: string; stderr: string }) => void)(new Error('cleanup failed'), { stdout: '', stderr: '' });
-      return {} as ReturnType<typeof childProcess.exec>;
-    });
+    mockExecAsync.mockRejectedValue(new Error('cleanup failed'));
 
     const items = [
       { path: '/usr/local/Homebrew/cache', size: 1000, name: 'Homebrew Cache', isDirectory: true },

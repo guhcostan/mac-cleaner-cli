@@ -87,5 +87,77 @@ describe('LargeFilesScanner', () => {
     expect(result.items).toHaveLength(1);
     expect(result.items[0].name).toBe('visible.bin');
   });
+
+  it('should scan nested directories', async () => {
+    const docsDir = join(testDir, 'Documents');
+    const subDir = join(docsDir, 'subfolder');
+    await mkdir(subDir, { recursive: true });
+
+    await writeFile(join(subDir, 'nested.bin'), 'x'.repeat(1000));
+
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      downloads: join(testDir, 'nonexistent'),
+      documents: docsDir,
+    });
+
+    const result = await scanner.scan({ minSize: 500 });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].name).toBe('nested.bin');
+  });
+
+  it('should respect max depth limit', async () => {
+    const docsDir = join(testDir, 'Documents');
+    const deepDir = join(docsDir, 'a', 'b', 'c', 'd', 'e');
+    await mkdir(deepDir, { recursive: true });
+
+    await writeFile(join(deepDir, 'deep.bin'), 'x'.repeat(1000));
+
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      downloads: join(testDir, 'nonexistent'),
+      documents: docsDir,
+    });
+
+    const result = await scanner.scan({ minSize: 500 });
+
+    expect(result.items.filter(i => i.name === 'deep.bin')).toHaveLength(0);
+  });
+
+  it('should scan both downloads and documents', async () => {
+    const docsDir = join(testDir, 'Documents');
+    const downloadsDir = join(testDir, 'Downloads');
+    await mkdir(docsDir);
+    await mkdir(downloadsDir);
+
+    await writeFile(join(docsDir, 'doc.bin'), 'x'.repeat(1000));
+    await writeFile(join(downloadsDir, 'download.bin'), 'x'.repeat(1000));
+
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      downloads: downloadsDir,
+      documents: docsDir,
+    });
+
+    const result = await scanner.scan({ minSize: 500 });
+
+    expect(result.items).toHaveLength(2);
+  });
+
+  it('should handle permission denied errors gracefully', async () => {
+    const docsDir = join(testDir, 'Documents');
+    await mkdir(docsDir);
+
+    vi.spyOn(paths, 'PATHS', 'get').mockReturnValue({
+      ...paths.PATHS,
+      downloads: join(testDir, 'nonexistent'),
+      documents: docsDir,
+    });
+
+    const result = await scanner.scan({ minSize: 500 });
+
+    expect(result.items).toHaveLength(0);
+  });
 });
 

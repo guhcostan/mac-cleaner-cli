@@ -1,13 +1,16 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { DockerScanner } from './docker.js';
-import * as childProcess from 'child_process';
+
+const { mockExecAsync } = vi.hoisted(() => {
+  return { mockExecAsync: vi.fn() };
+});
 
 vi.mock('child_process', () => ({
   exec: vi.fn(),
 }));
 
 vi.mock('util', () => ({
-  promisify: vi.fn((fn) => fn),
+  promisify: vi.fn(() => mockExecAsync),
 }));
 
 describe('DockerScanner', () => {
@@ -30,10 +33,7 @@ describe('DockerScanner', () => {
   });
 
   it('should handle docker not running', async () => {
-    vi.mocked(childProcess.exec).mockImplementation((_cmd, callback) => {
-      (callback as (err: Error | null, result: { stdout: string; stderr: string }) => void)(new Error('docker not running'), { stdout: '', stderr: '' });
-      return {} as ReturnType<typeof childProcess.exec>;
-    });
+    mockExecAsync.mockRejectedValue(new Error('docker not running'));
 
     const result = await scanner.scan();
     expect(result.category.id).toBe('docker');
@@ -41,13 +41,8 @@ describe('DockerScanner', () => {
   });
 
   it('should scan docker system when running', async () => {
-    vi.mocked(childProcess.exec).mockImplementation((cmd, callback) => {
-      if (typeof cmd === 'string' && cmd.includes('docker system df')) {
-        const stdout = 'Images\t5.5GB\t2.1GB (38%)\nContainers\t1GB\t500MB (50%)\nVolumes\t2GB\t0B (0%)';
-        (callback as (err: Error | null, result: { stdout: string; stderr: string }) => void)(null, { stdout, stderr: '' });
-      }
-      return {} as ReturnType<typeof childProcess.exec>;
-    });
+    const stdout = 'Images\t5.5GB\t2.1GB (38%)\nContainers\t1GB\t500MB (50%)\nVolumes\t2GB\t0B (0%)';
+    mockExecAsync.mockResolvedValue({ stdout, stderr: '' });
 
     const result = await scanner.scan();
 
@@ -68,10 +63,7 @@ describe('DockerScanner', () => {
   });
 
   it('should clean docker system successfully', async () => {
-    vi.mocked(childProcess.exec).mockImplementation((_cmd, callback) => {
-      (callback as (err: Error | null, result: { stdout: string; stderr: string }) => void)(null, { stdout: '', stderr: '' });
-      return {} as ReturnType<typeof childProcess.exec>;
-    });
+    mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
     const items = [
       { path: 'docker:images', size: 1000000000, name: 'Docker Images', isDirectory: false },
@@ -85,10 +77,7 @@ describe('DockerScanner', () => {
   });
 
   it('should handle docker cleanup failure', async () => {
-    vi.mocked(childProcess.exec).mockImplementation((_cmd, callback) => {
-      (callback as (err: Error | null, result: { stdout: string; stderr: string }) => void)(new Error('prune failed'), { stdout: '', stderr: '' });
-      return {} as ReturnType<typeof childProcess.exec>;
-    });
+    mockExecAsync.mockRejectedValue(new Error('prune failed'));
 
     const items = [
       { path: 'docker:images', size: 1000000000, name: 'Docker Images', isDirectory: false },

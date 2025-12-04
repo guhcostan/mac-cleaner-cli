@@ -22,14 +22,6 @@ const trashCategory: Category = {
   safetyLevel: 'safe',
 };
 
-const moderateCategory: Category = {
-  id: 'system-cache',
-  name: 'System Cache',
-  group: 'System Junk',
-  description: 'System Cache',
-  safetyLevel: 'moderate',
-};
-
 const downloadsCategory: Category = {
   id: 'downloads',
   name: 'Old Downloads',
