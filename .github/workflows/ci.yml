@@ -55,7 +55,7 @@ jobs:
 
   publish:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     if: github.event_name == 'release'
     
     steps:
