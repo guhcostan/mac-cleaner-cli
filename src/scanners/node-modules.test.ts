@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { rm } from 'fs/promises';
+import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { NodeModulesScanner } from './node-modules.js';
@@ -44,5 +44,34 @@ describe('NodeModulesScanner', () => {
     const result = await scanner.clean([]);
     expect(result.category.id).toBe('node-modules');
   });
-});
 
+  it('should scan existing directories', async () => {
+    vi.mocked(fsUtils.exists).mockResolvedValue(true);
+    vi.mocked(fsUtils.getSize).mockResolvedValue(1000);
+
+    const result = await scanner.scan();
+
+    expect(fsUtils.exists).toHaveBeenCalled();
+  });
+
+  it('should clean items successfully', async () => {
+    const items = [
+      { path: '/test/node_modules', size: 1000, name: 'test-project', isDirectory: true },
+    ];
+
+    const result = await scanner.clean(items);
+
+    expect(result.category.id).toBe('node-modules');
+    expect(fsUtils.removeItems).toHaveBeenCalledWith(items, false);
+  });
+
+  it('should support dry run mode', async () => {
+    const items = [
+      { path: '/test/node_modules', size: 1000, name: 'test-project', isDirectory: true },
+    ];
+
+    const result = await scanner.clean(items, true);
+
+    expect(fsUtils.removeItems).toHaveBeenCalledWith(items, true);
+  });
+});

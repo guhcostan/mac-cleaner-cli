@@ -11,6 +11,15 @@ vi.mock('../utils/fs.js', () => ({
   removeItems: vi.fn().mockResolvedValue({ deleted: 0, freedSpace: 0, errors: [] }),
 }));
 
+vi.mock('../utils/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../utils/index.js')>();
+  return {
+    ...actual,
+    exists: vi.fn(() => false),
+    getFileHash: vi.fn(() => 'abc123'),
+  };
+});
+
 describe('DuplicatesScanner', () => {
   const scanner = new DuplicatesScanner();
   const testDir = join(tmpdir(), 'clean-my-mac-duplicates-test');
@@ -44,5 +53,41 @@ describe('DuplicatesScanner', () => {
     const result = await scanner.clean([]);
     expect(result.category.id).toBe('duplicates');
   });
-});
 
+  it('should scan existing directories', async () => {
+    vi.mocked(fsUtils.exists).mockResolvedValue(true);
+
+    const result = await scanner.scan();
+
+    expect(fsUtils.exists).toHaveBeenCalled();
+  });
+
+  it('should clean items successfully', async () => {
+    const items = [
+      { path: '/test/file1.txt', size: 1000, name: 'file1.txt', isDirectory: false },
+    ];
+
+    const result = await scanner.clean(items);
+
+    expect(result.category.id).toBe('duplicates');
+    expect(fsUtils.removeItems).toHaveBeenCalledWith(items, false);
+  });
+
+  it('should support dry run mode', async () => {
+    const items = [
+      { path: '/test/file1.txt', size: 1000, name: 'file1.txt', isDirectory: false },
+    ];
+
+    const result = await scanner.clean(items, true);
+
+    expect(fsUtils.removeItems).toHaveBeenCalledWith(items, true);
+  });
+
+  it('should use minSize option when scanning', async () => {
+    vi.mocked(fsUtils.exists).mockResolvedValue(true);
+
+    const result = await scanner.scan({ minSize: 5000000 });
+
+    expect(result.category.id).toBe('duplicates');
+  });
+});

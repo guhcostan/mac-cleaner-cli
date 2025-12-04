@@ -6,7 +6,6 @@ import * as inquirerPrompts from '@inquirer/prompts';
 vi.mock('../utils/fs.js', () => ({
   exists: vi.fn(),
   getSize: vi.fn(),
-  formatSize: vi.fn((size: number) => `${size} bytes`),
 }));
 
 vi.mock('../utils/index.js', async (importOriginal) => {
@@ -63,6 +62,26 @@ describe('uninstall command', () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     await uninstallCommand({ dryRun: true });
+
+    consoleSpy.mockRestore();
+  });
+
+  it('should handle yes option for auto-confirm', async () => {
+    vi.mocked(fsUtils.exists).mockResolvedValue(false);
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await uninstallCommand({ yes: true });
+
+    consoleSpy.mockRestore();
+  });
+
+  it('should handle noProgress option', async () => {
+    vi.mocked(fsUtils.exists).mockResolvedValue(false);
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await uninstallCommand({ noProgress: true });
 
     consoleSpy.mockRestore();
   });
