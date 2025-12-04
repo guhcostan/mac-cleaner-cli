@@ -3,15 +3,13 @@
 An open-source command-line tool to clean your Mac, inspired by CleanMyMac. Scan and remove junk files, caches, logs, and more.
 
 [![CI](https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml/badge.svg)](https://github.com/guhcostan/clean-my-mac/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/guhcostan/clean-my-mac/graph/badge.svg)](https://codecov.io/gh/guhcostan/clean-my-mac)
 [![npm version](https://badge.fury.io/js/clean-my-mac-cli.svg)](https://www.npmjs.com/package/clean-my-mac-cli)
-[![npm downloads](https://img.shields.io/npm/dm/clean-my-mac-cli.svg)](https://www.npmjs.com/package/clean-my-mac-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/node/v/clean-my-mac-cli)](https://nodejs.org)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-blue.svg)](https://www.apple.com/macos/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Socket Badge](https://socket.dev/api/badge/npm/package/clean-my-mac-cli)](https://socket.dev/npm/package/clean-my-mac-cli)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/guhcostan/clean-my-mac/badge)](https://scorecard.dev/viewer/?uri=github.com/guhcostan/clean-my-mac)
+[![GitHub Stars](https://img.shields.io/github/stars/guhcostan/clean-my-mac?style=social)](https://github.com/guhcostan/clean-my-mac)
 
 ## Quick Start
 
