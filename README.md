@@ -224,11 +224,6 @@ If this tool saved you time or disk space, consider supporting the project!
   <a href="https://ko-fi.com/guhcostan"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko-fi"></a>
 </p>
 
-**🇧🇷 Pix (Brazil):**
-```
-guhcostan@gmail.com
-```
-
 Your support helps maintain and improve this tool. Thank you! 🙏
 
 ## 📄 License
