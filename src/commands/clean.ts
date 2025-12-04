@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import inquirer from 'inquirer';
+import { confirm, checkbox } from '@inquirer/prompts';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, getScanner } from '../scanners/index.js';
 import { formatSize } from '../utils/size.js';
@@ -83,16 +83,12 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
   const totalItems = selectedItems.reduce((sum, s) => sum + s.items.length, 0);
 
   if (!options.yes && !options.dryRun) {
-    const confirm = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'proceed',
-        message: `Delete ${totalItems} items (${formatSize(totalToClean)})?`,
-        default: false,
-      },
-    ]);
+    const proceed = await confirm({
+      message: `Delete ${totalItems} items (${formatSize(totalToClean)})?`,
+      default: false,
+    });
 
-    if (!confirm.proceed) {
+    if (!proceed) {
       console.log(chalk.yellow('\nCleaning cancelled.\n'));
       return null;
     }
@@ -157,21 +153,15 @@ async function selectItemsInteractively(
     };
   });
 
-  const { categories } = await inquirer.prompt([
-    {
-      type: 'checkbox',
-      name: 'categories',
-      message: 'Categories',
-      choices: choices.map((c) => ({
-        name: c.name,
-        value: c.value,
-        checked: c.checked,
-      })),
-      pageSize: 15,
-    },
-  ]);
-
-  const selectedCategories = categories as CategoryId[];
+  const selectedCategories = await checkbox<CategoryId>({
+    message: 'Categories',
+    choices: choices.map((c) => ({
+      name: c.name,
+      value: c.value as CategoryId,
+      checked: c.checked,
+    })),
+    pageSize: 15,
+  });
   const selectedResults = results.filter((r) => selectedCategories.includes(r.category.id));
 
   const selectedItems: { categoryId: CategoryId; items: CleanableItem[] }[] = [];
@@ -191,17 +181,11 @@ async function selectItemsInteractively(
         checked: false,
       }));
 
-      const { items } = await inquirer.prompt([
-        {
-          type: 'checkbox',
-          name: 'items',
-          message: `Select items from ${result.category.name}:`,
-          choices: itemChoices,
-          pageSize: 10,
-        },
-      ]);
-
-      const selectedPaths = items as string[];
+      const selectedPaths = await checkbox<string>({
+        message: `Select items from ${result.category.name}:`,
+        choices: itemChoices,
+        pageSize: 10,
+      });
       const selectedItemsList = result.items.filter((i) => selectedPaths.includes(i.path));
 
       if (selectedItemsList.length > 0) {

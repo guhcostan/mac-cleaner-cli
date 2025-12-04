@@ -8,10 +8,9 @@ vi.mock('../scanners/index.js', () => ({
   getScanner: vi.fn(),
 }));
 
-vi.mock('inquirer', () => ({
-  default: {
-    prompt: vi.fn(),
-  },
+vi.mock('@inquirer/prompts', () => ({
+  confirm: vi.fn(),
+  checkbox: vi.fn(),
 }));
 
 const trashCategory: Category = {
