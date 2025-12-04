@@ -36,9 +36,10 @@ export async function maintenanceCommand(options: MaintenanceCommandOptions): Pr
     if (result.success) {
       spinner.succeed(chalk.green(result.message));
     } else {
-      spinner.fail(chalk.red(result.message));
       if (result.error) {
-        console.log(chalk.dim(`  ${result.error}`));
+        spinner.fail(chalk.red(`${result.message}: ${result.error}`));
+      } else {
+        spinner.fail(chalk.red(result.message));
       }
     }
   }

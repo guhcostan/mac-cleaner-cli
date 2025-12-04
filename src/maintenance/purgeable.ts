@@ -11,18 +11,32 @@ export interface MaintenanceResult {
 
 export async function freePurgeableSpace(): Promise<MaintenanceResult> {
   try {
-    await execAsync('purge');
+    await execAsync('sudo -n purge');
 
     return {
       success: true,
       message: 'Purgeable space freed successfully',
     };
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Failed to free purgeable space',
-      error: error instanceof Error ? error.message : String(error),
-    };
+  } catch {
+    try {
+      await execAsync('purge');
+
+      return {
+        success: true,
+        message: 'Purgeable space freed successfully',
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const needsSudo = errorMessage.includes('Operation not permitted');
+
+      return {
+        success: false,
+        message: 'Failed to free purgeable space',
+        error: needsSudo
+          ? 'Requires sudo. Run: sudo npx clean-my-mac-cli maintenance --purgeable'
+          : errorMessage,
+      };
+    }
   }
 }
 
