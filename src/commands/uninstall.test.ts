@@ -16,9 +16,12 @@ vi.mock('../utils/index.js', async () => {
   };
 });
 
-vi.mock('@inquirer/prompts', () => ({
-  confirm: vi.fn().mockResolvedValue(false),
-  checkbox: vi.fn().mockResolvedValue([]),
+vi.mock('@inquirer/confirm', () => ({
+  default: vi.fn().mockResolvedValue(false),
+}));
+
+vi.mock('@inquirer/checkbox', () => ({
+  default: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('fs/promises', async (importOriginal) => {
@@ -36,8 +39,14 @@ vi.mock('fs/promises', async (importOriginal) => {
 
 import { uninstallCommand } from './uninstall.js';
 import * as utils from '../utils/index.js';
-import * as inquirerPrompts from '@inquirer/prompts';
+import * as inquirerConfirm from '@inquirer/confirm';
+import * as inquirerCheckbox from '@inquirer/checkbox';
 import * as fsPromises from 'fs/promises';
+
+const inquirerPrompts = {
+  confirm: inquirerConfirm.default,
+  checkbox: inquirerCheckbox.default,
+};
 
 describe('uninstall command', () => {
   const testDir = join(tmpdir(), 'clean-my-mac-uninstall-test');

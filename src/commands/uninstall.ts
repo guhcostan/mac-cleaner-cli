@@ -1,5 +1,6 @@
 import chalk from 'chalk';
-import { confirm, checkbox } from '@inquirer/prompts';
+import confirm from '@inquirer/confirm';
+import checkbox from '@inquirer/checkbox';
 import { readdir, stat, rm } from 'fs/promises';
 import { join, basename } from 'path';
 import { homedir } from 'os';

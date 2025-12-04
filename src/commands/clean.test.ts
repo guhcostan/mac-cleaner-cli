@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanCommand } from './clean.js';
 import * as scanners from '../scanners/index.js';
-import * as inquirerPrompts from '@inquirer/prompts';
+import * as inquirerConfirm from '@inquirer/confirm';
+import * as inquirerCheckbox from '@inquirer/checkbox';
 import type { Category } from '../types.js';
 
 vi.mock('../scanners/index.js', () => ({
@@ -10,10 +11,18 @@ vi.mock('../scanners/index.js', () => ({
   getAllScanners: vi.fn(() => []),
 }));
 
-vi.mock('@inquirer/prompts', () => ({
-  confirm: vi.fn(),
-  checkbox: vi.fn(),
+vi.mock('@inquirer/confirm', () => ({
+  default: vi.fn(),
 }));
+
+vi.mock('@inquirer/checkbox', () => ({
+  default: vi.fn(),
+}));
+
+const inquirerPrompts = {
+  confirm: inquirerConfirm.default,
+  checkbox: inquirerCheckbox.default,
+};
 
 const trashCategory: Category = {
   id: 'trash',

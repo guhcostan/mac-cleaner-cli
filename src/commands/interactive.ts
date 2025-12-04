@@ -1,5 +1,6 @@
 import chalk from 'chalk';
-import { confirm, checkbox } from '@inquirer/prompts';
+import confirm from '@inquirer/confirm';
+import checkbox from '@inquirer/checkbox';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
 import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
