@@ -59,7 +59,7 @@
   },
   "dependencies": {
     "chalk": "^5.3.0",
-    "commander": "^11.1.0",
+    "commander": "^14.0.2",
     "inquirer": "^9.2.12",
     "ora": "^8.0.1"
   },
