@@ -52,20 +52,17 @@ async function runWithConcurrency<T>(
   concurrency: number
 ): Promise<T[]> {
   const results: T[] = [];
-  const executing: Promise<void>[] = [];
+  const executing: Set<Promise<void>> = new Set();
 
   for (const task of tasks) {
-    const p = task().then((result) => {
+    const p: Promise<void> = task().then((result) => {
       results.push(result);
+      executing.delete(p);
     });
-    executing.push(p);
+    executing.add(p);
 
-    if (executing.length >= concurrency) {
+    if (executing.size >= concurrency) {
       await Promise.race(executing);
-      executing.splice(
-        executing.findIndex((e) => e === p),
-        1
-      );
     }
   }
 
