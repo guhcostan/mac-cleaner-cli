@@ -1,6 +1,6 @@
 {
   "name": "mac-cleaner-cli",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Open source CLI tool to clean your Mac - remove junk files, caches, logs, and more",
   "type": "module",
   "bin": {
@@ -14,14 +14,14 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "bun run src/index.ts",
     "build": "tsup src/index.ts --format esm --dts --clean",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "bun run build"
   },
   "keywords": [
     "mac",
@@ -46,11 +46,11 @@
   "homepage": "https://github.com/guhcostan/mac-cleaner-cli#readme",
   "devDependencies": {
     "@eslint/js": "^9.28.0",
+    "@types/bun": "^1.2.7",
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.15",
     "eslint": "^9.28.0",
     "tsup": "^8.0.1",
-    "tsx": "^4.6.2",
     "typescript": "^5.3.2",
     "typescript-eslint": "^8.48.1",
     "vitest": "^4.0.15"
@@ -61,9 +61,6 @@
     "chalk": "^5.3.0",
     "commander": "^14.0.2",
     "ora": "^9.0.0"
-  },
-  "engines": {
-    "node": ">=20.12.0"
   },
   "os": [
     "darwin"
