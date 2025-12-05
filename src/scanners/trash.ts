@@ -20,3 +20,4 @@ export class TrashScanner extends BaseScanner {
 
 
 
+
