@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import { ExitPromptError } from '@inquirer/core';
 import { interactiveCommand, listCategories, maintenanceCommand, uninstallCommand } from './commands/index.js';
 import { initConfig, configExists, listBackups, cleanOldBackups, loadConfig, formatSize } from './utils/index.js';
 
@@ -13,10 +14,15 @@ program
   .option('-r, --risky', 'Include risky categories (downloads, iOS backups, etc)')
   .option('--no-progress', 'Disable progress bar')
   .action(async (options) => {
-    await interactiveCommand({
-      includeRisky: options.risky,
-      noProgress: !options.progress,
-    });
+    try {
+      await interactiveCommand({
+        includeRisky: options.risky,
+        noProgress: !options.progress,
+      });
+    } catch (error) {
+      if (error instanceof ExitPromptError) return;
+      throw error;
+    }
   });
 
 program
@@ -26,11 +32,16 @@ program
   .option('-d, --dry-run', 'Show what would be uninstalled without actually uninstalling')
   .option('--no-progress', 'Disable progress bar')
   .action(async (options) => {
-    await uninstallCommand({
-      yes: options.yes,
-      dryRun: options.dryRun,
-      noProgress: !options.progress,
-    });
+    try {
+      await uninstallCommand({
+        yes: options.yes,
+        dryRun: options.dryRun,
+        noProgress: !options.progress,
+      });
+    } catch (error) {
+      if (error instanceof ExitPromptError) return;
+      throw error;
+    }
   });
 
 program
