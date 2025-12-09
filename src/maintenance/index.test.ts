@@ -6,6 +6,8 @@ vi.mock('child_process', () => ({
   exec: vi.fn(),
 }));
 
+type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
+
 describe('maintenance tasks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -17,12 +19,9 @@ describe('maintenance tasks', () => {
 
   describe('flushDnsCache', () => {
     it('should return a result object', async () => {
-      vi.mocked(exec).mockImplementation(((
-        _cmd: string,
-        callback: (error: null, stdout: string, stderr: string) => void
-      ) => {
+      vi.mocked(exec).mockImplementation(((_cmd: string, callback: ExecCallback) => {
         callback(null, '', '');
-      }) as any);
+      }) as typeof exec);
 
       const result = await flushDnsCache();
 
@@ -35,12 +34,9 @@ describe('maintenance tasks', () => {
 
   describe('freePurgeableSpace', () => {
     it('should return a result object', async () => {
-      vi.mocked(exec).mockImplementation(((
-        _cmd: string,
-        callback: (error: null, stdout: string, stderr: string) => void
-      ) => {
+      vi.mocked(exec).mockImplementation(((_cmd: string, callback: ExecCallback) => {
         callback(null, '', '');
-      }) as any);
+      }) as typeof exec);
 
       const result = await freePurgeableSpace();
 

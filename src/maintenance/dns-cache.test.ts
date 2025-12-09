@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushDnsCache } from './dns-cache.js';
 import { exec } from 'child_process';
-import { promisify } from 'util';
 
 vi.mock('child_process', () => ({
   exec: vi.fn(),
 }));
 
-const execAsync = promisify(exec);
+type ExecCallback = (error: Error | null, stdout: string, stderr: string) => void;
 
 describe('dns-cache', () => {
   beforeEach(() => {
@@ -20,12 +19,9 @@ describe('dns-cache', () => {
 
   describe('flushDnsCache', () => {
     it('should return a MaintenanceResult', async () => {
-      vi.mocked(exec).mockImplementation(((
-        _cmd: string,
-        callback: (error: null, stdout: string, stderr: string) => void
-      ) => {
+      vi.mocked(exec).mockImplementation(((_cmd: string, callback: ExecCallback) => {
         callback(null, '', '');
-      }) as any);
+      }) as typeof exec);
 
       const result = await flushDnsCache();
 
@@ -36,12 +32,9 @@ describe('dns-cache', () => {
     });
 
     it('should have error property when fails', async () => {
-      vi.mocked(exec).mockImplementation(((
-        _cmd: string,
-        callback: (error: Error, stdout: string, stderr: string) => void
-      ) => {
+      vi.mocked(exec).mockImplementation(((_cmd: string, callback: ExecCallback) => {
         callback(new Error('Permission denied'), '', '');
-      }) as any);
+      }) as typeof exec);
 
       const result = await flushDnsCache();
 
@@ -50,12 +43,9 @@ describe('dns-cache', () => {
     });
 
     it('should return proper message format', async () => {
-      vi.mocked(exec).mockImplementation(((
-        _cmd: string,
-        callback: (error: null, stdout: string, stderr: string) => void
-      ) => {
+      vi.mocked(exec).mockImplementation(((_cmd: string, callback: ExecCallback) => {
         callback(null, '', '');
-      }) as any);
+      }) as typeof exec);
 
       const result = await flushDnsCache();
 

@@ -153,12 +153,11 @@ async function selectItemsInteractively(
 
   const choices: CategoryChoice[] = results.map((r) => {
     const safetyIcon = SAFETY_ICONS[r.category.safetyLevel];
-    const isRisky = r.category.safetyLevel === 'risky';
     
     return {
       name: `${safetyIcon} ${r.category.name.padEnd(28)} ${chalk.yellow(formatSize(r.totalSize).padStart(10))} ${chalk.dim(`(${r.items.length} items)`)}`,
       value: r.category.id,
-      checked: !isRisky && r.category.safetyLevel !== 'risky',
+      checked: false,
       size: r.totalSize,
       items: r.items,
     };
