@@ -52,8 +52,8 @@ jobs:
 
       - name: Test CLI
         run: |
-          node dist/index.js --help
-          node dist/index.js categories
+          node dist/index.mjs --help
+          node dist/index.mjs categories
 
   publish:
     needs: test
