@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, writeFile, mkdir, rm } from 'fs/promises';
+import { mkdtemp, writeFile, mkdir, rm, symlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { exists, getSize, getDirectorySize, getItems, getDirectoryItems } from './fs.js';
@@ -133,6 +133,50 @@ describe('fs utils', () => {
 
       expect(items).toHaveLength(1);
       expect(items[0].name).toBe('large.txt');
+    });
+  });
+
+  describe('symlink handling', () => {
+    it('should not follow symlinks when calculating size', async () => {
+      const largeContent = 'a'.repeat(10000);
+      const largeFile = join(testDir, 'large.txt');
+      await writeFile(largeFile, largeContent);
+
+      const symlinkPath = join(testDir, 'link');
+      await symlink(largeFile, symlinkPath);
+
+      const size = await getSize(symlinkPath);
+      expect(size).toBeLessThan(100);
+    });
+
+    it('should count symlink size not target size in directory', async () => {
+      const largeContent = 'a'.repeat(10000);
+      const subDir = join(testDir, 'subdir');
+      await mkdir(subDir);
+
+      const largeFile = join(testDir, 'large.txt');
+      await writeFile(largeFile, largeContent);
+
+      const symlinkPath = join(subDir, 'link');
+      await symlink(largeFile, symlinkPath);
+
+      const size = await getDirectorySize(subDir);
+      expect(size).toBeLessThan(100);
+    });
+
+    it('should handle symlinks in getDirectoryItems', async () => {
+      const largeContent = 'a'.repeat(10000);
+      const largeFile = join(testDir, 'large.txt');
+      await writeFile(largeFile, largeContent);
+
+      const symlinkPath = join(testDir, 'link');
+      await symlink(largeFile, symlinkPath);
+
+      const items = await getDirectoryItems(testDir);
+      const linkItem = items.find((i) => i.name === 'link');
+
+      expect(linkItem).toBeDefined();
+      expect(linkItem!.size).toBeLessThan(100);
     });
   });
 });

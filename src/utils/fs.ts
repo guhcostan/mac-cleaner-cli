@@ -1,4 +1,4 @@
-import { stat, readdir, rm, access } from 'fs/promises';
+import { lstat, readdir, rm, access } from 'fs/promises';
 import { join } from 'path';
 import type { CleanableItem } from '../types.js';
 
@@ -13,7 +13,10 @@ export async function exists(path: string): Promise<boolean> {
 
 export async function getSize(path: string): Promise<number> {
   try {
-    const stats = await stat(path);
+    const stats = await lstat(path);
+    if (stats.isSymbolicLink()) {
+      return stats.size;
+    }
     if (stats.isFile()) {
       return stats.size;
     }
@@ -35,8 +38,11 @@ export async function getDirectorySize(dirPath: string): Promise<number> {
     for (const entry of entries) {
       const fullPath = join(dirPath, entry.name);
       try {
-        if (entry.isFile()) {
-          const stats = await stat(fullPath);
+        if (entry.isSymbolicLink()) {
+          const stats = await lstat(fullPath);
+          totalSize += stats.size;
+        } else if (entry.isFile()) {
+          const stats = await lstat(fullPath);
           totalSize += stats.size;
         } else if (entry.isDirectory()) {
           totalSize += await getDirectorySize(fullPath);
@@ -74,14 +80,21 @@ export async function getItems(
         const fullPath = join(currentPath, entry.name);
 
         try {
-          const stats = await stat(fullPath);
+          const stats = await lstat(fullPath);
 
           if (minAge) {
             const daysOld = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60 * 24);
             if (daysOld < minAge) continue;
           }
 
-          const size = entry.isDirectory() ? await getDirectorySize(fullPath) : stats.size;
+          let size: number;
+          if (stats.isSymbolicLink()) {
+            size = stats.size;
+          } else if (entry.isDirectory()) {
+            size = await getDirectorySize(fullPath);
+          } else {
+            size = stats.size;
+          }
 
           if (minSize && size < minSize) continue;
 
@@ -93,7 +106,7 @@ export async function getItems(
             modifiedAt: stats.mtime,
           });
 
-          if (recursive && entry.isDirectory()) {
+          if (recursive && entry.isDirectory() && !stats.isSymbolicLink()) {
             await processDir(fullPath, depth + 1);
           }
         } catch {
@@ -119,8 +132,15 @@ export async function getDirectoryItems(dirPath: string): Promise<CleanableItem[
       const fullPath = join(dirPath, entry.name);
 
       try {
-        const stats = await stat(fullPath);
-        const size = entry.isDirectory() ? await getDirectorySize(fullPath) : stats.size;
+        const stats = await lstat(fullPath);
+        let size: number;
+        if (stats.isSymbolicLink()) {
+          size = stats.size;
+        } else if (entry.isDirectory()) {
+          size = await getDirectorySize(fullPath);
+        } else {
+          size = stats.size;
+        }
 
         items.push({
           path: fullPath,
@@ -177,6 +197,7 @@ export async function removeItems(
 
   return { success, failed, freedSpace };
 }
+
 
 
 
