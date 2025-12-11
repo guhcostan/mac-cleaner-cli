@@ -5,6 +5,19 @@ import { ExitPromptError } from '@inquirer/core';
 import { interactiveCommand, listCategories, maintenanceCommand, uninstallCommand } from './commands/index.js';
 import { initConfig, configExists, listBackups, cleanOldBackups, loadConfig, formatSize } from './utils/index.js';
 
+function setupGracefulShutdown(): void {
+  const handleExit = (signal: string) => {
+    console.log(`\n${signal} received. Exiting...`);
+    process.exit(0);
+  };
+
+  process.on('SIGINT', () => handleExit('SIGINT'));
+  process.on('SIGTERM', () => handleExit('SIGTERM'));
+  process.on('SIGQUIT', () => handleExit('SIGQUIT'));
+}
+
+setupGracefulShutdown();
+
 const program = new Command();
 
 program
