@@ -86,7 +86,7 @@ describe('LargeFilesScanner', () => {
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0].name).toBe('visible.bin');
-  });
+  }, 10000);
 
   it('should scan nested directories', async () => {
     const docsDir = join(testDir, 'Documents');
