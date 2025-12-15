@@ -1,6 +1,6 @@
 {
   "name": "mac-cleaner-cli",
-  "version": "1.1.9",
+  "version": "1.2.0",
   "description": "Open source CLI tool to clean your Mac - remove junk files, caches, logs, and more",
   "type": "module",
   "bin": {
