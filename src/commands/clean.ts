@@ -1,9 +1,12 @@
 import chalk from 'chalk';
 import confirm from '@inquirer/confirm';
 import checkbox from '@inquirer/checkbox';
+import { exec } from 'child_process';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
 import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
+
+const DONATION_URL = 'https://ko-fi.com/guhcostan';
 
 interface CleanCommandOptions {
   all?: boolean;
@@ -138,7 +141,7 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
 
   cleanProgress?.finish();
 
-  printCleanResults(cleanResults);
+  await printCleanResults(cleanResults);
 
   return cleanResults;
 }
@@ -215,7 +218,7 @@ async function selectItemsInteractively(
   return selectedItems;
 }
 
-function printCleanResults(summary: CleanSummary): void {
+async function printCleanResults(summary: CleanSummary): Promise<void> {
   console.log();
   console.log(chalk.bold.green('✓ Cleaning Complete'));
   console.log(chalk.dim('─'.repeat(50)));
@@ -241,4 +244,32 @@ function printCleanResults(summary: CleanSummary): void {
   }
 
   console.log();
+
+  if (summary.totalCleanedItems > 0 && summary.totalFreedSpace > 0) {
+    await showDonationMessage();
+  }
+}
+
+async function showDonationMessage(): Promise<void> {
+  console.log(chalk.dim('─'.repeat(50)));
+  console.log();
+  console.log(chalk.bold('💚 Enjoying Mac Cleaner CLI?'));
+  console.log();
+  console.log(chalk.dim('  If this tool saved you time or disk space,'));
+  console.log(chalk.dim('  consider supporting the project:'));
+  console.log();
+  console.log(`  ${chalk.cyan.underline(DONATION_URL)}`);
+  console.log();
+
+  const shouldOpen = await confirm({
+    message: 'Open donation page in browser?',
+    default: false,
+  });
+
+  if (shouldOpen) {
+    exec(`open "${DONATION_URL}"`);
+    console.log(chalk.green('\n✓ Opened in your browser. Thank you for your support! 🙏\n'));
+  } else {
+    console.log(chalk.dim('\nThank you for using Mac Cleaner CLI! 🙏\n'));
+  }
 }
