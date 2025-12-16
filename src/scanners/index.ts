@@ -34,7 +34,11 @@ export const ALL_SCANNERS: Record<CategoryId, Scanner> = {
 };
 
 export function getScanner(categoryId: CategoryId): Scanner {
-  return ALL_SCANNERS[categoryId];
+  const scanner = ALL_SCANNERS[categoryId];
+  if (!scanner) {
+    throw new Error(`Unknown scanner category: ${categoryId}`);
+  }
+  return scanner;
 }
 
 export function getAllScanners(): Scanner[] {
@@ -51,23 +55,33 @@ async function runWithConcurrency<T>(
   tasks: (() => Promise<T>)[],
   concurrency: number
 ): Promise<T[]> {
-  const results: T[] = [];
+  const results: (T | undefined)[] = new Array(tasks.length);
   const executing: Set<Promise<void>> = new Set();
+  const limit = Math.max(1, Math.min(concurrency, tasks.length || 1));
 
-  for (const task of tasks) {
-    const p: Promise<void> = task().then((result) => {
-      results.push(result);
-      executing.delete(p);
-    });
+  for (let i = 0; i < tasks.length; i++) {
+    const index = i;
+    const p: Promise<void> = tasks[index]()
+      .then((result) => {
+        results[index] = result;
+      })
+      .catch((error) => {
+        // Log error but don't fail entire batch
+        console.error(`Scanner task ${index} failed:`, error);
+        results[index] = undefined;
+      })
+      .finally(() => {
+        executing.delete(p);
+      });
     executing.add(p);
 
-    if (executing.size >= concurrency) {
+    if (executing.size >= limit) {
       await Promise.race(executing);
     }
   }
 
-  await Promise.all(executing);
-  return results;
+  await Promise.allSettled(executing);
+  return results.filter((r): r is T => r !== undefined);
 }
 
 export async function runAllScans(
