@@ -42,7 +42,7 @@ interface FilePickerState {
 
 type FilePickerStatesStore = Record<string, FilePickerState>;
 
-// TODO: config file for these constants
+// NOTE: maybe put these in config later?
 const FILES_PAGE_SIZE = 6;
 const FILE_NAME_WIDTH = 35;
 const INDENT = "    ";
