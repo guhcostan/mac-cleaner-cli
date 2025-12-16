@@ -25,11 +25,15 @@ program
   .description('Open source CLI tool to clean your Mac')
   .version('1.1.0')
   .option('-r, --risky', 'Include risky categories (downloads, iOS backups, etc)')
+  .option('-f, --file-picker', 'Force file picker for ALL categories')
+  .option('-A, --absolute-paths', 'Show absolute paths instead of truncated notations')
   .option('--no-progress', 'Disable progress bar')
   .action(async (options) => {
     try {
       await interactiveCommand({
         includeRisky: options.risky,
+        filePicker: options.filePicker,
+        absolutePaths: options.absolutePaths,
         noProgress: !options.progress,
       });
     } catch (error) {

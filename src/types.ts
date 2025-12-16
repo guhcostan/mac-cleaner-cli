@@ -26,6 +26,7 @@ export interface Category {
   description: string;
   safetyLevel: SafetyLevel;
   safetyNote?: string;
+  supportsFileSelection?: boolean;
 }
 
 export interface CleanableItem {
@@ -113,6 +114,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'Downloads older than 30 days',
     safetyLevel: 'risky',
     safetyNote: 'May contain important files you forgot about',
+    supportsFileSelection: true,
   },
   'browser-cache': {
     id: 'browser-cache',
@@ -174,6 +176,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'Files larger than 500MB for review',
     safetyLevel: 'risky',
     safetyNote: 'Review each file carefully before deleting',
+    supportsFileSelection: true,
   },
   'node-modules': {
     id: 'node-modules',

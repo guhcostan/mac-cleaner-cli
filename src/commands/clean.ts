@@ -83,7 +83,7 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
       items: r.items,
     }));
   } else {
-    selectedItems = await selectItemsInteractively(resultsWithItems, options.unsafe);
+    selectedItems = await selectItemsInteractively(resultsWithItems);
   }
 
   if (selectedItems.length === 0) {
@@ -147,8 +147,7 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
 }
 
 async function selectItemsInteractively(
-  results: ScanResult[],
-  _unsafe = false
+  results: ScanResult[]
 ): Promise<{ categoryId: CategoryId; items: CleanableItem[] }[]> {
   console.log();
   console.log(chalk.bold('Select categories to clean:'));
@@ -182,7 +181,7 @@ async function selectItemsInteractively(
   for (const result of selectedResults) {
     const isRisky = result.category.safetyLevel === 'risky';
     
-    if (isRisky || result.category.id === 'large-files' || result.category.id === 'ios-backups') {
+    if (isRisky || result.category.supportsFileSelection) {
       if (isRisky && result.category.safetyNote) {
         console.log();
         console.log(chalk.red(`⚠ WARNING: ${result.category.safetyNote}`));
