@@ -10,7 +10,7 @@ Interactive TUI providing granular file selection with directory grouping. Built
 
 **UI State** (`FilePickerStatesStore`):
 
-- Cursor position (`caretPosition`)
+- Caret position (`caretPosition`)
 - Directory expansion limits (`expandLimits`)
 - Files pane visibility flag (`isShowingFiles`)
 - Persists across category toggles - navigation state survives pane switching
@@ -115,7 +115,7 @@ See: `handleToggleFile()` in `file-picker.ts`
 
 The `d` key toggles all files in the current directory:
 
-- Operates only on files within the same directory as cursor
+- Operates only on files within the same directory as caret
 - Does NOT modify category selection state
 
 See: `handleToggleDirectory()` in `file-picker.ts`
@@ -140,7 +140,7 @@ State is preserved when switching between categories.
 - Directory-level toggle behavior
 - Cross-category isolation guarantees
 
-### Coverage Limits rn
+### Coverage Limits
 
 - Full @inquirer/core integration (keypress event → render cycle)
 - UI state persistence (caret positions, expansion limits across toggles)

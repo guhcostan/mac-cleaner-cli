@@ -1,8 +1,10 @@
 import { execSync } from "node:child_process";
 
 /**
- * Util func - Copies text to the system clipboard using `pbcopy`.
+ * Utility function - Copies text to the system clipboard using `pbcopy`.
  *
+ * @remarks
+ * This function only works on macOS, as it relies on the `pbcopy` command.
  */
 export async function copyToClipboard(text: string): Promise<void> {
   try {

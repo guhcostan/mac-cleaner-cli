@@ -9,7 +9,10 @@ export async function getFileHash(filePath: string, algorithm = 'md5'): Promise<
     stream.on('data', (data) => hash.update(data));
     stream.on('end', () => resolve(hash.digest('hex')));
     stream.on('error', (err) => {
-      stream.destroy();
+      // Check stream is destroyed before rejecting
+      if (!stream.destroyed) {
+        stream.destroy();
+      }
       reject(err);
     });
   });
@@ -32,7 +35,9 @@ export async function getFileHashPartial(
     stream.on('data', (data) => hash.update(data));
     stream.on('end', () => resolve(hash.digest('hex')));
     stream.on('error', (err) => {
-      stream.destroy();
+      if (!stream.destroyed) {
+        stream.destroy();
+      }
       reject(err);
     });
   });

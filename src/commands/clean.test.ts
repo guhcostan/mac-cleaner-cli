@@ -19,6 +19,10 @@ vi.mock('@inquirer/checkbox', () => ({
   default: vi.fn(),
 }));
 
+vi.mock('child_process', () => ({
+  exec: vi.fn(),
+}));
+
 const inquirerPrompts = {
   confirm: inquirerConfirm.default,
   checkbox: inquirerCheckbox.default,

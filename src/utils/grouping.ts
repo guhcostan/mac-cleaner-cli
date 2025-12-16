@@ -76,7 +76,7 @@ export function groupByDirectory(files: CleanableItem[]): DirectoryGroup[] {
  *
  * @param groups - Directory groups from groupByDirectory()
  * @param limits - Map of dir paths to their custom limits (e.g., user expanded a dir)
- * @param defaultLimit - Default number of files to show (typically 5 or 6 7)
+ * @param defaultLimit - Default number of files to show (typically 5)
  *
  * @example
  * applyExpandLimits(

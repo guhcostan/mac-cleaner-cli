@@ -102,7 +102,7 @@ export function truncateDirectoryPath(
   // 3: Split for truncation
   const parts = displayPath.split('/').filter((p) => p.length > 0);
  
-  // For very short paths (1;2), just hard truncate
+  // For very short paths (1 or 2), just hard truncate
   if (parts.length <= 2) {
     return displayPath.substring(0, maxLength - 3) + '...';
   }

@@ -52,7 +52,7 @@ export interface ParallelScanOptions extends ScannerOptions {
 }
 
 async function runWithConcurrency<T>(
-  tasks: (() => Promise<T>)[],
+  tasks: Array<{ fn: () => Promise<T>; label?: string }>,
   concurrency: number
 ): Promise<T[]> {
   const results: (T | undefined)[] = new Array(tasks.length);
@@ -61,13 +61,15 @@ async function runWithConcurrency<T>(
 
   for (let i = 0; i < tasks.length; i++) {
     const index = i;
-    const p: Promise<void> = tasks[index]()
+    const task = tasks[index];
+    const p: Promise<void> = task.fn()
       .then((result) => {
         results[index] = result;
       })
       .catch((error) => {
         // Log error but don't fail entire batch
-        console.error(`Scanner task ${index} failed:`, error);
+        const taskLabel = task.label ? ` (${task.label})` : ` ${index}`;
+        console.error(`Scanner task${taskLabel} failed:`, error);
         results[index] = undefined;
       })
       .finally(() => {
@@ -96,13 +98,16 @@ export async function runAllScans(
   const total = scanners.length;
 
   if (parallel) {
-    const tasks = scanners.map((scanner) => async () => {
-      const result = await scanner.scan(options);
-      completed++;
-      options?.onProgress?.(completed, total, scanner, result);
-      onProgress?.(scanner, result);
-      return { scanner, result };
-    });
+    const tasks = scanners.map((scanner) => ({
+      label: scanner.category.id,
+      fn: async () => {
+        const result = await scanner.scan(options);
+        completed++;
+        options?.onProgress?.(completed, total, scanner, result);
+        onProgress?.(scanner, result);
+        return { scanner, result };
+      },
+    }));
 
     const scanResults = await runWithConcurrency(tasks, concurrency);
     const results = scanResults.map((r) => r.result);
@@ -142,13 +147,16 @@ export async function runScans(
   const total = scanners.length;
 
   if (parallel) {
-    const tasks = scanners.map((scanner) => async () => {
-      const result = await scanner.scan(options);
-      completed++;
-      options?.onProgress?.(completed, total, scanner, result);
-      onProgress?.(scanner, result);
-      return { scanner, result };
-    });
+    const tasks = scanners.map((scanner) => ({
+      label: scanner.category.id,
+      fn: async () => {
+        const result = await scanner.scan(options);
+        completed++;
+        options?.onProgress?.(completed, total, scanner, result);
+        onProgress?.(scanner, result);
+        return { scanner, result };
+      },
+    }));
 
     const scanResults = await runWithConcurrency(tasks, concurrency);
     const results = scanResults.map((r) => r.result);
