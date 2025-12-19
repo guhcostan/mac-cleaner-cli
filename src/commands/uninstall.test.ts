@@ -13,6 +13,8 @@ vi.mock('../utils/index.js', async () => {
       update: vi.fn(),
       finish: vi.fn(),
     })),
+    isProtectedPath: vi.fn().mockReturnValue(false),
+    validatePathSafety: vi.fn().mockReturnValue(null),
   };
 });
 
@@ -34,6 +36,13 @@ vi.mock('fs/promises', async (importOriginal) => {
       mtime: new Date(),
     }),
     rm: vi.fn().mockResolvedValue(undefined),
+    lstat: vi.fn().mockResolvedValue({
+      isSymbolicLink: () => false,
+      isDirectory: () => true,
+      mtime: new Date(),
+    }),
+    unlink: vi.fn().mockResolvedValue(undefined),
+    readFile: vi.fn().mockResolvedValue(''),
   };
 });
 

@@ -1,8 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, writeFile, mkdir, rm, symlink } from 'fs/promises';
+import { mkdtemp, writeFile, mkdir, rm, symlink, readFile } from 'fs/promises';
 import { join } from 'path';
-import { tmpdir } from 'os';
-import { exists, getSize, getDirectorySize, getItems, getDirectoryItems } from './fs.js';
+import { tmpdir, homedir } from 'os';
+import { 
+  exists, 
+  getSize, 
+  getDirectorySize, 
+  getItems, 
+  getDirectoryItems,
+  isProtectedPath,
+  validatePathSafety,
+  removeItem
+} from './fs.js';
 
 describe('fs utils', () => {
   let testDir: string;
@@ -177,6 +186,131 @@ describe('fs utils', () => {
 
       expect(linkItem).toBeDefined();
       expect(linkItem!.size).toBeLessThan(100);
+    });
+  });
+
+  describe('isProtectedPath', () => {
+    it('should return true for system paths', () => {
+      expect(isProtectedPath('/System')).toBe(true);
+      expect(isProtectedPath('/System/Library')).toBe(true);
+      expect(isProtectedPath('/usr/bin')).toBe(true);
+      expect(isProtectedPath('/bin/bash')).toBe(true);
+      expect(isProtectedPath('/sbin/mount')).toBe(true);
+      expect(isProtectedPath('/etc/hosts')).toBe(true);
+      expect(isProtectedPath('/var/log')).toBe(true);
+      expect(isProtectedPath('/var/log/system.log')).toBe(true);
+      expect(isProtectedPath('/private/var/db')).toBe(true);
+      expect(isProtectedPath('/private/var/log')).toBe(true);
+    });
+
+    it('should return false for user paths', () => {
+      expect(isProtectedPath('/tmp')).toBe(false);
+      expect(isProtectedPath('/tmp/test')).toBe(false);
+      expect(isProtectedPath('/Users/test')).toBe(false);
+      expect(isProtectedPath('/Applications')).toBe(false);
+      expect(isProtectedPath(join(homedir(), 'Documents'))).toBe(false);
+      expect(isProtectedPath(join(homedir(), 'Library', 'Caches'))).toBe(false);
+    });
+
+    it('should return false for allowed temp paths', () => {
+      expect(isProtectedPath('/var/folders')).toBe(false);
+      expect(isProtectedPath('/var/folders/abc/def')).toBe(false);
+      expect(isProtectedPath('/private/var/folders')).toBe(false);
+      expect(isProtectedPath('/var/tmp')).toBe(false);
+      expect(isProtectedPath('/private/var/tmp')).toBe(false);
+    });
+  });
+
+  describe('validatePathSafety', () => {
+    it('should return null for safe paths', () => {
+      expect(validatePathSafety(join(homedir(), 'Documents', 'test.txt'))).toBeNull();
+      expect(validatePathSafety('/tmp/test')).toBeNull();
+      expect(validatePathSafety('/Applications/Test.app')).toBeNull();
+    });
+
+    it('should return error message for protected paths', () => {
+      expect(validatePathSafety('/System/Library')).toContain('protected');
+      expect(validatePathSafety('/usr/bin/test')).toContain('protected');
+      expect(validatePathSafety('/bin/bash')).toContain('protected');
+    });
+
+    it('should return error for root directory', () => {
+      expect(validatePathSafety('/')).toContain('root');
+    });
+
+    it('should return error for home directory itself', () => {
+      expect(validatePathSafety(homedir())).toContain('home');
+    });
+  });
+
+  describe('removeItem', () => {
+    it('should remove a file successfully', async () => {
+      const filePath = join(testDir, 'to-remove.txt');
+      await writeFile(filePath, 'test content');
+      
+      const result = await removeItem(filePath);
+      
+      expect(result).toBe(true);
+      expect(await exists(filePath)).toBe(false);
+    });
+
+    it('should remove a directory recursively', async () => {
+      const dirPath = join(testDir, 'to-remove-dir');
+      await mkdir(dirPath);
+      await writeFile(join(dirPath, 'file.txt'), 'content');
+      
+      const result = await removeItem(dirPath);
+      
+      expect(result).toBe(true);
+      expect(await exists(dirPath)).toBe(false);
+    });
+
+    it('should return true for dry run without deleting', async () => {
+      const filePath = join(testDir, 'dry-run.txt');
+      await writeFile(filePath, 'test content');
+      
+      const result = await removeItem(filePath, true);
+      
+      expect(result).toBe(true);
+      expect(await exists(filePath)).toBe(true);
+    });
+
+    it('should remove symlink without following it', async () => {
+      const targetFile = join(testDir, 'target.txt');
+      const targetContent = 'important content';
+      await writeFile(targetFile, targetContent);
+      
+      const symlinkPath = join(testDir, 'symlink');
+      await symlink(targetFile, symlinkPath);
+      
+      const result = await removeItem(symlinkPath);
+      
+      expect(result).toBe(true);
+      expect(await exists(symlinkPath)).toBe(false);
+      // Target should still exist
+      expect(await exists(targetFile)).toBe(true);
+      const content = await readFile(targetFile, 'utf-8');
+      expect(content).toBe(targetContent);
+    });
+
+    it('should refuse to delete protected system paths', async () => {
+      const result = await removeItem('/System/Library');
+      expect(result).toBe(false);
+    });
+
+    it('should refuse to delete root directory', async () => {
+      const result = await removeItem('/');
+      expect(result).toBe(false);
+    });
+
+    it('should refuse to delete home directory', async () => {
+      const result = await removeItem(homedir());
+      expect(result).toBe(false);
+    });
+
+    it('should return false for non-existent path', async () => {
+      const result = await removeItem(join(testDir, 'nonexistent'));
+      expect(result).toBe(false);
     });
   });
 });

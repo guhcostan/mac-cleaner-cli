@@ -1,10 +1,67 @@
 import chalk from 'chalk';
 import confirm from '@inquirer/confirm';
 import checkbox from '@inquirer/checkbox';
-import { readdir, stat, rm } from 'fs/promises';
-import { join, basename } from 'path';
+import { readdir, stat, rm, readFile, lstat, unlink } from 'fs/promises';
+import { join, basename, resolve } from 'path';
 import { homedir } from 'os';
-import { exists, getSize, formatSize, createCleanProgress } from '../utils/index.js';
+import { exists, getSize, formatSize, createCleanProgress, isProtectedPath, validatePathSafety } from '../utils/index.js';
+
+/**
+ * Escapes all regex metacharacters in a string.
+ * This prevents regex injection attacks when using user-provided patterns.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Reads the bundle identifier from an app's Info.plist.
+ * This is more secure than guessing from the app name.
+ */
+async function getBundleId(appPath: string): Promise<string | null> {
+  try {
+    const plistPath = join(appPath, 'Contents', 'Info.plist');
+    const content = await readFile(plistPath, 'utf-8');
+    
+    // Parse CFBundleIdentifier from plist
+    // Note: This is a simple regex parser. For production, consider using a proper plist parser.
+    const match = content.match(/<key>CFBundleIdentifier<\/key>\s*<string>([^<]+)<\/string>/);
+    if (match && match[1]) {
+      // Validate the bundle ID format (should be reverse domain notation)
+      const bundleId = match[1].trim();
+      if (/^[a-zA-Z][a-zA-Z0-9.-]*$/.test(bundleId)) {
+        return bundleId;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Safely removes a file or directory with security checks.
+ */
+async function safeRemove(path: string): Promise<boolean> {
+  // Validate path safety
+  const safetyError = validatePathSafety(path);
+  if (safetyError) {
+    console.error(safetyError);
+    return false;
+  }
+
+  try {
+    const stats = await lstat(path);
+    if (stats.isSymbolicLink()) {
+      await unlink(path);
+    } else {
+      await rm(path, { recursive: true, force: true });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 interface AppInfo {
   name: string;
@@ -109,22 +166,32 @@ export async function uninstallCommand(options: UninstallCommandOptions): Promis
     progress?.update(i, `Uninstalling ${app.name}...`);
 
     try {
-      await rm(app.path, { recursive: true, force: true });
+      // Use safe remove with security checks
+      const removed = await safeRemove(app.path);
+      if (!removed) {
+        errors.push(`${app.name}: Failed to remove (security check failed or permission denied)`);
+        continue;
+      }
       freedSpace += app.size;
 
       for (const relatedPath of app.relatedPaths) {
         try {
-          await rm(relatedPath, { recursive: true, force: true });
-          const size = await getSize(relatedPath).catch(() => 0);
-          freedSpace += size;
+          // Use safe remove for related paths too
+          const relatedRemoved = await safeRemove(relatedPath);
+          if (relatedRemoved) {
+            const size = await getSize(relatedPath).catch(() => 0);
+            freedSpace += size;
+          }
         } catch {
-          // Ignore errors for related paths
+          // Ignore errors for related paths but don't silently fail
         }
       }
 
       uninstalledCount++;
     } catch (error) {
-      errors.push(`${app.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Sanitize error message to avoid leaking path information
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      errors.push(`${app.name}: ${message.replace(homedir(), '~')}`);
     }
   }
 
@@ -167,7 +234,7 @@ async function getInstalledApps(): Promise<AppInfo[]> {
           if (!stats.isDirectory()) continue;
 
           const appSize = await getSize(appPath);
-          const relatedPaths = await findRelatedPaths(appName);
+          const relatedPaths = await findRelatedPaths(appName, appPath);
 
           let totalRelatedSize = 0;
           for (const path of relatedPaths) {
@@ -193,9 +260,20 @@ async function getInstalledApps(): Promise<AppInfo[]> {
   return apps.sort((a, b) => b.totalSize - a.totalSize);
 }
 
-async function findRelatedPaths(appName: string): Promise<string[]> {
+async function findRelatedPaths(appName: string, appPath?: string): Promise<string[]> {
   const paths: string[] = [];
-  const bundleId = appName.toLowerCase().replace(/\s+/g, '.');
+  const home = homedir();
+  
+  // Try to get the real bundle ID from the app's Info.plist
+  let bundleId: string | null = null;
+  if (appPath) {
+    bundleId = await getBundleId(appPath);
+  }
+  
+  // Fall back to guessing if we couldn't read the bundle ID
+  if (!bundleId) {
+    bundleId = appName.toLowerCase().replace(/\s+/g, '.');
+  }
 
   for (const template of RELATED_PATHS_TEMPLATES) {
     const variations = [
@@ -205,6 +283,17 @@ async function findRelatedPaths(appName: string): Promise<string[]> {
     ];
 
     for (const path of variations) {
+      // Security check: ensure the path is within the home directory
+      const resolved = resolve(path);
+      if (!resolved.startsWith(home + '/')) {
+        continue;
+      }
+      
+      // Check for protected paths
+      if (isProtectedPath(resolved)) {
+        continue;
+      }
+
       if (path.includes('*')) {
         const dir = path.substring(0, path.lastIndexOf('/'));
         const pattern = path.substring(path.lastIndexOf('/') + 1);
@@ -215,7 +304,8 @@ async function findRelatedPaths(appName: string): Promise<string[]> {
             for (const entry of entries) {
               if (matchPattern(entry, pattern)) {
                 const fullPath = join(dir, entry);
-                if (!paths.includes(fullPath)) {
+                // Additional security check for matched paths
+                if (!isProtectedPath(fullPath) && !paths.includes(fullPath)) {
                   paths.push(fullPath);
                 }
               }
@@ -235,9 +325,21 @@ async function findRelatedPaths(appName: string): Promise<string[]> {
   return paths;
 }
 
+/**
+ * Matches a string against a glob-like pattern.
+ * Security: Uses proper regex escaping to prevent regex injection.
+ */
 function matchPattern(str: string, pattern: string): boolean {
-  const regexPattern = pattern.replace(/\*/g, '.*').replace(/\./g, '\\.');
-  return new RegExp(`^${regexPattern}$`, 'i').test(str);
+  // Escape all regex metacharacters first, then convert * to .*
+  const escaped = escapeRegex(pattern);
+  const regexPattern = escaped.replace(/\\\*/g, '.*');
+  
+  try {
+    return new RegExp(`^${regexPattern}$`, 'i').test(str);
+  } catch {
+    // If regex construction fails, return false for safety
+    return false;
+  }
 }
 
 

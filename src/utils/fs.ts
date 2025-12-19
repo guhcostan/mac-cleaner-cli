@@ -1,6 +1,81 @@
-import { lstat, readdir, rm, access } from 'fs/promises';
-import { join } from 'path';
+import { lstat, readdir, rm, access, unlink } from 'fs/promises';
+import { join, resolve } from 'path';
+import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
+
+/**
+ * System paths that should NEVER be deleted.
+ * This is a security safeguard against accidental or malicious deletion.
+ */
+const PROTECTED_PATHS = [
+  '/System',
+  '/usr',
+  '/bin',
+  '/sbin',
+  '/etc',
+  '/var/log',
+  '/var/db',
+  '/var/root',
+  '/private/var/db',
+  '/private/var/root',
+  '/private/var/log',
+  '/Library/Apple',
+  '/Applications/Utilities',
+];
+
+/**
+ * Paths that are explicitly allowed even if they might match protected patterns.
+ * These are safe temporary/cache locations.
+ */
+const ALLOWED_PATHS = [
+  '/tmp',
+  '/private/tmp',
+  '/var/tmp',
+  '/private/var/tmp',
+  '/var/folders',
+  '/private/var/folders',
+];
+
+/**
+ * Checks if a path is a protected system path that should never be deleted.
+ */
+export function isProtectedPath(path: string): boolean {
+  const resolved = resolve(path);
+  
+  // First check if it's in an explicitly allowed location (like /tmp, /var/folders)
+  const isAllowed = ALLOWED_PATHS.some((p) => resolved === p || resolved.startsWith(p + '/'));
+  if (isAllowed) {
+    return false;
+  }
+  
+  return PROTECTED_PATHS.some((p) => resolved === p || resolved.startsWith(p + '/'));
+}
+
+/**
+ * Validates that a path is safe to delete.
+ * Returns an error message if unsafe, or null if safe.
+ */
+export function validatePathSafety(path: string): string | null {
+  const resolved = resolve(path);
+  
+  // Check for protected system paths
+  if (isProtectedPath(resolved)) {
+    return `Refusing to delete protected system path: ${path}`;
+  }
+  
+  // Check for root directory
+  if (resolved === '/') {
+    return 'Refusing to delete root directory';
+  }
+  
+  // Check for home directory itself
+  const home = homedir();
+  if (resolved === home) {
+    return 'Refusing to delete home directory';
+  }
+  
+  return null;
+}
 
 export async function exists(path: string): Promise<boolean> {
   try {
@@ -160,15 +235,44 @@ export async function getDirectoryItems(dirPath: string): Promise<CleanableItem[
   return items;
 }
 
+/**
+ * Safely removes a file or directory.
+ * 
+ * Security measures:
+ * 1. Validates path is not a protected system path
+ * 2. Re-checks file type immediately before deletion to prevent TOCTOU attacks
+ * 3. Handles symlinks safely (removes symlink, not target)
+ */
 export async function removeItem(path: string, dryRun = false): Promise<boolean> {
   if (dryRun) {
     return true;
   }
 
+  // Security check: validate path is safe to delete
+  const safetyError = validatePathSafety(path);
+  if (safetyError) {
+    console.error(safetyError);
+    return false;
+  }
+
   try {
-    await rm(path, { recursive: true, force: true });
+    // Re-check file type immediately before deletion to prevent TOCTOU attacks
+    // An attacker could replace a file with a symlink between scan and delete
+    const stats = await lstat(path);
+    
+    if (stats.isSymbolicLink()) {
+      // For symlinks, only remove the symlink itself, never follow it
+      await unlink(path);
+    } else {
+      await rm(path, { recursive: true, force: true });
+    }
     return true;
-  } catch {
+  } catch (error) {
+    // Log the error for debugging but don't expose details to potential attackers
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT' && code !== 'EACCES') {
+      console.error(`Failed to remove ${path}: ${code || 'unknown error'}`);
+    }
     return false;
   }
 }
