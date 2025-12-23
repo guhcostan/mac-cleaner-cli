@@ -14,6 +14,11 @@ const DONATION_URL = 'https://ko-fi.com/guhcostan';
  * to prevent command injection.
  */
 function openUrl(url: string): void {
+  // Don't open browser in test environment or CI
+  if (process.env.NODE_ENV === 'test' || process.env.CI === 'true' || !process.stdout.isTTY) {
+    return;
+  }
+
   // Validate URL format to prevent injection
   try {
     const parsed = new URL(url);

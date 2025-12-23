@@ -132,9 +132,18 @@ export class HomebrewScanner extends BaseScanner {
       };
     }
 
+    // Ensure we have a valid brew path
+    if (!this.brewPath) {
+      this.brewPath = await findBrewBinary();
+    }
+
+    if (!this.brewPath) {
+      return super.clean(items, dryRun);
+    }
+
     let brewCache: string | null = null;
     try {
-      const { stdout: cachePath } = await execAsync('brew --cache');
+      const cachePath = await execCommand(this.brewPath, ['--cache']);
       brewCache = cachePath.trim();
     } catch {
       // Ignore - fall back to direct deletion
@@ -149,21 +158,6 @@ export class HomebrewScanner extends BaseScanner {
     let freedSpace = 0;
 
     try {
-      // Ensure we have a valid brew path
-      if (!this.brewPath) {
-        this.brewPath = await findBrewBinary();
-      }
-
-      if (!this.brewPath) {
-        errors.push('Homebrew binary not found in safe locations');
-        return {
-          category: this.category,
-          cleanedItems: 0,
-          freedSpace: 0,
-          errors,
-        };
-      }
-
       const beforeSize = items.reduce((sum, item) => sum + item.size, 0);
       await execCommand(this.brewPath, ['cleanup', '--prune=all']);
       freedSpace = beforeSize;
