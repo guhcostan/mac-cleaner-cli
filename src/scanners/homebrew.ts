@@ -132,6 +132,19 @@ export class HomebrewScanner extends BaseScanner {
       };
     }
 
+    let brewCache: string | null = null;
+    try {
+      const { stdout: cachePath } = await execAsync('brew --cache');
+      brewCache = cachePath.trim();
+    } catch {
+      // Ignore - fall back to direct deletion
+    }
+
+    const selectedBrewCacheRoot = brewCache ? items.some((item) => item.path === brewCache) : false;
+    if (!selectedBrewCacheRoot) {
+      return super.clean(items, dryRun);
+    }
+
     const errors: string[] = [];
     let freedSpace = 0;
 
@@ -167,7 +180,6 @@ export class HomebrewScanner extends BaseScanner {
     };
   }
 }
-
 
 
 
