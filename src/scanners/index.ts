@@ -34,7 +34,11 @@ export const ALL_SCANNERS: Record<CategoryId, Scanner> = {
 };
 
 export function getScanner(categoryId: CategoryId): Scanner {
-  return ALL_SCANNERS[categoryId];
+  const scanner = ALL_SCANNERS[categoryId];
+  if (!scanner) {
+    throw new Error(`Unknown scanner category: ${categoryId}`);
+  }
+  return scanner;
 }
 
 export function getAllScanners(): Scanner[] {
@@ -48,26 +52,38 @@ export interface ParallelScanOptions extends ScannerOptions {
 }
 
 async function runWithConcurrency<T>(
-  tasks: (() => Promise<T>)[],
+  tasks: Array<{ fn: () => Promise<T>; label?: string }>,
   concurrency: number
 ): Promise<T[]> {
-  const results: T[] = [];
+  const results: (T | undefined)[] = new Array(tasks.length);
   const executing: Set<Promise<void>> = new Set();
+  const limit = Math.max(1, Math.min(concurrency, tasks.length || 1));
 
-  for (const task of tasks) {
-    const p: Promise<void> = task().then((result) => {
-      results.push(result);
-      executing.delete(p);
-    });
+  for (let i = 0; i < tasks.length; i++) {
+    const index = i;
+    const task = tasks[index];
+    const p: Promise<void> = task.fn()
+      .then((result) => {
+        results[index] = result;
+      })
+      .catch((error) => {
+        // Log error but don't fail entire batch
+        const taskLabel = task.label ? ` (${task.label})` : ` ${index}`;
+        console.error(`Scanner task${taskLabel} failed:`, error);
+        results[index] = undefined;
+      })
+      .finally(() => {
+        executing.delete(p);
+      });
     executing.add(p);
 
-    if (executing.size >= concurrency) {
+    if (executing.size >= limit) {
       await Promise.race(executing);
     }
   }
 
-  await Promise.all(executing);
-  return results;
+  await Promise.allSettled(executing);
+  return results.filter((r): r is T => r !== undefined);
 }
 
 export async function runAllScans(
@@ -82,13 +98,16 @@ export async function runAllScans(
   const total = scanners.length;
 
   if (parallel) {
-    const tasks = scanners.map((scanner) => async () => {
-      const result = await scanner.scan(options);
-      completed++;
-      options?.onProgress?.(completed, total, scanner, result);
-      onProgress?.(scanner, result);
-      return { scanner, result };
-    });
+    const tasks = scanners.map((scanner) => ({
+      label: scanner.category.id,
+      fn: async () => {
+        const result = await scanner.scan(options);
+        completed++;
+        options?.onProgress?.(completed, total, scanner, result);
+        onProgress?.(scanner, result);
+        return { scanner, result };
+      },
+    }));
 
     const scanResults = await runWithConcurrency(tasks, concurrency);
     const results = scanResults.map((r) => r.result);
@@ -128,13 +147,16 @@ export async function runScans(
   const total = scanners.length;
 
   if (parallel) {
-    const tasks = scanners.map((scanner) => async () => {
-      const result = await scanner.scan(options);
-      completed++;
-      options?.onProgress?.(completed, total, scanner, result);
-      onProgress?.(scanner, result);
-      return { scanner, result };
-    });
+    const tasks = scanners.map((scanner) => ({
+      label: scanner.category.id,
+      fn: async () => {
+        const result = await scanner.scan(options);
+        completed++;
+        options?.onProgress?.(completed, total, scanner, result);
+        onProgress?.(scanner, result);
+        return { scanner, result };
+      },
+    }));
 
     const scanResults = await runWithConcurrency(tasks, concurrency);
     const results = scanResults.map((r) => r.result);

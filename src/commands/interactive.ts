@@ -1,10 +1,9 @@
 import chalk from 'chalk';
 import confirm from '@inquirer/confirm';
-import checkbox from '@inquirer/checkbox';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
-import { formatSize, createScanProgress, createCleanProgress, runFileExplorer } from '../utils/index.js';
-import { explorerPrompt } from '../utils/explorer-prompt.js';
+import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
+import filePickerPrompt from '../pickers/file-picker.js';
 
 const SAFETY_ICONS: Record<SafetyLevel, string> = {
   safe: chalk.green('●'),
@@ -15,6 +14,8 @@ const SAFETY_ICONS: Record<SafetyLevel, string> = {
 interface InteractiveOptions {
   includeRisky?: boolean;
   noProgress?: boolean;
+  absolutePaths?: boolean;
+  filePicker?: boolean;
 }
 
 export async function interactiveCommand(options: InteractiveOptions = {}): Promise<CleanSummary | null> {
@@ -74,7 +75,7 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   console.log();
 
   // Step 4: Let user select categories
-  const selectedItems = await selectItemsInteractively(resultsWithItems, options.includeRisky);
+  const selectedItems = await selectItemsInteractively(resultsWithItems, options.absolutePaths, options.filePicker);
 
   if (selectedItems.length === 0) {
     console.log(chalk.yellow('\nNo items selected. Nothing to clean.\n'));
@@ -134,150 +135,44 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
 
 async function selectItemsInteractively(
   results: ScanResult[],
-  _includeRisky = false
+  absolutePaths = false,
+  enableFilePickerForAll = false,
 ): Promise<{ categoryId: CategoryId; items: CleanableItem[] }[]> {
-  const explorableCategories = new Set<CategoryId>([
-    'system-cache',
-    'temp-files',
-    'system-logs',
-    'homebrew',
-    'dev-cache',
-    'browser-cache',
-  ]);
+  // Set of categories that should show file picker UI
+  // -f flag enables for all, otherwise only categories marked in types.ts or config
+  const categoriesWithFileSelection = enableFilePickerForAll
+    ? new Set<CategoryId>(results.map((r) => r.category.id))
+    : new Set<CategoryId>(results.filter((r) => r.category.supportsFileSelection).map((r) => r.category.id));
 
-  const selectionOverrides = new Map<CategoryId, CleanableItem[]>();
-  let selectedCategories: CategoryId[] = [];
+  const filePickerResult = await filePickerPrompt({
+    message: 'Select categories to clean (space to toggle, enter to confirm):',
+    results,
+    absolutePaths,
+    categoriesWithFileSelection,
+  });
 
-  const isTestRun =
-    process.env.NODE_ENV === 'test' ||
-    process.argv.some((arg) => arg.includes('vitest')) ||
-    (typeof (globalThis as { describe?: unknown }).describe === 'function' &&
-      typeof (globalThis as { it?: unknown }).it === 'function');
-
-  if (isTestRun) {
-    const choices = results.map((r) => {
-      const safetyIcon = SAFETY_ICONS[r.category.safetyLevel];
-
-      return {
-        name: `${safetyIcon} ${r.category.name.padEnd(28)} ${chalk.yellow(formatSize(r.totalSize).padStart(10))} ${chalk.dim(`(${r.items.length} items)`)}`,
-        value: r.category.id,
-        checked: false,
-      };
-    });
-
-    selectedCategories = await checkbox<CategoryId>({
-      message: 'Select categories to clean (space to toggle, enter to confirm):',
-      choices: choices.map((c) => ({
-        name: c.name,
-        value: c.value as CategoryId,
-        checked: c.checked,
-      })),
-      pageSize: 15,
-    });
-  } else {
-    const selectedSet = new Set<CategoryId>();
-    const byCategoryId = new Map<CategoryId, ScanResult>(results.map((r) => [r.category.id, r]));
-
-    while (true) {
-      const choices = results.map((r) => {
-        const safetyIcon = SAFETY_ICONS[r.category.safetyLevel];
-        const isExplorable = explorableCategories.has(r.category.id);
-
-        return {
-          name: `${safetyIcon} ${r.category.name.padEnd(28)} ${chalk.yellow(formatSize(r.totalSize).padStart(10))} ${chalk.dim(`(${r.items.length} items)`)}`,
-          value: r.category.id,
-          checked: selectedSet.has(r.category.id),
-          isDirectory: isExplorable,
-        };
-      });
-
-      const result = await explorerPrompt({
-        message: 'Select categories to clean (space to toggle, enter to confirm):',
-        choices,
-        pageSize: 15,
-        loop: false,
-      });
-
-      selectedSet.clear();
-      for (const categoryId of result.value) {
-        selectedSet.add(categoryId as CategoryId);
-      }
-
-      if (result.action === 'ENTER_DIR') {
-        const targetCategoryId = result.target as CategoryId;
-
-        if (explorableCategories.has(targetCategoryId)) {
-          const scanResult = byCategoryId.get(targetCategoryId);
-          if (!scanResult) continue;
-
-          const selectedList = await runFileExplorer(scanResult.items);
-          if (selectedList.length > 0) {
-            selectionOverrides.set(targetCategoryId, selectedList);
-            selectedSet.add(targetCategoryId);
-          } else {
-            selectionOverrides.delete(targetCategoryId);
-          }
-        }
-
-        continue;
-      }
-
-      if (result.action === 'GO_UP') {
-        continue;
-      }
-
-      selectedCategories = Array.from(selectedSet);
-      break;
-    }
-  }
+  const selectedCategories = Array.from(filePickerResult.selectedCategories);
+  const selectedFilesByCategory = filePickerResult.selectedFilesByCategory;
 
   const selectedResults = results.filter((r) => selectedCategories.includes(r.category.id));
   const selectedItems: { categoryId: CategoryId; items: CleanableItem[] }[] = [];
 
   for (const result of selectedResults) {
-    const override = selectionOverrides.get(result.category.id);
-    if (override && override.length > 0) {
-      selectedItems.push({
-        categoryId: result.category.id,
-        items: override,
-      });
-      continue;
-    }
+    const categoryId = result.category.id;
+    const selectedFilesForCategory = selectedFilesByCategory.get(categoryId);
 
-    const isRisky = result.category.safetyLevel === 'risky';
-    const needsItemSelection = isRisky || result.category.id === 'large-files' || result.category.id === 'ios-backups';
-
-    if (needsItemSelection) {
-      if (isRisky && result.category.safetyNote) {
-        console.log();
-        console.log(chalk.red(`⚠ WARNING: ${result.category.safetyNote}`));
+    if (categoriesWithFileSelection.has(categoryId)) {
+      if (selectedFilesForCategory && selectedFilesForCategory.size > 0) {
+        const selectedItemsList = result.items.filter((i) =>
+          selectedFilesForCategory.has(i.path)
+        );
+        if (selectedItemsList.length > 0) {
+          selectedItems.push({ categoryId, items: selectedItemsList });
+        }
       }
-
-      const itemChoices = result.items.map((item) => ({
-        name: `${item.name.substring(0, 40).padEnd(40)} ${chalk.yellow(formatSize(item.size).padStart(10))}`,
-        value: item.path,
-        checked: false,
-      }));
-
-      const selectedPaths = await checkbox<string>({
-        message: `Select items from ${result.category.name}:`,
-        choices: itemChoices,
-        pageSize: 10,
-      });
-
-      const selectedItemsList = result.items.filter((i) => selectedPaths.includes(i.path));
-
-      if (selectedItemsList.length > 0) {
-        selectedItems.push({
-          categoryId: result.category.id,
-          items: selectedItemsList,
-        });
-      }
+      // If no files selected for a category with file selection, skip it
     } else {
-      selectedItems.push({
-        categoryId: result.category.id,
-        items: result.items,
-      });
+      selectedItems.push({ categoryId, items: result.items });
     }
   }
 

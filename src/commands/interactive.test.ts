@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { interactiveCommand } from './interactive.js';
 import * as scanners from '../scanners/index.js';
 import * as inquirerConfirm from '@inquirer/confirm';
-import * as inquirerCheckbox from '@inquirer/checkbox';
 import type { Category } from '../types.js';
 
 vi.mock('../scanners/index.js', () => ({
@@ -15,13 +14,16 @@ vi.mock('@inquirer/confirm', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('@inquirer/checkbox', () => ({
+vi.mock('../pickers/file-picker.js', () => ({
   default: vi.fn(),
 }));
 
+const filePickerModule = await import('../pickers/file-picker.js');
+const filePickerPrompt = filePickerModule.default;
+
 const inquirerPrompts = {
   confirm: inquirerConfirm.default,
-  checkbox: inquirerCheckbox.default,
+  filePicker: filePickerPrompt,
 };
 
 const trashCategory: Category = {
@@ -47,6 +49,7 @@ const largeFilesCategory: Category = {
   group: 'Large Files',
   description: 'Large files',
   safetyLevel: 'risky',
+  supportsFileSelection: true,
 };
 
 describe('interactive command', () => {
@@ -111,7 +114,10 @@ describe('interactive command', () => {
       totalItems: 1,
     });
 
-    vi.mocked(inquirerPrompts.checkbox).mockResolvedValue([]);
+    vi.mocked(inquirerPrompts.filePicker).mockResolvedValue({
+      selectedCategories: new Set(),
+      selectedFilesByCategory: new Map(),
+    });
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -136,7 +142,10 @@ describe('interactive command', () => {
       totalItems: 1,
     });
 
-    vi.mocked(inquirerPrompts.checkbox).mockResolvedValue(['trash']);
+    vi.mocked(inquirerPrompts.filePicker).mockResolvedValue({
+      selectedCategories: new Set(['trash']),
+      selectedFilesByCategory: new Map(),
+    });
     vi.mocked(inquirerPrompts.confirm).mockResolvedValue(false);
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -174,7 +183,10 @@ describe('interactive command', () => {
     });
 
     vi.mocked(scanners.getScanner).mockReturnValue(mockScanner as unknown as ReturnType<typeof scanners.getScanner>);
-    vi.mocked(inquirerPrompts.checkbox).mockResolvedValue(['trash']);
+    vi.mocked(inquirerPrompts.filePicker).mockResolvedValue({
+      selectedCategories: new Set(['trash']),
+      selectedFilesByCategory: new Map(),
+    });
     vi.mocked(inquirerPrompts.confirm).mockResolvedValue(true);
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -213,9 +225,10 @@ describe('interactive command', () => {
     });
 
     vi.mocked(scanners.getScanner).mockReturnValue(mockScanner as unknown as ReturnType<typeof scanners.getScanner>);
-    vi.mocked(inquirerPrompts.checkbox)
-      .mockResolvedValueOnce(['downloads'])
-      .mockResolvedValueOnce(['/test']);
+    vi.mocked(inquirerPrompts.filePicker).mockResolvedValueOnce({
+      selectedCategories: new Set(['downloads']),
+      selectedFilesByCategory: new Map([['downloads', new Set(['/test'])]]),
+    });
     vi.mocked(inquirerPrompts.confirm).mockResolvedValue(true);
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -252,9 +265,10 @@ describe('interactive command', () => {
     });
 
     vi.mocked(scanners.getScanner).mockReturnValue(mockScanner as unknown as ReturnType<typeof scanners.getScanner>);
-    vi.mocked(inquirerPrompts.checkbox)
-      .mockResolvedValueOnce(['large-files'])
-      .mockResolvedValueOnce(['/test/large.bin']);
+    vi.mocked(inquirerPrompts.filePicker).mockResolvedValueOnce({
+      selectedCategories: new Set(['large-files']),
+      selectedFilesByCategory: new Map([['large-files', new Set(['/test/large.bin'])]]),
+    });
     vi.mocked(inquirerPrompts.confirm).mockResolvedValue(true);
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -292,7 +306,10 @@ describe('interactive command', () => {
     });
 
     vi.mocked(scanners.getScanner).mockReturnValue(mockScanner as unknown as ReturnType<typeof scanners.getScanner>);
-    vi.mocked(inquirerPrompts.checkbox).mockResolvedValue(['trash']);
+    vi.mocked(inquirerPrompts.filePicker).mockResolvedValue({
+      selectedCategories: new Set(['trash']),
+      selectedFilesByCategory: new Map(),
+    });
     vi.mocked(inquirerPrompts.confirm).mockResolvedValue(true);
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -305,6 +322,10 @@ describe('interactive command', () => {
     consoleSpy.mockRestore();
   });
 
+  /**
+   * When a category is selected but no files are chosen during file selection,
+   * the operation is cancelled (returns null) rather than cleaning the entire category.
+   */
   it('should skip item selection when no items selected from risky category', async () => {
     vi.mocked(scanners.runAllScans).mockResolvedValue({
       results: [
@@ -318,15 +339,18 @@ describe('interactive command', () => {
       totalItems: 1,
     });
 
-    vi.mocked(inquirerPrompts.checkbox)
-      .mockResolvedValueOnce(['large-files'])
-      .mockResolvedValueOnce([]);
+    vi.mocked(inquirerPrompts.filePicker)
+      .mockResolvedValueOnce({
+        selectedCategories: new Set(['large-files']),
+        selectedFilesByCategory: new Map([['large-files', new Set()]]),
+      });
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     const result = await interactiveCommand({ includeRisky: true });
 
     expect(result).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No items selected'));
 
     consoleSpy.mockRestore();
   });

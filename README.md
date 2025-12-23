@@ -151,6 +151,9 @@ npx mac-cleaner-cli
 
 # Include risky categories
 npx mac-cleaner-cli --risky
+
+# Enable file picker for all categories
+npx mac-cleaner-cli --risky -f
 ```
 
 ### Folder-Level Selection (Interactive)
@@ -191,6 +194,17 @@ npx mac-cleaner-cli config --show
 # Manage backups
 npx mac-cleaner-cli backup --list
 npx mac-cleaner-cli backup --clean
+```
+
+### Other flags
+
+```bash
+# Show help
+npx mac-cleaner-cli -h  # or --help
+# Show version
+npx mac-cleaner-cli -V  # or --version
+# Directory paths shown in absolute format
+npx mac-cleaner-cli -A  # or --absolute-paths
 ```
 
 ## 💻 Global Installation
