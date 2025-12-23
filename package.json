@@ -50,7 +50,7 @@
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.15",
     "eslint": "^9.28.0",
-    "tsdown": "^0.17.0",
+    "tsdown": "^0.18.1",
     "typescript": "^5.3.2",
     "typescript-eslint": "^8.48.1",
     "vitest": "^4.0.15"
