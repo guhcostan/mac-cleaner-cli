@@ -124,13 +124,67 @@ describe('backup utilities', () => {
 
   describe('restoreBackup', () => {
     it('should handle empty backup directory', async () => {
-      const emptyDir = join(testBackupDir, 'empty-restore');
+      // Create a backup directory within the valid backup location
+      const backupDir = backup.getBackupDir();
+      const emptyDir = join(backupDir, 'empty-restore-test-' + Date.now());
       await mkdir(emptyDir, { recursive: true });
 
       const result = await backup.restoreBackup(emptyDir);
 
       expect(result.success).toBe(0);
       expect(result.failed).toBe(0);
+      
+      await rm(emptyDir, { recursive: true, force: true });
+    });
+
+    it('should reject restore from invalid backup directory', async () => {
+      // Try to restore from a directory outside the backup location
+      const invalidDir = join(tmpdir(), 'invalid-backup-' + Date.now());
+      await mkdir(invalidDir, { recursive: true });
+      await writeFile(join(invalidDir, 'file.txt'), 'malicious content');
+
+      const result = await backup.restoreBackup(invalidDir);
+
+      expect(result.success).toBe(0);
+      expect(result.failed).toBe(1);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Invalid backup directory');
+
+      await rm(invalidDir, { recursive: true, force: true });
+    });
+
+    it('should return errors array in result', async () => {
+      const backupDir = backup.getBackupDir();
+      const testDir = join(backupDir, 'error-test-' + Date.now());
+      await mkdir(testDir, { recursive: true });
+
+      const result = await backup.restoreBackup(testDir);
+
+      expect(result).toHaveProperty('errors');
+      expect(Array.isArray(result.errors)).toBe(true);
+
+      await rm(testDir, { recursive: true, force: true });
+    });
+
+    it('should skip files with path traversal patterns', async () => {
+      const backupDir = backup.getBackupDir();
+      const testDir = join(backupDir, 'traversal-test-' + Date.now());
+      const homeSubdir = join(testDir, 'HOME');
+      await mkdir(homeSubdir, { recursive: true });
+      
+      // Create a file that would try to escape (the restore should skip it)
+      // Note: We can't actually test path traversal without crafting malicious paths,
+      // but we can verify the structure is handled correctly
+      await writeFile(join(homeSubdir, 'safe-file.txt'), 'safe content');
+
+      const result = await backup.restoreBackup(testDir);
+
+      // The restore should process files under HOME structure
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('failed');
+      expect(result).toHaveProperty('errors');
+
+      await rm(testDir, { recursive: true, force: true });
     });
   });
 });

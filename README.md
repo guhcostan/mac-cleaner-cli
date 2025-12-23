@@ -62,11 +62,19 @@ Scanning your Mac for cleanable files...
 Found 44.8 GB that can be cleaned:
 
 ? Select categories to clean (space to toggle, enter to confirm):
-  ◉ 🟢 Trash                            2.1 GB (45 items)
-  ◉ 🟢 Browser Cache                    1.5 GB (3 items)
-  ◉ 🟢 Temporary Files                549.2 MB (622 items)
-  ◉ 🟡 User Cache Files                15.5 GB (118 items)
-  ◉ 🟡 Development Cache               21.9 GB (14 items)
+❯ ◯ ● Trash                            2.1 GB (45 items)
+  ◯ ● Browser Cache                    1.5 GB (3 items)
+  ◯ ● Temporary Files                549.2 MB (622 items)
+  ◯ ● User Cache Files                15.5 GB (118 items)
+  ◯ ● Development Cache               21.9 GB (14 items)
+↑↓ navigate • ← back • → enter • space select • a all • i invert • ⏎ submit
+
+# Press → on a supported category to browse and select specific folders/files
+? Browsing: Root Scan Results
+❯ ◯ 📂 com.apple.Safari                         1.2 GB
+  ◯ 📂 com.google.Chrome                        2.3 GB
+  ◯ 📂 com.spotify.client                     824.1 MB
+↑↓ navigate • ← back • → enter • space select • a all • i invert • ⏎ submit
 
 Summary:
   Items to delete: 802
@@ -93,6 +101,7 @@ Summary:
 |---------|-------------|
 | 🚀 **One Command** | Just run `npx mac-cleaner-cli` — no complex flags |
 | 🎯 **Interactive** | Select exactly what you want to clean with checkboxes |
+| 📁 **File Explorer** | Drill down (`→`) into supported categories to select specific folders/files |
 | 🛡️ **Safe by Default** | Risky items hidden unless you use `--risky` |
 | 🔍 **Smart Scanning** | Finds caches, logs, dev files, browser data, and more |
 | 📱 **App Uninstaller** | Remove apps completely with all associated files |
@@ -146,6 +155,13 @@ npx mac-cleaner-cli --risky
 # Enable file picker for all categories
 npx mac-cleaner-cli --risky -f
 ```
+
+### Folder-Level Selection (Interactive)
+
+In interactive mode, you can drill into some categories and select specific folders/files to delete:
+
+- Controls: `↑↓` navigate • `←` back • `→` enter • `space` select • `a` all • `i` invert • `⏎` submit
+- Supported categories include: User Cache Files (`system-cache`), Temporary Files (`temp-files`), System Log Files (`system-logs`), Development Cache (`dev-cache`), Browser Cache (`browser-cache`), Homebrew Cache (`homebrew`)
 
 ### Uninstall Apps
 

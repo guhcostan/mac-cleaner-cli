@@ -1,12 +1,37 @@
 import chalk from 'chalk';
 import confirm from '@inquirer/confirm';
 import checkbox from '@inquirer/checkbox';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
 import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
 
 const DONATION_URL = 'https://ko-fi.com/guhcostan';
+
+/**
+ * Opens a URL in the default browser using spawn (safer than exec).
+ * Uses the macOS 'open' command with the URL as a separate argument
+ * to prevent command injection.
+ */
+function openUrl(url: string): void {
+  // Validate URL format to prevent injection
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      console.error('Invalid URL protocol');
+      return;
+    }
+  } catch {
+    console.error('Invalid URL format');
+    return;
+  }
+  
+  // Use spawn with separate arguments to prevent command injection
+  spawn('/usr/bin/open', [url], {
+    detached: true,
+    stdio: 'ignore',
+  }).unref();
+}
 
 interface CleanCommandOptions {
   all?: boolean;
@@ -266,9 +291,9 @@ async function showDonationMessage(): Promise<void> {
   });
 
   if (shouldOpen) {
-    exec(`open "${DONATION_URL}"`);
-    console.log(chalk.green('\n✓ Opened in your browser. Thank you for your support! 🙏\n'));
+    openUrl(DONATION_URL);
+    console.log(chalk.green('\n✓ Opened in your browser. Thank you for your support!\n'));
   } else {
-    console.log(chalk.dim('\nThank you for using Mac Cleaner CLI! 🙏\n'));
+    console.log(chalk.dim('\nThank you for using Mac Cleaner CLI!\n'));
   }
 }

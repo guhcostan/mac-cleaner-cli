@@ -2,8 +2,13 @@ import chalk from 'chalk';
 import confirm from '@inquirer/confirm';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
+<<<<<<< HEAD
 import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
 import filePickerPrompt from '../pickers/file-picker.js';
+=======
+import { formatSize, createScanProgress, createCleanProgress, runFileExplorer } from '../utils/index.js';
+import { explorerPrompt } from '../utils/explorer-prompt.js';
+>>>>>>> origin/main
 
 const SAFETY_ICONS: Record<SafetyLevel, string> = {
   safe: chalk.green('●'),
@@ -206,4 +211,3 @@ function printCleanResults(summary: CleanSummary): void {
 
   console.log();
 }
-

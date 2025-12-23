@@ -5,6 +5,14 @@ import { ExitPromptError } from '@inquirer/core';
 import { interactiveCommand, listCategories, maintenanceCommand, uninstallCommand } from './commands/index.js';
 import { initConfig, configExists, listBackups, cleanOldBackups, loadConfig, formatSize } from './utils/index.js';
 
+function handleCleanExit(error: unknown) {
+  if (error instanceof ExitPromptError) {
+    console.log("\n");
+    process.exit(0);
+  }
+  throw error;
+}
+
 function setupGracefulShutdown(): void {
   const handleExit = (signal: string) => {
     console.log(`\n${signal} received. Exiting...`);
@@ -37,8 +45,7 @@ program
         noProgress: !options.progress,
       });
     } catch (error) {
-      if (error instanceof ExitPromptError) return;
-      throw error;
+      handleCleanExit(error)
     }
   });
 
@@ -56,8 +63,7 @@ program
         noProgress: !options.progress,
       });
     } catch (error) {
-      if (error instanceof ExitPromptError) return;
-      throw error;
+      handleCleanExit(error)
     }
   });
 

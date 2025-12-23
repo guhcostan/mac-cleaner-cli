@@ -1,5 +1,5 @@
 import { homedir } from 'os';
-import { join } from 'path';
+import { join, resolve } from 'path';
 
 export const HOME = homedir();
 
@@ -38,23 +38,73 @@ export const PATHS = {
   applications: '/Applications',
 };
 
-export function expandPath(path: string): string {
-  if (path.startsWith('~')) {
-    return path.replace('~', HOME);
+/**
+ * Expands a path that starts with ~ to use the full home directory.
+ * Also validates that the resulting path doesn't escape expected boundaries.
+ * 
+ * @param path - The path to expand
+ * @param allowOutsideHome - If false (default), throws an error if path escapes home directory
+ * @returns The expanded path
+ * @throws Error if the path contains traversal attempts and allowOutsideHome is false
+ */
+export function expandPath(path: string, allowOutsideHome = false): string {
+  let expanded = path;
+  
+  if (path.startsWith('~/')) {
+    expanded = join(HOME, path.slice(2));
+  } else if (path === '~') {
+    expanded = HOME;
   }
-  return path;
+  
+  // Resolve the path to catch any traversal attempts like ~/../../etc
+  const resolved = resolve(expanded);
+  
+  // Security check: ensure the resolved path is within home directory
+  if (!allowOutsideHome && path.startsWith('~')) {
+    if (!resolved.startsWith(HOME + '/') && resolved !== HOME) {
+      throw new Error(`Path traversal detected: ${path} resolves outside home directory`);
+    }
+  }
+  
+  return resolved;
 }
 
+/**
+ * Validates that a path doesn't contain obvious traversal patterns.
+ * This is a quick check before more expensive operations.
+ */
+export function hasTraversalPattern(path: string): boolean {
+  // Check for common traversal patterns
+  return path.includes('../') || 
+         path.includes('/..') || 
+         path === '..' ||
+         /\/\.\.($|\/)/.test(path);
+}
+
+/**
+ * System paths that should NEVER be modified.
+ * Note: This is duplicated in fs.ts for performance. Keep them in sync.
+ */
+const SYSTEM_PATHS = [
+  '/System',
+  '/usr',
+  '/bin',
+  '/sbin',
+  '/etc',
+  '/var',
+  '/private/var/db',
+  '/private/var/root',
+  '/Library/Apple',
+  '/Applications/Utilities',
+];
+
+/**
+ * Checks if a path is a protected system path.
+ * @deprecated Use isProtectedPath from fs.ts instead for consistency
+ */
 export function isSystemPath(path: string): boolean {
-  const systemPaths = [
-    '/System',
-    '/usr',
-    '/bin',
-    '/sbin',
-    '/private/var/db',
-    '/private/var/root',
-  ];
-  return systemPaths.some((p) => path.startsWith(p));
+  const resolved = resolve(path);
+  return SYSTEM_PATHS.some((p) => resolved === p || resolved.startsWith(p + '/'));
 }
 
 /**
