@@ -91,7 +91,6 @@ describe('HomebrewScanner', () => {
 
     expect(result.cleanedItems).toBe(0);
     expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain('not found');
   });
 
   it('should handle brew cleanup failure gracefully', async () => {

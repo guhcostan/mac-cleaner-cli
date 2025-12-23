@@ -21,7 +21,9 @@ vi.mock('@inquirer/checkbox', () => ({
 
 vi.mock('child_process', () => ({
   exec: vi.fn(),
-  spawn: vi.fn(),
+  spawn: vi.fn(() => ({
+    unref: vi.fn(),
+  })),
 }));
 
 const inquirerPrompts = {
