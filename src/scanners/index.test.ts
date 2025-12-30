@@ -20,6 +20,7 @@ describe("scanners index", () => {
       "large-files",
       "node-modules",
       "duplicates",
+      "launch-agents",
     ];
 
     expect(Object.keys(ALL_SCANNERS).sort()).toEqual(expectedIds.sort());
@@ -35,7 +36,7 @@ describe("scanners index", () => {
   it("should get all scanners", () => {
     const scanners = getAllScanners();
 
-    expect(scanners).toHaveLength(15);
+    expect(scanners).toHaveLength(16);
     for (const scanner of scanners) {
       expect(scanner.category).toBeDefined();
       expect(scanner.scan).toBeDefined();

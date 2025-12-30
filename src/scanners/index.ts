@@ -14,6 +14,7 @@ import { LanguageFilesScanner } from './language-files.js';
 import { LargeFilesScanner } from './large-files.js';
 import { NodeModulesScanner } from './node-modules.js';
 import { DuplicatesScanner } from './duplicates.js';
+import { LaunchAgentsScanner } from './launch-agents.js';
 
 export const ALL_SCANNERS: Record<CategoryId, Scanner> = {
   'system-cache': new SystemCacheScanner(),
@@ -31,6 +32,7 @@ export const ALL_SCANNERS: Record<CategoryId, Scanner> = {
   'large-files': new LargeFilesScanner(),
   'node-modules': new NodeModulesScanner(),
   'duplicates': new DuplicatesScanner(),
+  'launch-agents': new LaunchAgentsScanner(),
 };
 
 export function getScanner(categoryId: CategoryId): Scanner {
@@ -199,4 +201,5 @@ export {
   LargeFilesScanner,
   NodeModulesScanner,
   DuplicatesScanner,
+  LaunchAgentsScanner,
 };
