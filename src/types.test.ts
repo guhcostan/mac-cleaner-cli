@@ -19,6 +19,7 @@ describe('CATEGORIES', () => {
       'large-files',
       'node-modules',
       'duplicates',
+      'launch-agents',
     ];
 
     expect(Object.keys(CATEGORIES).sort()).toEqual(expectedIds.sort());

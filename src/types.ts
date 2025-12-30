@@ -13,7 +13,8 @@ export type CategoryId =
   | 'language-files'
   | 'large-files'
   | 'node-modules'
-  | 'duplicates';
+  | 'duplicates'
+  | 'launch-agents';
 
 export type CategoryGroup = 'System Junk' | 'Development' | 'Storage' | 'Browsers' | 'Large Files';
 
@@ -193,6 +194,14 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'Files with identical content',
     safetyLevel: 'risky',
     safetyNote: 'Review carefully - keeps newest copy by default',
+  },
+  'launch-agents': {
+    id: 'launch-agents',
+    name: 'Orphaned Launch Agents',
+    group: 'System Junk',
+    description: 'Launch agents pointing to non-existent applications',
+    safetyLevel: 'moderate',
+    safetyNote: 'Removing launch agents will prevent applications from auto-starting. Only orphaned items (pointing to non-existent apps) are detected.',
   },
 };
 
