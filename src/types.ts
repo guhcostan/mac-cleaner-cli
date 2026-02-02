@@ -14,7 +14,9 @@ export type CategoryId =
   | 'large-files'
   | 'node-modules'
   | 'duplicates'
-  | 'launch-agents';
+  | 'launch-agents'
+  | 'app-cache'
+  | 'deep-system-data';
 
 export type CategoryGroup = 'System Junk' | 'Development' | 'Storage' | 'Browsers' | 'Large Files';
 
@@ -202,6 +204,22 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'Launch agents pointing to non-existent applications',
     safetyLevel: 'moderate',
     safetyNote: 'Removing launch agents will prevent applications from auto-starting. Only orphaned items (pointing to non-existent apps) are detected.',
+  },
+  'app-cache': {
+    id: 'app-cache',
+    name: 'Application Cache',
+    group: 'System Junk',
+    description: 'Cache from common apps like Spotify, Slack, and Telegram',
+    safetyLevel: 'safe',
+  },
+  'deep-system-data': {
+    id: 'deep-system-data',
+    name: 'Deep System Data',
+    group: 'Storage',
+    description: 'Large app data, containers, and orphaned files (Docker, Zalo, etc.)',
+    safetyLevel: 'risky',
+    safetyNote: 'May contain important app data. Review carefully before deleting. Requires sudo for some items.',
+    supportsFileSelection: true,
   },
 };
 

@@ -19,6 +19,13 @@ export const PATHS = {
   safariCache: join(HOME, 'Library', 'Caches', 'com.apple.Safari'),
   firefoxProfiles: join(HOME, 'Library', 'Caches', 'Firefox', 'Profiles'),
   arcCache: join(HOME, 'Library', 'Caches', 'company.thebrowser.Browser'),
+  spotifyCache: join(HOME, 'Library', 'Caches', 'com.spotify.client'),
+  slackCache: [
+    join(HOME, 'Library', 'Caches', 'com.tinyspeck.slack'),
+    join(HOME, 'Library', 'Application Support', 'Slack', 'Cache'),
+    join(HOME, 'Library', 'Application Support', 'Slack', 'Service Worker', 'CacheStorage'),
+  ],
+  telegramCache: join(HOME, 'Library', 'Group Containers', '6N38VWS5BX.ru.keepcoder.Telegram', 'Library', 'Caches'),
 
   npmCache: join(HOME, '.npm', '_cacache'),
   yarnCache: join(HOME, 'Library', 'Caches', 'Yarn'),
@@ -27,6 +34,7 @@ export const PATHS = {
   xcodeDerivedData: join(HOME, 'Library', 'Developer', 'Xcode', 'DerivedData'),
   xcodeArchives: join(HOME, 'Library', 'Developer', 'Xcode', 'Archives'),
   xcodeSimulators: join(HOME, 'Library', 'Developer', 'CoreSimulator', 'Devices'),
+  xcodeDeviceSupport: join(HOME, 'Library', 'Developer', 'Xcode', 'iOS DeviceSupport'),
   cocoapodsCache: join(HOME, 'Library', 'Caches', 'CocoaPods'),
   gradleCache: join(HOME, '.gradle', 'caches'),
   cargoCache: join(HOME, '.cargo', 'registry'),
@@ -49,23 +57,23 @@ export const PATHS = {
  */
 export function expandPath(path: string, allowOutsideHome = false): string {
   let expanded = path;
-  
+
   if (path.startsWith('~/')) {
     expanded = join(HOME, path.slice(2));
   } else if (path === '~') {
     expanded = HOME;
   }
-  
+
   // Resolve the path to catch any traversal attempts like ~/../../etc
   const resolved = resolve(expanded);
-  
+
   // Security check: ensure the resolved path is within home directory
   if (!allowOutsideHome && path.startsWith('~')) {
     if (!resolved.startsWith(HOME + '/') && resolved !== HOME) {
       throw new Error(`Path traversal detected: ${path} resolves outside home directory`);
     }
   }
-  
+
   return resolved;
 }
 
@@ -75,10 +83,10 @@ export function expandPath(path: string, allowOutsideHome = false): string {
  */
 export function hasTraversalPattern(path: string): boolean {
   // Check for common traversal patterns
-  return path.includes('../') || 
-         path.includes('/..') || 
-         path === '..' ||
-         /\/\.\.($|\/)/.test(path);
+  return path.includes('../') ||
+    path.includes('/..') ||
+    path === '..' ||
+    /\/\.\.($|\/)/.test(path);
 }
 
 /**
@@ -143,30 +151,30 @@ export function truncateDirectoryPath(
 ): string {
   // 1: Abbreviate home dir unless absolutePaths is used
   const displayPath = absolutePaths ? dirPath : contractPath(dirPath);
- 
+
   // 2: If it fits, return as is
   if (displayPath.length <= maxLength) {
     return displayPath;
   }
- 
+
   // 3: Split for truncation
   const parts = displayPath.split('/').filter((p) => p.length > 0);
- 
+
   // For very short paths (1 or 2), just hard truncate
   if (parts.length <= 2) {
     return displayPath.substring(0, maxLength - 3) + '...';
   }
- 
+
   // 4: Elide middle strategy - show part1 + ... + last 2 parts
   const firstPart = parts[0] === '~' ? '~' : '/' + parts[0];
   const lastTwoParts = parts.slice(-2).join('/');
   const truncated = `${firstPart}/.../${lastTwoParts}`;
- 
+
   // If the truncated version fits, use it
   if (truncated.length <= maxLength) {
     return truncated;
   }
- 
+
   // 5: Even the truncated version is too long - hard truncate it
   return truncated.substring(0, maxLength - 3) + '...';
 }
