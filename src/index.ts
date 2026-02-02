@@ -72,10 +72,12 @@ program
   .description('Run maintenance tasks (DNS flush, free purgeable space)')
   .option('--dns', 'Flush DNS cache')
   .option('--purgeable', 'Free purgeable space')
+  .option('--timemachine', 'Clean Time Machine local snapshots')
   .action(async (options) => {
     await maintenanceCommand({
       dns: options.dns,
       purgeable: options.purgeable,
+      timemachine: options.timemachine,
     });
   });
 

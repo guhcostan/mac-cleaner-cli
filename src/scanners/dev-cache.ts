@@ -17,6 +17,8 @@ export class DevCacheScanner extends BaseScanner {
       { name: 'CocoaPods cache', path: PATHS.cocoapodsCache },
       { name: 'Gradle cache', path: PATHS.gradleCache },
       { name: 'Cargo cache', path: PATHS.cargoCache },
+      { name: 'Xcode Simulators', path: PATHS.xcodeSimulators },
+      { name: 'Xcode Device Support', path: PATHS.xcodeDeviceSupport },
     ];
 
     for (const dev of devPaths) {
