@@ -1,10 +1,11 @@
 <p align="center">
   <h1 align="center">🧹 Mac Cleaner CLI</h1>
   <p align="center">
-    <strong>Free & Open Source Mac cleanup tool</strong>
+    <strong>The free, open-source alternative to CleanMyMac X</strong>
   </p>
   <p align="center">
-    Scan and remove junk files, caches, logs, and more — all from your terminal.
+    Scan and remove junk files, caches, logs, and more — all from your terminal.<br>
+    No subscription. No telemetry. No bloatware.
   </p>
 </p>
 
@@ -23,7 +24,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/guhcostan/mac-cleaner-cli"><img src="https://img.shields.io/github/stars/guhcostan/mac-cleaner-cli?style=social" alt="GitHub Stars"></a>
+  <a href="https://github.com/guhcostan/mac-cleaner-cli/stargazers"><img src="https://img.shields.io/github/stars/guhcostan/mac-cleaner-cli?style=social" alt="GitHub Stars"></a>
+  <a href="https://github.com/guhcostan/mac-cleaner-cli/network/members"><img src="https://img.shields.io/github/forks/guhcostan/mac-cleaner-cli?style=social" alt="GitHub Forks"></a>
 </p>
 
 <p align="center">
@@ -42,12 +44,12 @@
 npx mac-cleaner-cli
 ```
 
-That's it! No installation needed. The CLI will:
+That's it. No installation needed. The CLI will:
 
 1. 🔍 **Scan** your Mac for cleanable files
 2. 📋 **Show** you what was found with sizes
 3. ✅ **Let you select** exactly what to clean
-4. 🗑️ **Clean** the selected items safely
+4. 🗑️ **Clean** only what you chose
 
 ## 🎬 See It In Action
 
@@ -99,15 +101,28 @@ Summary:
 
 | Feature | Description |
 |---------|-------------|
-| 🚀 **One Command** | Just run `npx mac-cleaner-cli` — no complex flags |
+| 🚀 **One Command** | Just run `npx mac-cleaner-cli` — no complex setup |
 | 🎯 **Interactive** | Select exactly what you want to clean with checkboxes |
-| 📁 **File Explorer** | Drill down (`→`) into supported categories to select specific folders/files |
+| 📁 **File Explorer** | Drill down (`→`) into categories to select specific folders/files |
 | 🛡️ **Safe by Default** | Risky items hidden unless you use `--risky` |
 | 🔍 **Smart Scanning** | Finds caches, logs, dev files, browser data, and more |
 | 📱 **App Uninstaller** | Remove apps completely with all associated files |
 | 🔧 **Maintenance** | Flush DNS cache, free purgeable space |
 | 🔒 **Privacy First** | 100% offline — no data ever leaves your machine |
 | 📦 **Minimal Dependencies** | Only 5 runtime deps, all from trusted maintainers |
+
+## 💰 vs. Paid Alternatives
+
+| | Mac Cleaner CLI | CleanMyMac X | DaisyDisk |
+|---|---|---|---|
+| **Price** | **Free** | $39.95/year | $9.99 one-time |
+| **Open Source** | ✅ | ❌ | ❌ |
+| **Telemetry / Analytics** | ❌ None | ⚠️ Yes | ⚠️ Yes |
+| **Works via terminal** | ✅ | ❌ | ❌ |
+| **CI/CD friendly** | ✅ | ❌ | ❌ |
+| **Customizable** | ✅ Fork it | ❌ | ❌ |
+| **App Uninstaller** | ✅ | ✅ | ❌ |
+| **File-level selection** | ✅ | ✅ | ✅ |
 
 ## 🎯 What It Cleans
 
@@ -158,10 +173,11 @@ npx mac-cleaner-cli --risky -f
 
 ### Folder-Level Selection (Interactive)
 
-In interactive mode, you can drill into some categories and select specific folders/files to delete:
+In interactive mode, press `→` on supported categories to drill into specific folders/files:
 
-- Controls: `↑↓` navigate • `←` back • `→` enter • `space` select • `a` all • `i` invert • `⏎` submit
-- Supported categories include: User Cache Files (`system-cache`), Temporary Files (`temp-files`), System Log Files (`system-logs`), Development Cache (`dev-cache`), Browser Cache (`browser-cache`), Homebrew Cache (`homebrew`)
+- `↑↓` navigate • `←` back • `→` enter • `space` select • `a` all • `i` invert • `⏎` submit
+
+Supported categories: User Cache Files, Temporary Files, System Log Files, Development Cache, Browser Cache, Homebrew Cache.
 
 ### Uninstall Apps
 
@@ -196,15 +212,15 @@ npx mac-cleaner-cli backup --list
 npx mac-cleaner-cli backup --clean
 ```
 
-### Other flags
+### Flags
 
 ```bash
-# Show help
-npx mac-cleaner-cli -h  # or --help
-# Show version
-npx mac-cleaner-cli -V  # or --version
-# Directory paths shown in absolute format
-npx mac-cleaner-cli -A  # or --absolute-paths
+-V, --version          Show version number
+-h, --help             Show help
+-r, --risky            Include risky categories
+-f, --file-picker      Force file picker for ALL categories
+-A, --absolute-paths   Show absolute paths
+    --no-progress      Disable progress bars
 ```
 
 ## 💻 Global Installation
@@ -222,6 +238,7 @@ mac-cleaner-cli
 |---|---|
 | ✅ **Open Source** | All code publicly available for audit |
 | ✅ **No Network** | Operates 100% offline |
+| ✅ **No Root Required** | All operations run as current user |
 | ✅ **Minimal Deps** | Only 5 runtime dependencies |
 | ✅ **CI/CD** | Every release tested with TypeScript, ESLint, and automated tests |
 | ✅ **Socket.dev** | Dependencies monitored for supply chain attacks |
@@ -233,22 +250,38 @@ Found a vulnerability? Report it via [GitHub Security Advisories](https://github
 ```bash
 git clone https://github.com/guhcostan/mac-cleaner-cli.git
 cd mac-cleaner-cli
-npm install
-npm run dev      # Run in dev mode
-npm test         # Run tests
-npm run lint     # Run linter
-npm run build    # Build for production
+bun install
+bun run dev      # Run in dev mode
+bun run test     # Run tests
+bun run lint     # Run linter
+bun run build    # Build for production
 ```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are very welcome! Whether it's a new scanner, a bug fix, or a documentation improvement — we'd love your help.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+**Read the full guide:** [CONTRIBUTING.md](CONTRIBUTING.md)
+
+Quick steps:
+1. Fork the repo
+2. Create your branch: `git checkout -b feat/my-feature`
+3. Make your changes and add tests
+4. Run `bun run lint && bun run test`
 5. Open a Pull Request
+
+Looking for a place to start? Check issues labeled [`good first issue`](https://github.com/guhcostan/mac-cleaner-cli/labels/good%20first%20issue) or [`help wanted`](https://github.com/guhcostan/mac-cleaner-cli/labels/help%20wanted).
+
+## 💬 Community
+
+- [GitHub Discussions](https://github.com/guhcostan/mac-cleaner-cli/discussions) — questions, ideas, show & tell
+- [Issues](https://github.com/guhcostan/mac-cleaner-cli/issues) — bug reports and feature requests
+
+## ⭐ Star History
+
+If this tool saved you disk space, a star goes a long way! It helps more Mac users discover this free alternative to paid cleaners.
+
+[![Star History Chart](https://api.star-history.com/svg?repos=guhcostan/mac-cleaner-cli&type=Date)](https://star-history.com/#guhcostan/mac-cleaner-cli&Date)
 
 ## 💚 Support
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a Question / General Discussion
+    url: https://github.com/guhcostan/mac-cleaner-cli/discussions
+    about: Use GitHub Discussions for questions, ideas, and general chat.
+  - name: Security Vulnerability
+    url: https://github.com/guhcostan/mac-cleaner-cli/security/advisories/new
+    about: Please report security vulnerabilities privately.
