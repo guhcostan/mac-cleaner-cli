@@ -9,20 +9,14 @@ updates:
       dev-dependencies:
         patterns:
           - "@types/*"
+          - "@eslint/*"
           - "eslint*"
-          - "typescript"
-          - "vitest"
-          - "tsup"
-          - "tsx"
+          - "typescript*"
+          - "vitest*"
+          - "@vitest/*"
+          - "tsdown"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-
-
-
-
-
-
-
