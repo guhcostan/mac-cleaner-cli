@@ -105,16 +105,9 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     return null;
   }
 
-  let selectedItems: { categoryId: CategoryId; items: CleanableItem[] }[] = [];
-
-  if (options.all) {
-    selectedItems = resultsWithItems.map((r) => ({
-      categoryId: r.category.id,
-      items: r.items,
-    }));
-  } else {
-    selectedItems = await selectItemsInteractively(resultsWithItems);
-  }
+  const selectedItems = options.all
+    ? resultsWithItems.map((r) => ({ categoryId: r.category.id, items: r.items }))
+    : await selectItemsInteractively(resultsWithItems);
 
   if (selectedItems.length === 0) {
     console.log(chalk.yellow('\nNo items selected for cleaning.\n'));
