@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { ExitPromptError } from '@inquirer/core';
 import { interactiveCommand, listCategories, maintenanceCommand, uninstallCommand } from './commands/index.js';
 import { initConfig, configExists, listBackups, cleanOldBackups, loadConfig, formatSize } from './utils/index.js';
+import pkg from '../package.json' with { type: 'json' };
 
 function handleCleanExit(error: unknown) {
   if (error instanceof ExitPromptError) {
@@ -31,7 +32,7 @@ const program = new Command();
 program
   .name('mac-cleaner')
   .description('Open source CLI tool to clean your Mac')
-  .version('1.1.0')
+  .version(pkg.version)
   .option('-r, --risky', 'Include risky categories (downloads, iOS backups, etc)')
   .option('-f, --file-picker', 'Force file picker for ALL categories')
   .option('-A, --absolute-paths', 'Show absolute paths instead of truncated notations')
