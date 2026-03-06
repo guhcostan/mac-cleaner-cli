@@ -67,8 +67,7 @@ export class LaunchAgentsScanner extends BaseScanner {
               modifiedAt: stats.mtime,
             });
           }
-        } catch (error) {
-          // Error processing this plist, skip and continue
+        } catch {
           continue;
         }
       }
