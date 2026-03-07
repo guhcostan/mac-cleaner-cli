@@ -1,7 +1,7 @@
 {
   "name": "mac-cleaner-cli",
   "version": "1.3.1",
-  "description": "Open source CLI tool to clean your Mac - remove junk files, caches, logs, and more",
+  "description": "macOS CLI tool to free up disk space — removes caches, logs, Homebrew leftovers, Xcode DerivedData, and junk files",
   "type": "module",
   "bin": {
     "mac-cleaner-cli": "./dist/index.mjs"
@@ -25,14 +25,21 @@
   },
   "keywords": [
     "mac",
-    "cleaner",
     "macos",
+    "cleaner",
     "cleanup",
-    "cache",
     "cli",
+    "cache",
     "disk-space",
     "system-maintenance",
-    "junk-files"
+    "junk-files",
+    "homebrew",
+    "xcode",
+    "derived-data",
+    "log-cleaner",
+    "disk-cleaner",
+    "developer-tools",
+    "devtools"
   ],
   "author": "guhcostan",
   "license": "MIT",
