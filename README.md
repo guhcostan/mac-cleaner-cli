@@ -1,12 +1,10 @@
 <p align="center">
-  <h1 align="center">🧹 Mac Cleaner CLI</h1>
-  <p align="center">
-    <strong>The free, open-source alternative to CleanMyMac X</strong>
-  </p>
-  <p align="center">
-    Scan and remove junk files, caches, logs, and more — all from your terminal.<br>
-    No subscription. No telemetry. No bloatware.
-  </p>
+  <img src="./assets/banner.png" alt="Mac Cleaner CLI" width="100%">
+</p>
+
+<p align="center">
+  Scan and remove junk files, caches, logs, and more — all from your terminal.<br>
+  No subscription. No telemetry. No bloatware.
 </p>
 
 <p align="center">
