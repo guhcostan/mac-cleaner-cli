@@ -1,9 +1,11 @@
+# mac-cleaner-cli
+
 <p align="center">
-  <img src="./assets/banner.png" alt="Mac Cleaner CLI" width="100%">
+  <img src="./assets/banner.png" alt="mac-cleaner-cli — free macOS disk space cleaner CLI tool" width="100%">
 </p>
 
 <p align="center">
-  Scan and remove junk files, caches, logs, and more — all from your terminal.<br>
+  Free up disk space on macOS with a single command. Removes caches, logs, Homebrew leftovers, Xcode DerivedData, and junk files — all from your terminal.<br>
   No subscription. No telemetry. No bloatware.
 </p>
 
