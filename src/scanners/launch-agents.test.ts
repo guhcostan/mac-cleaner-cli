@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtemp, writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import type { LaunchAgentsScanner as LaunchAgentsScannerType } from './launch-agents.js';
 
 // Create a test home directory reference that can be updated
 let testHome = '/tmp/test-home';
@@ -20,7 +21,7 @@ const { LaunchAgentsScanner } = await import('./launch-agents.js');
 
 describe('LaunchAgentsScanner', () => {
   let testDir: string;
-  let scanner: LaunchAgentsScanner;
+  let scanner: LaunchAgentsScannerType;
   let mockHome: string;
   let mockLaunchAgentsDir: string;
 
