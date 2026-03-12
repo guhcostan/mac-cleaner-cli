@@ -2,7 +2,7 @@
 
 import { Command } from 'commander';
 import { ExitPromptError } from '@inquirer/core';
-import { interactiveCommand, listCategories, maintenanceCommand, uninstallCommand } from './commands/index.js';
+import { interactiveCommand, listCategories, maintenanceCommand, uninstallCommand, autoCleanCommand } from './commands/index.js';
 import { initConfig, configExists, listBackups, cleanOldBackups, loadConfig, formatSize } from './utils/index.js';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -145,6 +145,36 @@ program
     }
 
     console.log('Use --list to show backups or --clean to remove old ones.');
+  });
+
+program
+  .command('auto')
+  .description('Automatically clean dev cache, system cache, temp files, browser cache, and homebrew')
+  .option('--dev', 'Include dev-cache (npm, yarn, Xcode, etc.)')
+  .option('--system', 'Include system-cache and temp-files')
+  .option('--browsers', 'Include browser-cache')
+  .option('--homebrew', 'Include homebrew cache')
+  .option('--all', 'Include all safe categories (default)')
+  .option('-y, --yes', 'Skip confirmation prompts')
+  .option('-d, --dry-run', 'Show what would be cleaned without actually cleaning')
+  .option('--unsafe', 'Include risky categories')
+  .option('--no-progress', 'Disable progress bar')
+  .action(async (options) => {
+    try {
+      await autoCleanCommand({
+        dev: options.dev,
+        system: options.system,
+        browsers: options.browsers,
+        homebrew: options.homebrew,
+        all: options.all,
+        yes: options.yes,
+        dryRun: options.dryRun,
+        unsafe: options.unsafe,
+        noProgress: !options.progress,
+      });
+    } catch (error) {
+      handleCleanExit(error);
+    }
   });
 
 program.parse();

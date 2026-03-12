@@ -13,7 +13,7 @@ const VALID_CATEGORIES: CategoryId[] = [
   'system-cache', 'system-logs', 'browser-cache', 'dev-cache', 
   'node-modules', 'downloads', 'trash', 'temp-files', 'ios-backups',
   'mail-attachments', 'large-files', 'duplicates', 'docker', 
-  'homebrew', 'language-files'
+  'homebrew', 'language-files', 'launch-agents'
 ];
 
 export interface Config {
@@ -28,6 +28,12 @@ export interface Config {
   extraPaths?: {
     nodeModules?: string[];
     projects?: string[];
+  };
+  autoClean?: {
+    enabled?: boolean;
+    categories?: CategoryId[];
+    skipConfirmation?: boolean;
+    dryRun?: boolean;
   };
 }
 
@@ -157,6 +163,31 @@ function validateConfig(config: Partial<Config>): Config {
     }
   }
 
+  // Validate autoClean config
+  if (config.autoClean !== undefined && typeof config.autoClean === 'object') {
+    validated.autoClean = {};
+
+    if (config.autoClean.enabled !== undefined) {
+      validated.autoClean.enabled = Boolean(config.autoClean.enabled);
+    }
+
+    if (config.autoClean.skipConfirmation !== undefined) {
+      validated.autoClean.skipConfirmation = Boolean(config.autoClean.skipConfirmation);
+    }
+
+    if (config.autoClean.dryRun !== undefined) {
+      validated.autoClean.dryRun = Boolean(config.autoClean.dryRun);
+    }
+
+    if (config.autoClean.categories !== undefined) {
+      if (Array.isArray(config.autoClean.categories)) {
+        validated.autoClean.categories = config.autoClean.categories.filter(
+          (cat): cat is CategoryId => VALID_CATEGORIES.includes(cat as CategoryId)
+        );
+      }
+    }
+  }
+
   return validated;
 }
 
@@ -259,6 +290,12 @@ export async function initConfig(): Promise<string> {
     extraPaths: {
       nodeModules: ['~/Projects', '~/Developer', '~/Code'],
       projects: ['~/Projects', '~/Developer', '~/Code'],
+    },
+    autoClean: {
+      enabled: false,
+      categories: ['dev-cache', 'system-cache', 'temp-files', 'browser-cache', 'homebrew'],
+      skipConfirmation: false,
+      dryRun: false,
     },
   };
 
