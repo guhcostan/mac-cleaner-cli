@@ -48,6 +48,9 @@ const FILE_NAME_WIDTH = 35;
 const INDENT = "    ";
 const DIR_VIS_CHILD_LIMIT = 5;
 const EXPAND_INCREMENT = 10;
+const GRAPH_MIN_WIDTH = 0.2;
+const GRAPH_MAX_WIDTH = 20;
+const GRAPH_FRACTIONS = ["▏", "▎", "▍", "▌", "█"];
 
 const DEFAULT_PICKER_STATE: FilePickerState = {
   visible: false,
@@ -601,6 +604,8 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
     lines.push(`${prefix} ${chalk.bold(config.message)}`);
     lines.push("");
 
+    const largestSize = Math.max(...results.map((result) => result.totalSize));
+
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const isSelected = selectedCategories.has(result.category.id);
@@ -610,8 +615,17 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
       const itemCount = `${result.items.length} items`.padEnd(12);
       const size = formatSize(result.totalSize).padStart(10);
 
+      const ratio = largestSize > 0 ? result.totalSize / largestSize : 0;
+      const scaled = Math.max(ratio * GRAPH_MAX_WIDTH, GRAPH_MIN_WIDTH);
+      const fullBlocks = Math.floor(scaled);
+      const remainder = scaled - fullBlocks;
+      const fractionIndex = Math.min(Math.floor(remainder * GRAPH_FRACTIONS.length), GRAPH_FRACTIONS.length - 1);
+      const fullChar = GRAPH_FRACTIONS.at(-1)!;
+      const graphFilled = fullChar.repeat(fullBlocks) + (fullBlocks < GRAPH_MAX_WIDTH ? GRAPH_FRACTIONS[fractionIndex] : "");
+      const graph = chalk.dim(graphFilled);
+
       const caretIndicator = isCaret ? chalk.cyan("> ") : "  ";
-      const line = `${caretIndicator}${checkbox} ${name} ${chalk.dim(itemCount)} ${chalk.yellow(size)}`;
+      const line = `${caretIndicator}${checkbox} ${name} ${chalk.dim(itemCount)} ${chalk.yellow(size)}  ${graph}`;
       lines.push(line);
 
       // Show files inline when:
