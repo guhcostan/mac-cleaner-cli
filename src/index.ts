@@ -39,9 +39,10 @@ program
   .option('--no-progress', 'Disable progress bar')
   .action(async (options) => {
     try {
+      const config = await loadConfig();
       await interactiveCommand({
         includeRisky: options.risky,
-        filePicker: options.filePicker,
+        filePicker: options.filePicker ?? config.filePicker,
         absolutePaths: options.absolutePaths,
         noProgress: !options.progress,
       });
@@ -70,13 +71,15 @@ program
 
 program
   .command('maintenance')
-  .description('Run maintenance tasks (DNS flush, free purgeable space)')
+  .description('Run maintenance tasks (DNS flush, free purgeable space, Time Machine snapshots)')
   .option('--dns', 'Flush DNS cache')
   .option('--purgeable', 'Free purgeable space')
+  .option('--timemachine', 'Delete Time Machine local snapshots')
   .action(async (options) => {
     await maintenanceCommand({
       dns: options.dns,
       purgeable: options.purgeable,
+      timemachine: options.timemachine,
     });
   });
 

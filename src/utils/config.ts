@@ -25,6 +25,7 @@ export interface Config {
   backupRetentionDays?: number;
   parallelScans?: boolean;
   concurrency?: number;
+  filePicker?: boolean;
   extraPaths?: {
     nodeModules?: string[];
     projects?: string[];
@@ -94,6 +95,10 @@ function validateConfig(config: Partial<Config>): Config {
 
   if (config.parallelScans !== undefined) {
     validated.parallelScans = Boolean(config.parallelScans);
+  }
+
+  if (config.filePicker !== undefined) {
+    validated.filePicker = Boolean(config.filePicker);
   }
 
   // Validate category arrays
@@ -265,6 +270,3 @@ export async function initConfig(): Promise<string> {
   await writeFile(configPath, JSON.stringify(defaultConfig, null, 2));
   return configPath;
 }
-
-
-

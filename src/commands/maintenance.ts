@@ -1,10 +1,11 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import { flushDnsCache, freePurgeableSpace, type MaintenanceResult } from '../maintenance/index.js';
+import { flushDnsCache, freePurgeableSpace, clearTimeMachineSnapshots, type MaintenanceResult } from '../maintenance/index.js';
 
 interface MaintenanceCommandOptions {
   dns?: boolean;
   purgeable?: boolean;
+  timemachine?: boolean;
 }
 
 export async function maintenanceCommand(options: MaintenanceCommandOptions): Promise<void> {
@@ -18,9 +19,13 @@ export async function maintenanceCommand(options: MaintenanceCommandOptions): Pr
     tasks.push({ name: 'Free Purgeable Space', fn: freePurgeableSpace });
   }
 
+  if (options.timemachine) {
+    tasks.push({ name: 'Clear Time Machine Snapshots', fn: clearTimeMachineSnapshots });
+  }
+
   if (tasks.length === 0) {
     console.log(chalk.yellow('\nNo maintenance tasks specified.'));
-    console.log(chalk.dim('Use --dns to flush DNS cache or --purgeable to free purgeable space.\n'));
+    console.log(chalk.dim('Use --dns, --purgeable, or --timemachine for maintenance tasks.\n'));
     return;
   }
 
@@ -46,5 +51,3 @@ export async function maintenanceCommand(options: MaintenanceCommandOptions): Pr
 
   console.log();
 }
-
-
