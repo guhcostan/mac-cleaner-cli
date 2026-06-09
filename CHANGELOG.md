@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-06-09
+
+### Fixed
+- README images (banner + demo GIF) now render correctly on npmjs.com using absolute URLs
+
 ## [1.3.3] - 2026-06-09
 
 ### Fixed
@@ -91,7 +96,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Safe / Moderate / Risky safety levels
 - Progress bars and formatted output
 
-[Unreleased]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.3...HEAD
+[Unreleased]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.4...HEAD
+[1.3.4]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.1...v1.3.3
 [1.3.1]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.2.0...v1.3.0
