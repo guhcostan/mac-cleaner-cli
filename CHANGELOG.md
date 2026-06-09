@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-06-09
+
+### Fixed
+- Silence `EPERM` errors when removing system-owned temp files (e.g. `/var/folders/.../T/com.apple.*`) — macOS SIP/TCC returns `EPERM` for these, which is expected and not actionable. Previously flooded output with dozens of error lines.
+
+### Changed
+- Bump `tsdown` from 0.21.10 to 0.22.0
+- Bump `typescript` from 5.9.3 to 6.0.3
+- Add `types: ["node"]` to tsconfig for TypeScript 6 compatibility
+
 ## [1.3.1] - 2026-01-15
 
 ### Changed
@@ -81,7 +91,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Safe / Moderate / Risky safety levels
 - Progress bars and formatted output
 
-[Unreleased]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.3...HEAD
+[1.3.3]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.1...v1.3.3
 [1.3.1]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.1.9...v1.2.0
