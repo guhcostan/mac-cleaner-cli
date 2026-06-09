@@ -270,7 +270,7 @@ export async function removeItem(path: string, dryRun = false): Promise<boolean>
   } catch (error) {
     // Log the error for debugging but don't expose details to potential attackers
     const code = (error as NodeJS.ErrnoException).code;
-    if (code !== 'ENOENT' && code !== 'EACCES') {
+    if (code !== 'ENOENT' && code !== 'EACCES' && code !== 'EPERM') {
       console.error(`Failed to remove ${path}: ${code || 'unknown error'}`);
     }
     return false;
