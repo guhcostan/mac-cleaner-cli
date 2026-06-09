@@ -3,6 +3,12 @@ dist/
 *.log
 .DS_Store
 coverage/
+demo.gif
+.agents/
+.cache/
+.vector-index/
+package-lock.json
+skills-lock.json
 
 
 
