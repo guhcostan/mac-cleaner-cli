@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [1.3.5] - 2026-06-09
+
+### Security
+- Fix TOCTOU race condition in config file loading (`access()` + `readFile()` replaced with direct `readFile()`)
+- Use unpredictable temp directories in tests (`randomBytes` / `mkdtemp` instead of predictable paths)
+
 ## [1.3.4] - 2026-06-09
 
 ### Fixed
@@ -96,7 +102,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Safe / Moderate / Risky safety levels
 - Progress bars and formatted output
 
-[Unreleased]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.4...HEAD
+[Unreleased]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.5...HEAD
+[1.3.5]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.1...v1.3.3
 [1.3.1]: https://github.com/guhcostan/mac-cleaner-cli/compare/v1.3.0...v1.3.1
