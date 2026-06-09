@@ -1,7 +1,7 @@
 # mac-cleaner-cli
 
 <p align="center">
-  <img src="./assets/banner.png" alt="mac-cleaner-cli — free macOS disk space cleaner CLI tool" width="100%">
+  <img src="https://raw.githubusercontent.com/guhcostan/mac-cleaner-cli/main/assets/banner.png" alt="mac-cleaner-cli — free macOS disk space cleaner CLI tool" width="100%">
 </p>
 
 <p align="center">
@@ -54,7 +54,7 @@ That's it. No installation needed. The CLI will:
 ## 🎬 See It In Action
 
 <p align="center">
-  <img src="./assets/demo.gif" alt="mac-cleaner-cli demo" width="100%">
+  <img src="https://raw.githubusercontent.com/guhcostan/mac-cleaner-cli/main/assets/demo.gif" alt="mac-cleaner-cli demo" width="100%">
 </p>
 
 ## ✨ Features
