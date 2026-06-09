@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdir, rm, writeFile } from 'fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import * as backup from './backup.js';
@@ -139,8 +139,7 @@ describe('backup utilities', () => {
 
     it('should reject restore from invalid backup directory', async () => {
       // Try to restore from a directory outside the backup location
-      const invalidDir = join(tmpdir(), 'invalid-backup-' + Date.now());
-      await mkdir(invalidDir, { recursive: true });
+      const invalidDir = await mkdtemp(join(tmpdir(), 'invalid-backup-'));
       await writeFile(join(invalidDir, 'file.txt'), 'malicious content');
 
       const result = await backup.restoreBackup(invalidDir);

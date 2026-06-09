@@ -198,7 +198,6 @@ export async function loadConfig(configPath?: string): Promise<Config> {
 
   for (const path of paths) {
     try {
-      await access(path);
       const content = await readFile(path, 'utf-8');
       
       // Limit config file size to prevent DoS

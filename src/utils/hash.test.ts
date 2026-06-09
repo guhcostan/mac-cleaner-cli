@@ -2,10 +2,11 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { randomBytes } from 'crypto';
 import { getFileHash, getFileHashPartial } from './hash.js';
 
 describe('hash utilities', () => {
-  const testDir = join(tmpdir(), 'mac-cleaner-hash-test');
+  const testDir = join(tmpdir(), `mac-cleaner-hash-test-${randomBytes(8).toString('hex')}`);
 
   afterEach(async () => {
     await rm(testDir, { recursive: true, force: true });
