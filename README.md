@@ -53,49 +53,9 @@ That's it. No installation needed. The CLI will:
 
 ## 🎬 See It In Action
 
-```
-$ npx mac-cleaner-cli
-
-🧹 Mac Cleaner CLI
-──────────────────────────────────────────────────────
-
-Scanning your Mac for cleanable files...
-
-Found 44.8 GB that can be cleaned:
-
-? Select categories to clean (space to toggle, enter to confirm):
-❯ ◯ ● Trash                            2.1 GB (45 items)
-  ◯ ● Browser Cache                    1.5 GB (3 items)
-  ◯ ● Temporary Files                549.2 MB (622 items)
-  ◯ ● User Cache Files                15.5 GB (118 items)
-  ◯ ● Development Cache               21.9 GB (14 items)
-↑↓ navigate • ← back • → enter • space select • a all • i invert • ⏎ submit
-
-# Press → on a supported category to browse and select specific folders/files
-? Browsing: Root Scan Results
-❯ ◯ 📂 com.apple.Safari                         1.2 GB
-  ◯ 📂 com.google.Chrome                        2.3 GB
-  ◯ 📂 com.spotify.client                     824.1 MB
-↑↓ navigate • ← back • → enter • space select • a all • i invert • ⏎ submit
-
-Summary:
-  Items to delete: 802
-  Space to free: 41.5 GB
-
-? Proceed with cleaning? (Y/n)
-
-✓ Cleaning Complete!
-──────────────────────────────────────────────────────
-  Trash                          ✓ 2.1 GB freed
-  Browser Cache                  ✓ 1.5 GB freed
-  Temporary Files                ✓ 549.2 MB freed
-  User Cache Files               ✓ 15.5 GB freed
-  Development Cache              ✓ 21.9 GB freed
-
-──────────────────────────────────────────────────────
-🎉 Freed 41.5 GB of disk space!
-   Cleaned 802 items
-```
+<p align="center">
+  <img src="./assets/demo.gif" alt="mac-cleaner-cli demo" width="100%">
+</p>
 
 ## ✨ Features
 
