@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://guhcostan.github.io/mac-cleaner-cli/sitemap.xml

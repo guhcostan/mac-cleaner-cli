@@ -3,17 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>mac-cleaner-cli — Free macOS disk cleaner for your terminal</title>
-  <meta name="description" content="Free up disk space on macOS with a single command. Removes caches, logs, Homebrew leftovers, Xcode DerivedData, and junk files. Free, open source, no telemetry.">
+  <title>mac-cleaner-cli — Free, Open Source Mac Cleaner for the Terminal</title>
+  <meta name="description" content="Free up disk space on macOS with one command. A free, open-source CleanMyMac alternative that removes caches, logs, Homebrew leftovers, Xcode DerivedData, and junk files. No subscription, no telemetry.">
+  <link rel="canonical" href="https://guhcostan.github.io/mac-cleaner-cli/">
+  <meta name="theme-color" content="#0b0e14">
   <link rel="icon" href="https://raw.githubusercontent.com/guhcostan/mac-cleaner-cli/main/assets/icon.png">
 
   <!-- Open Graph / Twitter -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="mac-cleaner-cli — Free macOS disk cleaner for your terminal">
+  <meta property="og:site_name" content="mac-cleaner-cli">
+  <meta property="og:title" content="mac-cleaner-cli — Free, Open Source Mac Cleaner for the Terminal">
   <meta property="og:description" content="Free up disk space on macOS with a single command. No subscription. No telemetry. No bloatware.">
   <meta property="og:image" content="https://raw.githubusercontent.com/guhcostan/mac-cleaner-cli/main/assets/social-preview.png">
   <meta property="og:url" content="https://guhcostan.github.io/mac-cleaner-cli/">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="mac-cleaner-cli — Free, Open Source Mac Cleaner for the Terminal">
+  <meta name="twitter:description" content="Free up disk space on macOS with a single command. No subscription. No telemetry. No bloatware.">
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "mac-cleaner-cli",
+        "operatingSystem": "macOS",
+        "applicationCategory": "UtilitiesApplication",
+        "description": "Free, open-source macOS CLI tool that frees up disk space by removing caches, logs, Homebrew leftovers, Xcode DerivedData, orphaned node_modules, and junk files.",
+        "url": "https://guhcostan.github.io/mac-cleaner-cli/",
+        "downloadUrl": "https://www.npmjs.com/package/mac-cleaner-cli",
+        "installUrl": "https://www.npmjs.com/package/mac-cleaner-cli",
+        "license": "https://opensource.org/licenses/MIT",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": { "@type": "Person", "name": "Gustavo Costa", "url": "https://github.com/guhcostan" },
+        "sameAs": [
+          "https://github.com/guhcostan/mac-cleaner-cli",
+          "https://www.npmjs.com/package/mac-cleaner-cli"
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is mac-cleaner-cli safe to use?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. Nothing is deleted without your explicit confirmation, every category has a clear safety rating, and risky categories are hidden unless you opt in. Protected system paths can never be deleted, and you can preview any operation with --dry-run. The code is fully open source under the MIT license, so you can audit exactly what it does." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is it really free? What's the catch?",
+            "acceptedAnswer": { "@type": "Answer", "text": "There is no catch. mac-cleaner-cli is MIT-licensed open source software with no subscription, no trial, no telemetry, and no upsells. It exists because paying $40+/year for disk cleanup felt wrong." }
+          },
+          {
+            "@type": "Question",
+            "name": "How is it different from CleanMyMac and similar apps?",
+            "acceptedAnswer": { "@type": "Answer", "text": "It does the core job — reclaiming disk space from caches, logs, and developer junk — without a paid subscription, background daemons, or telemetry. Being a CLI, it is also fully scriptable: you can automate weekly cleanups with cron or CI using non-interactive commands." }
+          },
+          {
+            "@type": "Question",
+            "name": "What kind of files does it clean?",
+            "acceptedAnswer": { "@type": "Answer", "text": "16 categories: user and system caches, logs, temporary files, Trash, browser caches, Homebrew cache, Docker leftovers, Xcode DerivedData and other development caches, orphaned node_modules, old downloads, iOS backups, mail attachments, unused language files, large files, duplicates, and orphaned launch agents." }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need to install anything?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No permanent install is required — run 'npx mac-cleaner-cli' with Node.js 20 or newer and it just works. You can also install it globally with 'npm install -g mac-cleaner-cli'." }
+          },
+          {
+            "@type": "Question",
+            "name": "How much disk space can I expect to free?",
+            "acceptedAnswer": { "@type": "Answer", "text": "It depends on how you use your Mac. Developers commonly recover 10–30 GB from Xcode DerivedData, npm/yarn caches, Docker images, and orphaned node_modules alone. Regular users typically free several gigabytes of caches, logs, and forgotten files." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 
   <style>
     :root {
@@ -211,6 +277,26 @@
     .yes { color: var(--accent); font-weight: 700; }
     .no { color: var(--red); }
 
+    /* FAQ */
+    .faq { max-width: 720px; margin: 0 auto; }
+    .faq details {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      margin-bottom: 10px; overflow: hidden;
+    }
+    .faq summary {
+      cursor: pointer; padding: 16px 20px; font-weight: 600; font-size: 15.5px;
+      list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: "+"; color: var(--text-dim); font-size: 20px; font-weight: 400; flex-shrink: 0; }
+    .faq details[open] summary::after { content: "–"; }
+    .faq details[open] summary { color: var(--accent); }
+    .faq .answer { padding: 0 20px 18px; color: var(--text-dim); font-size: 14.5px; }
+    .faq .answer code {
+      font-family: var(--mono); font-size: 12.5px; color: var(--accent);
+      background: rgba(52, 211, 153, .08); padding: 1px 6px; border-radius: 5px;
+    }
+
     /* CTA */
     .cta { text-align: center; }
     .cta .buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
@@ -253,6 +339,7 @@
       <a href="#features">Features</a>
       <a href="#categories">What it cleans</a>
       <a href="#automation">Automation</a>
+      <a href="#faq">FAQ</a>
       <a href="https://www.npmjs.com/package/mac-cleaner-cli">npm</a>
       <a class="btn-star" href="https://github.com/guhcostan/mac-cleaner-cli">★ Star on GitHub</a>
     </div>
@@ -431,8 +518,8 @@
 <section class="alt">
   <div class="container">
     <div class="section-head">
-      <h2>Why pay for a Mac cleaner?</h2>
-      <p>Popular cleanup apps charge $40+ per year for what your terminal can do for free.</p>
+      <h2>A free alternative to paid Mac cleaners</h2>
+      <p>Apps like CleanMyMac charge $40+ per year for what your terminal can do for free.</p>
     </div>
     <div class="compare">
       <table>
@@ -448,6 +535,41 @@
           <tr><td>Background daemons</td><td class="yes">None</td><td class="no">Always running</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="container">
+    <div class="section-head">
+      <h2>Frequently asked questions</h2>
+      <p>Everything you might want to know before running it.</p>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Is mac-cleaner-cli safe to use?</summary>
+        <div class="answer">Yes. Nothing is deleted without your explicit confirmation, every category has a clear safety rating, and risky categories are hidden unless you opt in. Protected system paths can never be deleted, and you can preview any operation with <code>--dry-run</code>. The code is fully open source under the MIT license, so you can audit exactly what it does.</div>
+      </details>
+      <details>
+        <summary>Is it really free? What's the catch?</summary>
+        <div class="answer">There is no catch. mac-cleaner-cli is MIT-licensed open source software with no subscription, no trial, no telemetry, and no upsells. It exists because paying $40+/year for disk cleanup felt wrong.</div>
+      </details>
+      <details>
+        <summary>How is it different from CleanMyMac and similar apps?</summary>
+        <div class="answer">It does the core job — reclaiming disk space from caches, logs, and developer junk — without a paid subscription, background daemons, or telemetry. Being a CLI, it is also fully scriptable: you can automate weekly cleanups with cron or CI using non-interactive commands.</div>
+      </details>
+      <details>
+        <summary>What kind of files does it clean?</summary>
+        <div class="answer">16 categories: user and system caches, logs, temporary files, Trash, browser caches, Homebrew cache, Docker leftovers, Xcode DerivedData and other development caches, orphaned node_modules, old downloads, iOS backups, mail attachments, unused language files, large files, duplicates, and orphaned launch agents.</div>
+      </details>
+      <details>
+        <summary>Do I need to install anything?</summary>
+        <div class="answer">No permanent install is required — run <code>npx mac-cleaner-cli</code> with Node.js 20 or newer and it just works. You can also install it globally with <code>npm install -g mac-cleaner-cli</code>.</div>
+      </details>
+      <details>
+        <summary>How much disk space can I expect to free?</summary>
+        <div class="answer">It depends on how you use your Mac. Developers commonly recover 10–30 GB from Xcode DerivedData, npm/yarn caches, Docker images, and orphaned node_modules alone. Regular users typically free several gigabytes of caches, logs, and forgotten files.</div>
+      </details>
     </div>
   </div>
 </section>

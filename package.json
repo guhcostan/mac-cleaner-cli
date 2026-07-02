@@ -50,7 +50,7 @@
   "bugs": {
     "url": "https://github.com/guhcostan/mac-cleaner-cli/issues"
   },
-  "homepage": "https://github.com/guhcostan/mac-cleaner-cli#readme",
+  "homepage": "https://guhcostan.github.io/mac-cleaner-cli/",
   "devDependencies": {
     "@eslint/js": "10",
     "@types/bun": "^1.2.7",
