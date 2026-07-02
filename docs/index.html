@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mac-cleaner-cli — Free macOS disk cleaner for your terminal</title>
+  <meta name="description" content="Free up disk space on macOS with a single command. Removes caches, logs, Homebrew leftovers, Xcode DerivedData, and junk files. Free, open source, no telemetry.">
+  <link rel="icon" href="https://raw.githubusercontent.com/guhcostan/mac-cleaner-cli/main/assets/icon.png">
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="mac-cleaner-cli — Free macOS disk cleaner for your terminal">
+  <meta property="og:description" content="Free up disk space on macOS with a single command. No subscription. No telemetry. No bloatware.">
+  <meta property="og:image" content="https://raw.githubusercontent.com/guhcostan/mac-cleaner-cli/main/assets/social-preview.png">
+  <meta property="og:url" content="https://guhcostan.github.io/mac-cleaner-cli/">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --bg-alt: #10141d;
+      --surface: #151a25;
+      --border: #232a3a;
+      --text: #e6e9f0;
+      --text-dim: #8b93a7;
+      --accent: #34d399;
+      --accent-dark: #10b981;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --cyan: #67e8f9;
+      --mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* ---------- Nav ---------- */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(11, 14, 20, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--text);
+    }
+    .logo img { width: 26px; height: 26px; border-radius: 6px; }
+    .logo:hover { text-decoration: none; }
+    .nav-links { display: flex; align-items: center; gap: 22px; font-size: 14px; }
+    .nav-links a { color: var(--text-dim); }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .btn-star {
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 6px 14px; border-radius: 8px; color: var(--text) !important;
+      font-weight: 600;
+    }
+    .btn-star:hover { border-color: var(--accent); }
+
+    /* ---------- Hero ---------- */
+    .hero { padding: 88px 0 64px; text-align: center; position: relative; overflow: hidden; }
+    .hero::before {
+      content: ""; position: absolute; inset: -40% 20% auto;
+      height: 500px;
+      background: radial-gradient(ellipse at center, rgba(52, 211, 153, 0.12), transparent 65%);
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-size: clamp(34px, 6vw, 58px);
+      font-weight: 800; letter-spacing: -0.03em; line-height: 1.12;
+    }
+    .hero h1 .accent { color: var(--accent); }
+    .hero .sub {
+      margin: 20px auto 0; max-width: 640px;
+      color: var(--text-dim); font-size: 19px;
+    }
+    .hero .promise {
+      margin-top: 14px; font-size: 15px; color: var(--text-dim);
+      display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
+    }
+    .hero .promise span::before { content: "✓ "; color: var(--accent); font-weight: 700; }
+
+    .install-box {
+      margin: 36px auto 0; max-width: 430px;
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 18px;
+      font-family: var(--mono); font-size: 16px;
+    }
+    .install-box .prompt { color: var(--accent); user-select: none; }
+    .install-box code { flex: 1; text-align: left; color: var(--text); }
+    .copy-btn {
+      background: none; border: 1px solid var(--border); border-radius: 7px;
+      color: var(--text-dim); cursor: pointer; padding: 5px 10px; font-size: 12px;
+      font-family: var(--sans); transition: all .15s;
+    }
+    .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .hero .hint { margin-top: 12px; font-size: 13px; color: var(--text-dim); }
+
+    /* ---------- Terminal ---------- */
+    .terminal-wrap { padding: 48px 0 0; }
+    .terminal {
+      max-width: 760px; margin: 0 auto;
+      background: #0d1117; border: 1px solid var(--border); border-radius: 14px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.55);
+      overflow: hidden; text-align: left;
+    }
+    .terminal-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+    .terminal-title { margin-left: 10px; font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+    .terminal-body {
+      padding: 20px 22px; font-family: var(--mono); font-size: 13.5px; line-height: 1.75;
+      overflow-x: auto; white-space: pre;
+    }
+    .t-dim { color: var(--text-dim); }
+    .t-green { color: var(--accent); }
+    .t-yellow { color: var(--yellow); }
+    .t-red { color: var(--red); }
+    .t-cyan { color: var(--cyan); }
+    .t-bold { font-weight: 700; }
+    .t-bar { color: #3b4459; }
+
+    /* ---------- Sections ---------- */
+    section { padding: 84px 0; }
+    section.alt { background: var(--bg-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .section-head { text-align: center; max-width: 620px; margin: 0 auto 52px; }
+    .section-head h2 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; letter-spacing: -0.02em; }
+    .section-head p { margin-top: 12px; color: var(--text-dim); font-size: 17px; }
+
+    /* Features grid */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: 26px; transition: border-color .2s, transform .2s;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .card .icon { font-size: 26px; }
+    .card h3 { margin: 12px 0 6px; font-size: 17px; font-weight: 700; }
+    .card p { color: var(--text-dim); font-size: 14.5px; }
+    .card code {
+      font-family: var(--mono); font-size: 12.5px; color: var(--accent);
+      background: rgba(52, 211, 153, .08); padding: 1px 6px; border-radius: 5px;
+    }
+
+    /* Categories */
+    .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+    .cat {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 16px; font-size: 14px;
+    }
+    .cat .safety { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .safety.safe { background: var(--accent); }
+    .safety.moderate { background: var(--yellow); }
+    .safety.risky { background: var(--red); }
+    .legend { display: flex; gap: 22px; justify-content: center; margin-top: 26px; font-size: 13.5px; color: var(--text-dim); }
+    .legend span { display: flex; align-items: center; gap: 7px; }
+
+    /* Automation */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
+    .split h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 800; letter-spacing: -0.02em; }
+    .split .lead { margin-top: 14px; color: var(--text-dim); font-size: 16.5px; }
+    .split ul { margin-top: 18px; list-style: none; }
+    .split li { padding: 7px 0; color: var(--text-dim); font-size: 15px; }
+    .split li::before { content: "→ "; color: var(--accent); font-family: var(--mono); }
+    .split li code { font-family: var(--mono); color: var(--text); font-size: 13.5px; }
+    .codeblock {
+      background: #0d1117; border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px 22px; font-family: var(--mono); font-size: 13px; line-height: 1.8;
+      overflow-x: auto; white-space: pre;
+    }
+
+    /* Comparison */
+    .compare { max-width: 720px; margin: 0 auto; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .compare table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+    .compare th, .compare td { padding: 14px 20px; text-align: left; }
+    .compare thead { background: var(--surface); }
+    .compare th:nth-child(2) { color: var(--accent); }
+    .compare tbody tr { border-top: 1px solid var(--border); }
+    .compare td:nth-child(2), .compare td:nth-child(3) { text-align: center; }
+    .yes { color: var(--accent); font-weight: 700; }
+    .no { color: var(--red); }
+
+    /* CTA */
+    .cta { text-align: center; }
+    .cta .buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+    .btn {
+      display: inline-block; padding: 13px 28px; border-radius: 10px;
+      font-weight: 700; font-size: 15.5px; transition: all .15s;
+    }
+    .btn:hover { text-decoration: none; transform: translateY(-1px); }
+    .btn-primary { background: var(--accent-dark); color: #04110b; }
+    .btn-primary:hover { background: var(--accent); }
+    .btn-ghost { border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+    .btn-ghost:hover { border-color: var(--accent); }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--border); padding: 44px 0; }
+    .footer-inner {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 18px; font-size: 14px; color: var(--text-dim);
+    }
+    .footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
+    .footer-links a { color: var(--text-dim); }
+    .footer-links a:hover { color: var(--text); }
+
+    @media (max-width: 780px) {
+      .split { grid-template-columns: 1fr; }
+      .terminal-body { font-size: 11.5px; }
+      .nav-links a:not(.btn-star) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="container nav-inner">
+    <a class="logo" href="#">
+      <img src="https://raw.githubusercontent.com/guhcostan/mac-cleaner-cli/main/assets/icon.png" alt="">
+      mac-cleaner-cli
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#categories">What it cleans</a>
+      <a href="#automation">Automation</a>
+      <a href="https://www.npmjs.com/package/mac-cleaner-cli">npm</a>
+      <a class="btn-star" href="https://github.com/guhcostan/mac-cleaner-cli">★ Star on GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <h1>Your Mac is full of junk.<br><span class="accent">One command</span> cleans it.</h1>
+    <p class="sub">
+      A free, open-source CLI that frees up gigabytes of disk space — caches, logs,
+      Homebrew leftovers, Xcode DerivedData, orphaned node_modules, and more.
+    </p>
+    <div class="promise">
+      <span>No subscription</span>
+      <span>No telemetry</span>
+      <span>No bloatware</span>
+      <span>MIT licensed</span>
+    </div>
+
+    <div class="install-box">
+      <span class="prompt">$</span>
+      <code id="install-cmd">npx mac-cleaner-cli</code>
+      <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
+    </div>
+    <p class="hint">Requires Node.js ≥ 20 · macOS only · nothing is deleted without your confirmation</p>
+  </div>
+
+  <div class="container terminal-wrap">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="terminal-title">mac-cleaner-cli — zsh</span>
+      </div>
+      <div class="terminal-body"><span class="t-green">$</span> npx mac-cleaner-cli
+
+<span class="t-cyan t-bold">🧹 Mac Cleaner CLI</span>
+<span class="t-bar">──────────────────────────────────────────────────</span>
+
+<span class="t-cyan">Scanning your Mac for cleanable files...</span>
+
+<span class="t-bold">Found <span class="t-green">18.4 GB</span> that can be cleaned:</span>
+
+<span class="t-cyan">?</span> <span class="t-bold">Select categories to clean</span> <span class="t-dim">(space to toggle, enter to confirm)</span>
+<span class="t-cyan">></span> <span class="t-green">◉</span> Development Cache         <span class="t-dim">14 items</span>    <span class="t-yellow">   8.2 GB</span>  <span class="t-bar">████████████████████</span>
+  <span class="t-green">◉</span> User Cache Files          <span class="t-dim">118 items</span>   <span class="t-yellow">   5.1 GB</span>  <span class="t-bar">████████████▌</span>
+  <span class="t-green">◉</span> Node Modules              <span class="t-dim">7 items</span>     <span class="t-yellow">   2.6 GB</span>  <span class="t-bar">██████▍</span>
+  <span class="t-dim">◯</span> Trash                     <span class="t-dim">45 items</span>    <span class="t-yellow">   1.4 GB</span>  <span class="t-bar">███▍</span>
+  <span class="t-dim">◯</span> Browser Cache             <span class="t-dim">3 items</span>     <span class="t-yellow"> 581.5 MB</span>  <span class="t-bar">█▌</span>
+  <span class="t-dim">◯</span> Homebrew Cache            <span class="t-dim">12 items</span>    <span class="t-yellow"> 402.9 MB</span>  <span class="t-bar">█</span>
+
+<span class="t-green t-bold">✓ Cleaning Complete!</span>
+<span class="t-bar">──────────────────────────────────────────────────</span>
+<span class="t-bold">🎉 Freed <span class="t-green">15.9 GB</span> of disk space!</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="container">
+    <div class="section-head">
+      <h2>Built for developers, safe for everyone</h2>
+      <p>You see everything before it happens, and you choose exactly what gets removed.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="icon">🎯</div>
+        <h3>Interactive selection</h3>
+        <p>Scan first, then pick categories — or drill into individual folders and files with the built-in file picker. Nothing is deleted without confirmation.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🚦</div>
+        <h3>Safety levels</h3>
+        <p>Every category is classified <span style="color:var(--accent)">safe</span>, <span style="color:var(--yellow)">moderate</span>, or <span style="color:var(--red)">risky</span>. Risky ones (downloads, iOS backups) are hidden unless you explicitly opt in.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🤖</div>
+        <h3>Automation-ready</h3>
+        <p>Non-interactive <code>scan --json</code> and <code>clean --yes</code> commands make it perfect for cron jobs, scripts, and CI.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🔍</div>
+        <h3>Dry-run everything</h3>
+        <p>Preview exactly what would be removed with <code>--dry-run</code> before committing to anything.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🗑️</div>
+        <h3>App uninstaller</h3>
+        <p>Remove applications completely — preferences, caches, launch agents, and support files included. No leftovers.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🔧</div>
+        <h3>Maintenance tasks</h3>
+        <p>Flush DNS, free purgeable space, and delete local Time Machine snapshots that can silently eat hundreds of gigabytes.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🛡️</div>
+        <h3>Hardened by design</h3>
+        <p>Protected-path guards, TOCTOU re-checks before deletion, symlink-safe removal, and command-injection-proof execution.</p>
+      </div>
+      <div class="card">
+        <div class="icon">📖</div>
+        <h3>100% open source</h3>
+        <p>MIT licensed, fully tested TypeScript. Read every line of what runs on your machine — or contribute your own scanner.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="categories" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <h2>What it cleans</h2>
+      <p>16 categories of junk, each with a clear safety rating.</p>
+    </div>
+    <div class="cat-grid">
+      <div class="cat"><span class="safety safe"></span>Temporary Files</div>
+      <div class="cat"><span class="safety safe"></span>Trash</div>
+      <div class="cat"><span class="safety safe"></span>Browser Cache</div>
+      <div class="cat"><span class="safety safe"></span>Homebrew Cache</div>
+      <div class="cat"><span class="safety safe"></span>Docker (unused images)</div>
+      <div class="cat"><span class="safety moderate"></span>User Cache Files</div>
+      <div class="cat"><span class="safety moderate"></span>System Log Files</div>
+      <div class="cat"><span class="safety moderate"></span>Development Cache</div>
+      <div class="cat"><span class="safety moderate"></span>Orphaned node_modules</div>
+      <div class="cat"><span class="safety moderate"></span>Orphaned Launch Agents</div>
+      <div class="cat"><span class="safety risky"></span>Old Downloads</div>
+      <div class="cat"><span class="safety risky"></span>iOS Backups</div>
+      <div class="cat"><span class="safety risky"></span>Mail Attachments</div>
+      <div class="cat"><span class="safety risky"></span>Language Files</div>
+      <div class="cat"><span class="safety risky"></span>Large Files (review)</div>
+      <div class="cat"><span class="safety risky"></span>Duplicate Files</div>
+    </div>
+    <div class="legend">
+      <span><span class="safety safe"></span>Safe — selected freely</span>
+      <span><span class="safety moderate"></span>Moderate — apps may rebuild</span>
+      <span><span class="safety risky"></span>Risky — opt-in only</span>
+    </div>
+  </div>
+</section>
+
+<section id="automation">
+  <div class="container split">
+    <div>
+      <h2>Script it. Schedule it.<br>Forget about it.</h2>
+      <p class="lead">
+        Every scan and clean works without a UI, so your Mac can stay clean on autopilot.
+      </p>
+      <ul>
+        <li><code>scan --json</code> — machine-readable output for scripts and integrations</li>
+        <li><code>clean --categories trash,browser-cache --yes</code> — perfect for a weekly cron job</li>
+        <li><code>clean --all --dry-run</code> — see the full report without touching a file</li>
+        <li>Risky categories are always excluded unless you pass <code>--unsafe</code></li>
+      </ul>
+    </div>
+    <div class="codeblock"><span class="t-dim"># See what's reclaimable, as JSON</span>
+<span class="t-green">$</span> mac-cleaner-cli scan --json | jq .totalSize
+<span class="t-yellow">19758418935</span>
+
+<span class="t-dim"># Weekly cleanup, no prompts</span>
+<span class="t-green">$</span> mac-cleaner-cli clean \
+    --categories trash,browser-cache,homebrew \
+    --yes
+
+<span class="t-green">✓ Cleaning Complete</span>
+<span class="t-dim">Freed: <span class="t-green">2.4 GB</span></span></div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="container">
+    <div class="section-head">
+      <h2>Why pay for a Mac cleaner?</h2>
+      <p>Popular cleanup apps charge $40+ per year for what your terminal can do for free.</p>
+    </div>
+    <div class="compare">
+      <table>
+        <thead>
+          <tr><th></th><th>mac-cleaner-cli</th><th>Paid cleaner apps</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Price</td><td class="yes">Free forever</td><td class="no">$40+/year</td></tr>
+          <tr><td>Open source</td><td class="yes">✓</td><td class="no">✗</td></tr>
+          <tr><td>Telemetry &amp; upsells</td><td class="yes">None</td><td class="no">Built in</td></tr>
+          <tr><td>Scriptable / automatable</td><td class="yes">✓</td><td class="no">✗</td></tr>
+          <tr><td>Runs in your terminal</td><td class="yes">✓</td><td class="no">✗</td></tr>
+          <tr><td>Background daemons</td><td class="yes">None</td><td class="no">Always running</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="container">
+    <div class="section-head" style="margin-bottom:0">
+      <h2>Reclaim your disk space now</h2>
+      <p>One command. No install. Gigabytes back in minutes.</p>
+    </div>
+    <div class="install-box">
+      <span class="prompt">$</span>
+      <code>npx mac-cleaner-cli</code>
+      <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
+    </div>
+    <div class="buttons">
+      <a class="btn btn-primary" href="https://github.com/guhcostan/mac-cleaner-cli">View on GitHub</a>
+      <a class="btn btn-ghost" href="https://www.npmjs.com/package/mac-cleaner-cli">View on npm</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container footer-inner">
+    <div>
+      <strong style="color:var(--text)">mac-cleaner-cli</strong> · MIT License · Made by
+      <a href="https://github.com/guhcostan">@guhcostan</a>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/guhcostan/mac-cleaner-cli">GitHub</a>
+      <a href="https://www.npmjs.com/package/mac-cleaner-cli">npm</a>
+      <a href="https://github.com/guhcostan/mac-cleaner-cli/issues">Issues</a>
+      <a href="https://ko-fi.com/guhcostan">Support on Ko-fi ♥</a>
+      <a href="https://github.com/guhcostan/windows-cleaner-cli">Windows version</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function copyCmd(btn) {
+    navigator.clipboard.writeText('npx mac-cleaner-cli').then(() => {
+      const prev = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = prev; }, 1500);
+    });
+  }
+</script>
+
+</body>
+</html>
