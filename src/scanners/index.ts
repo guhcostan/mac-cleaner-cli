@@ -92,48 +92,7 @@ export async function runAllScans(
   options?: ParallelScanOptions,
   onProgress?: (scanner: Scanner, result: ScanResult) => void
 ): Promise<ScanSummary> {
-  const scanners = getAllScanners();
-  const parallel = options?.parallel ?? true;
-  const concurrency = options?.concurrency ?? 4;
-
-  let completed = 0;
-  const total = scanners.length;
-
-  if (parallel) {
-    const tasks = scanners.map((scanner) => ({
-      label: scanner.category.id,
-      fn: async () => {
-        const result = await scanner.scan(options);
-        completed++;
-        options?.onProgress?.(completed, total, scanner, result);
-        onProgress?.(scanner, result);
-        return { scanner, result };
-      },
-    }));
-
-    const scanResults = await runWithConcurrency(tasks, concurrency);
-    const results = scanResults.map((r) => r.result);
-
-    const totalSize = results.reduce((sum, r) => sum + r.totalSize, 0);
-    const totalItems = results.reduce((sum, r) => sum + r.items.length, 0);
-
-    return { results, totalSize, totalItems };
-  } else {
-    const results: ScanResult[] = [];
-
-    for (const scanner of scanners) {
-      const result = await scanner.scan(options);
-      results.push(result);
-      completed++;
-      options?.onProgress?.(completed, total, scanner, result);
-      onProgress?.(scanner, result);
-    }
-
-    const totalSize = results.reduce((sum, r) => sum + r.totalSize, 0);
-    const totalItems = results.reduce((sum, r) => sum + r.items.length, 0);
-
-    return { results, totalSize, totalItems };
-  }
+  return runScans(getAllScanners().map((s) => s.category.id), options, onProgress);
 }
 
 export async function runScans(
@@ -147,6 +106,7 @@ export async function runScans(
 
   let completed = 0;
   const total = scanners.length;
+  let results: ScanResult[];
 
   if (parallel) {
     const tasks = scanners.map((scanner) => ({
@@ -156,19 +116,13 @@ export async function runScans(
         completed++;
         options?.onProgress?.(completed, total, scanner, result);
         onProgress?.(scanner, result);
-        return { scanner, result };
+        return result;
       },
     }));
 
-    const scanResults = await runWithConcurrency(tasks, concurrency);
-    const results = scanResults.map((r) => r.result);
-
-    const totalSize = results.reduce((sum, r) => sum + r.totalSize, 0);
-    const totalItems = results.reduce((sum, r) => sum + r.items.length, 0);
-
-    return { results, totalSize, totalItems };
+    results = await runWithConcurrency(tasks, concurrency);
   } else {
-    const results: ScanResult[] = [];
+    results = [];
 
     for (const scanner of scanners) {
       const result = await scanner.scan(options);
@@ -177,12 +131,12 @@ export async function runScans(
       options?.onProgress?.(completed, total, scanner, result);
       onProgress?.(scanner, result);
     }
-
-    const totalSize = results.reduce((sum, r) => sum + r.totalSize, 0);
-    const totalItems = results.reduce((sum, r) => sum + r.items.length, 0);
-
-    return { results, totalSize, totalItems };
   }
+
+  const totalSize = results.reduce((sum, r) => sum + r.totalSize, 0);
+  const totalItems = results.reduce((sum, r) => sum + r.items.length, 0);
+
+  return { results, totalSize, totalItems };
 }
 
 export {

@@ -6,3 +6,4 @@ export * from './backup.js';
 export * from './config.js';
 export * from './hash.js';
 export * from './checkbox.js';
+export * from './fda.js';

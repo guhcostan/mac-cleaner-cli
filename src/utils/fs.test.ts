@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, writeFile, mkdir, rm, symlink, readFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir, homedir } from 'os';
@@ -10,7 +10,8 @@ import {
   getDirectoryItems,
   isProtectedPath,
   validatePathSafety,
-  removeItem
+  removeItem,
+  removeItems
 } from './fs.js';
 
 describe('fs utils', () => {
@@ -311,6 +312,42 @@ describe('fs utils', () => {
     it('should return false for non-existent path', async () => {
       const result = await removeItem(join(testDir, 'nonexistent'));
       expect(result).toBe(false);
+    });
+  });
+
+  describe('removeItems', () => {
+    it('should report per-item failures with error codes', async () => {
+      const filePath = join(testDir, 'ok.txt');
+      await writeFile(filePath, 'content');
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await removeItems([
+        { path: filePath, size: 7, name: 'ok.txt', isDirectory: false },
+        { path: '/System/Library', size: 0, name: 'Library', isDirectory: true },
+        { path: join(testDir, 'nonexistent'), size: 0, name: 'nonexistent', isDirectory: false },
+      ]);
+
+      expect(result.success).toBe(1);
+      expect(result.failed).toBe(2);
+      expect(result.freedSpace).toBe(7);
+      expect(result.failures).toEqual([
+        { path: '/System/Library', error: 'PROTECTED' },
+        { path: join(testDir, 'nonexistent'), error: 'ENOENT' },
+      ]);
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should report no failures on dry run', async () => {
+      const result = await removeItems(
+        [{ path: '/System/Library', size: 0, name: 'Library', isDirectory: true }],
+        true
+      );
+
+      expect(result.success).toBe(1);
+      expect(result.failed).toBe(0);
+      expect(result.failures).toEqual([]);
     });
   });
 });

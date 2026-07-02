@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- **`scan` command** — scan without deleting; supports `--category`, `--verbose`, and `--json` for scripts and integrations
+- **`clean` command** — non-interactive cleaning for automation: `--all`, `--categories <ids>`, `--yes`, `--dry-run`, `--unsafe`
+- **Visual size bars** in the category picker to spot the biggest space savings at a glance (idea from #46 by @alibosworth)
+- **Full Disk Access detection** — interactive mode shows a one-time hint when the terminal lacks Full Disk Access, instead of failing later with permission errors (#61)
+
+### Changed
+- Clean errors now include a breakdown by error code (e.g. `Failed to remove 40 items (32 EPERM, 8 EACCES)`) so permission issues are distinguishable from real failures
+- `--help` now shows the correct binary name (`mac-cleaner-cli` instead of `mac-cleaner`)
+- CI now also tests on Node 24, and npm releases are published with provenance attestation
+
 ## [1.3.5] - 2026-06-09
 
 ### Security

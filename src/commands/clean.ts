@@ -3,7 +3,7 @@ import confirm from '@inquirer/confirm';
 import checkbox from '@inquirer/checkbox';
 import { spawn } from 'child_process';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
-import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
+import { runAllScans, runScans, getScanner, getAllScanners } from '../scanners/index.js';
 import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
 
 const DONATION_URL = 'https://ko-fi.com/guhcostan';
@@ -42,7 +42,7 @@ interface CleanCommandOptions {
   all?: boolean;
   yes?: boolean;
   dryRun?: boolean;
-  category?: CategoryId;
+  categories?: CategoryId[];
   unsafe?: boolean;
   noProgress?: boolean;
 }
@@ -63,16 +63,22 @@ interface CategoryChoice {
 
 export async function cleanCommand(options: CleanCommandOptions): Promise<CleanSummary | null> {
   const showProgress = !options.noProgress && process.stdout.isTTY;
-  const scanners = getAllScanners();
-  const scanProgress = showProgress ? createScanProgress(scanners.length) : null;
+  const categoryIds = options.categories?.length
+    ? options.categories
+    : getAllScanners().map((s) => s.category.id);
+  const scanProgress = showProgress ? createScanProgress(categoryIds.length) : null;
 
-  const summary = await runAllScans({
+  const scanOptions = {
     parallel: true,
     concurrency: 4,
-    onProgress: (completed, _total, scanner) => {
+    onProgress: (completed: number, _total: number, scanner: { category: { name: string } }) => {
       scanProgress?.update(completed, `Scanning ${scanner.category.name}...`);
     },
-  });
+  };
+
+  const summary = options.categories?.length
+    ? await runScans(categoryIds, scanOptions)
+    : await runAllScans(scanOptions);
 
   scanProgress?.finish();
 
@@ -105,7 +111,9 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     return null;
   }
 
-  const selectedItems = options.all
+  // Explicit --categories behaves like --all scoped to those categories:
+  // no interactive selection, so the command stays usable in scripts and cron
+  const selectedItems = options.all || options.categories?.length
     ? resultsWithItems.map((r) => ({ categoryId: r.category.id, items: r.items }))
     : await selectItemsInteractively(resultsWithItems);
 

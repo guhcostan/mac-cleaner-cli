@@ -14,12 +14,13 @@ interface ScanCommandOptions {
   category?: CategoryId;
   verbose?: boolean;
   noProgress?: boolean;
+  json?: boolean;
 }
 
 export async function scanCommand(options: ScanCommandOptions): Promise<ScanSummary> {
   const scanners = options.category ? [options.category] : getAllScanners().map((s) => s.category.id);
   const total = scanners.length;
-  const showProgress = !options.noProgress && process.stdout.isTTY;
+  const showProgress = !options.noProgress && !options.json && process.stdout.isTTY;
 
   const progress = showProgress ? createScanProgress(total) : null;
 
@@ -42,9 +43,38 @@ export async function scanCommand(options: ScanCommandOptions): Promise<ScanSumm
 
   progress?.finish();
 
-  printScanResults(summary, options.verbose);
+  if (options.json) {
+    console.log(JSON.stringify(toJsonSummary(summary, options.verbose), null, 2));
+  } else {
+    printScanResults(summary, options.verbose);
+  }
 
   return summary;
+}
+
+/**
+ * Machine-readable scan output for scripting and integrations
+ * (e.g. `mac-cleaner-cli scan --json | jq`). Item paths are included
+ * only with --verbose to keep the default output small.
+ */
+function toJsonSummary(summary: ScanSummary, verbose = false) {
+  return {
+    totalSize: summary.totalSize,
+    totalItems: summary.totalItems,
+    categories: summary.results
+      .filter((r) => r.items.length > 0)
+      .map((r) => ({
+        id: r.category.id,
+        name: r.category.name,
+        group: r.category.group,
+        safetyLevel: r.category.safetyLevel,
+        totalSize: r.totalSize,
+        itemCount: r.items.length,
+        ...(verbose && {
+          items: r.items.map((i) => ({ path: i.path, size: i.size })),
+        }),
+      })),
+  };
 }
 
 function printScanResults(summary: ScanSummary, verbose = false): void {

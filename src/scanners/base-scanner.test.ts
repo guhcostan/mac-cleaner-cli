@@ -98,6 +98,22 @@ describe('BaseScanner', () => {
       expect(result.cleanedItems).toBe(1);
       expect(result.freedSpace).toBe(7);
     });
+
+    it('should summarize failures by error code', async () => {
+      const filePath = join(testDir, 'test.txt');
+      await writeFile(filePath, 'content');
+
+      const items: CleanableItem[] = [
+        { path: filePath, size: 7, name: 'test.txt', isDirectory: false },
+        { path: join(testDir, 'missing-1'), size: 0, name: 'missing-1', isDirectory: false },
+        { path: join(testDir, 'missing-2'), size: 0, name: 'missing-2', isDirectory: false },
+      ];
+
+      const result = await scanner.clean(items);
+
+      expect(result.cleanedItems).toBe(1);
+      expect(result.errors).toEqual(['Failed to remove 2 items (2 ENOENT)']);
+    });
   });
 });
 

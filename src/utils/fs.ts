@@ -244,62 +244,75 @@ export async function getDirectoryItems(dirPath: string): Promise<CleanableItem[
  * 3. Handles symlinks safely (removes symlink, not target)
  */
 export async function removeItem(path: string, dryRun = false): Promise<boolean> {
+  return (await removeItemWithError(path, dryRun)) === null;
+}
+
+/**
+ * Same as removeItem, but returns the failure reason (an errno code like
+ * 'EPERM', or a safety-check message) instead of a boolean. Returns null on success.
+ */
+export async function removeItemWithError(path: string, dryRun = false): Promise<string | null> {
   if (dryRun) {
-    return true;
+    return null;
   }
 
   // Security check: validate path is safe to delete
   const safetyError = validatePathSafety(path);
   if (safetyError) {
     console.error(safetyError);
-    return false;
+    return 'PROTECTED';
   }
 
   try {
     // Re-check file type immediately before deletion to prevent TOCTOU attacks
     // An attacker could replace a file with a symlink between scan and delete
     const stats = await lstat(path);
-    
+
     if (stats.isSymbolicLink()) {
       // For symlinks, only remove the symlink itself, never follow it
       await unlink(path);
     } else {
       await rm(path, { recursive: true, force: true });
     }
-    return true;
+    return null;
   } catch (error) {
     // Log the error for debugging but don't expose details to potential attackers
     const code = (error as NodeJS.ErrnoException).code;
     if (code !== 'ENOENT' && code !== 'EACCES' && code !== 'EPERM') {
       console.error(`Failed to remove ${path}: ${code || 'unknown error'}`);
     }
-    return false;
+    return code || 'UNKNOWN';
   }
+}
+
+export interface RemoveFailure {
+  path: string;
+  error: string;
 }
 
 export async function removeItems(
   items: CleanableItem[],
   dryRun = false,
   onProgress?: (current: number, total: number, item: CleanableItem) => void
-): Promise<{ success: number; failed: number; freedSpace: number }> {
+): Promise<{ success: number; failed: number; freedSpace: number; failures: RemoveFailure[] }> {
   let success = 0;
-  let failed = 0;
   let freedSpace = 0;
+  const failures: RemoveFailure[] = [];
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     onProgress?.(i + 1, items.length, item);
 
-    const removed = await removeItem(item.path, dryRun);
-    if (removed) {
+    const error = await removeItemWithError(item.path, dryRun);
+    if (error === null) {
       success++;
       freedSpace += item.size;
     } else {
-      failed++;
+      failures.push({ path: item.path, error });
     }
   }
 
-  return { success, failed, freedSpace };
+  return { success, failed: failures.length, freedSpace, failures };
 }
 
 

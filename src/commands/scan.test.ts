@@ -75,6 +75,86 @@ describe('scan command', () => {
 
       consoleSpy.mockRestore();
     });
+
+    it('should output valid JSON with --json', async () => {
+      vi.mocked(scanners.runAllScans).mockResolvedValue({
+        results: [
+          {
+            category: {
+              id: 'trash',
+              name: 'Trash',
+              group: 'Storage',
+              description: 'Trash',
+              safetyLevel: 'safe',
+            },
+            items: [{ path: '/test', size: 1000, name: 'test', isDirectory: false }],
+            totalSize: 1000,
+          },
+          {
+            category: {
+              id: 'homebrew',
+              name: 'Homebrew Cache',
+              group: 'Development',
+              description: 'Homebrew',
+              safetyLevel: 'safe',
+            },
+            items: [],
+            totalSize: 0,
+          },
+        ],
+        totalSize: 1000,
+        totalItems: 1,
+      });
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await scanCommand({ json: true });
+
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+      const parsed = JSON.parse(consoleSpy.mock.calls[0][0]);
+      expect(parsed.totalSize).toBe(1000);
+      expect(parsed.totalItems).toBe(1);
+      // Empty categories are omitted; item paths only appear with --verbose
+      expect(parsed.categories).toHaveLength(1);
+      expect(parsed.categories[0]).toMatchObject({
+        id: 'trash',
+        safetyLevel: 'safe',
+        totalSize: 1000,
+        itemCount: 1,
+      });
+      expect(parsed.categories[0].items).toBeUndefined();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should include item paths in JSON with --verbose', async () => {
+      vi.mocked(scanners.runAllScans).mockResolvedValue({
+        results: [
+          {
+            category: {
+              id: 'trash',
+              name: 'Trash',
+              group: 'Storage',
+              description: 'Trash',
+              safetyLevel: 'safe',
+            },
+            items: [{ path: '/test', size: 1000, name: 'test', isDirectory: false }],
+            totalSize: 1000,
+          },
+        ],
+        totalSize: 1000,
+        totalItems: 1,
+      });
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await scanCommand({ json: true, verbose: true });
+
+      const parsed = JSON.parse(consoleSpy.mock.calls[0][0]);
+      expect(parsed.categories[0].items).toEqual([{ path: '/test', size: 1000 }]);
+
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('listCategories', () => {

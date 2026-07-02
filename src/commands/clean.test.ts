@@ -7,6 +7,7 @@ import type { Category } from '../types.js';
 
 vi.mock('../scanners/index.js', () => ({
   runAllScans: vi.fn(),
+  runScans: vi.fn(),
   getScanner: vi.fn(),
   getAllScanners: vi.fn(() => []),
 }));
@@ -204,6 +205,68 @@ describe('clean command', () => {
     expect(result).not.toBeNull();
     expect(result?.totalFreedSpace).toBe(1000);
     expect(mockScanner.clean).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('should clean only the specified categories without interactive selection', async () => {
+    const mockScanner = {
+      category: trashCategory,
+      scan: vi.fn(),
+      clean: vi.fn().mockResolvedValue({
+        category: trashCategory,
+        cleanedItems: 1,
+        freedSpace: 1000,
+        errors: [],
+      }),
+    };
+
+    vi.mocked(scanners.runScans).mockResolvedValue({
+      results: [
+        {
+          category: trashCategory,
+          items: [{ path: '/test', size: 1000, name: 'test', isDirectory: false }],
+          totalSize: 1000,
+        },
+      ],
+      totalSize: 1000,
+      totalItems: 1,
+    });
+
+    vi.mocked(scanners.getScanner).mockReturnValue(mockScanner as unknown as ReturnType<typeof scanners.getScanner>);
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const result = await cleanCommand({ categories: ['trash'], yes: true });
+
+    expect(scanners.runScans).toHaveBeenCalledWith(['trash'], expect.anything());
+    expect(scanners.runAllScans).not.toHaveBeenCalled();
+    expect(inquirerPrompts.checkbox).not.toHaveBeenCalled();
+    expect(result?.totalFreedSpace).toBe(1000);
+    expect(mockScanner.clean).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('should still skip risky categories with --categories unless --unsafe', async () => {
+    vi.mocked(scanners.runScans).mockResolvedValue({
+      results: [
+        {
+          category: downloadsCategory,
+          items: [{ path: '/test', size: 1000, name: 'test', isDirectory: false }],
+          totalSize: 1000,
+        },
+      ],
+      totalSize: 1000,
+      totalItems: 1,
+    });
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const result = await cleanCommand({ categories: ['downloads'], yes: true });
+
+    expect(result).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('risky'));
 
     consoleSpy.mockRestore();
   });

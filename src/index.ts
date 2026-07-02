@@ -1,10 +1,24 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 import { ExitPromptError } from '@inquirer/core';
-import { interactiveCommand, listCategories, maintenanceCommand, uninstallCommand } from './commands/index.js';
+import { cleanCommand, interactiveCommand, listCategories, maintenanceCommand, scanCommand, uninstallCommand } from './commands/index.js';
 import { initConfig, configExists, listBackups, cleanOldBackups, loadConfig, formatSize } from './utils/index.js';
+import { CATEGORIES, type CategoryId } from './types.js';
 import pkg from '../package.json' with { type: 'json' };
+
+function parseCategoryId(value: string): CategoryId {
+  if (!(value in CATEGORIES)) {
+    throw new InvalidArgumentError(
+      `Unknown category "${value}". Run "mac-cleaner-cli categories" to list valid ids.`
+    );
+  }
+  return value as CategoryId;
+}
+
+function parseCategoryIdList(value: string): CategoryId[] {
+  return value.split(',').map((id) => parseCategoryId(id.trim()));
+}
 
 function handleCleanExit(error: unknown) {
   if (error instanceof ExitPromptError) {
@@ -30,7 +44,7 @@ setupGracefulShutdown();
 const program = new Command();
 
 program
-  .name('mac-cleaner')
+  .name('mac-cleaner-cli')
   .description('Open source CLI tool to clean your Mac')
   .version(pkg.version)
   .option('-r, --risky', 'Include risky categories (downloads, iOS backups, etc)')
@@ -48,6 +62,50 @@ program
       });
     } catch (error) {
       handleCleanExit(error)
+    }
+  });
+
+program
+  .command('scan')
+  .description('Scan for cleanable files without deleting anything')
+  .option('-c, --category <id>', 'Scan a single category', parseCategoryId)
+  .option('-v, --verbose', 'Show the largest items in each category')
+  .option('--json', 'Output results as JSON (for scripts and integrations)')
+  .option('--no-progress', 'Disable progress bar')
+  .action(async (options) => {
+    try {
+      await scanCommand({
+        category: options.category,
+        verbose: options.verbose,
+        json: options.json,
+        noProgress: !options.progress,
+      });
+    } catch (error) {
+      handleCleanExit(error);
+    }
+  });
+
+program
+  .command('clean')
+  .description('Clean cleanable files (non-interactive with --all or --categories)')
+  .option('-a, --all', 'Clean all non-risky categories without selection')
+  .option('-c, --categories <ids>', 'Comma-separated category ids to clean (e.g. trash,browser-cache)', parseCategoryIdList)
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .option('-d, --dry-run', 'Show what would be cleaned without deleting')
+  .option('--unsafe', 'Include risky categories (downloads, iOS backups, etc)')
+  .option('--no-progress', 'Disable progress bar')
+  .action(async (options) => {
+    try {
+      await cleanCommand({
+        all: options.all,
+        categories: options.categories,
+        yes: options.yes,
+        dryRun: options.dryRun,
+        unsafe: options.unsafe,
+        noProgress: !options.progress,
+      });
+    } catch (error) {
+      handleCleanExit(error);
     }
   });
 

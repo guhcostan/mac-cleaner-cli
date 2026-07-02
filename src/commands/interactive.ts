@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import confirm from '@inquirer/confirm';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
-import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
+import { formatSize, createScanProgress, createCleanProgress, hasFullDiskAccess, FULL_DISK_ACCESS_HINT } from '../utils/index.js';
 import filePickerPrompt from '../pickers/file-picker.js';
 
 const SAFETY_ICONS: Record<SafetyLevel, string> = {
@@ -23,6 +23,12 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   console.log(chalk.bold.cyan('🧹 Mac Cleaner CLI'));
   console.log(chalk.dim('─'.repeat(50)));
   console.log();
+
+  // One-time hint instead of dozens of EPERM errors later (see issue #61)
+  if (await hasFullDiskAccess() === false) {
+    console.log(chalk.yellow(FULL_DISK_ACCESS_HINT));
+    console.log();
+  }
 
   // Step 1: Scan
   const showProgress = !options.noProgress && process.stdout.isTTY;

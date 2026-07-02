@@ -139,6 +139,28 @@ In interactive mode, press `→` on supported categories to drill into specific 
 
 Supported categories: User Cache Files, Temporary Files, System Log Files, Development Cache, Browser Cache, Homebrew Cache.
 
+### Scripting & Automation (non-interactive)
+
+```bash
+# Scan only — see what can be cleaned without deleting anything
+npx mac-cleaner-cli scan
+
+# Machine-readable output for scripts and integrations
+npx mac-cleaner-cli scan --json
+npx mac-cleaner-cli scan --json --verbose   # include item paths
+
+# Clean specific categories without prompts (great for cron/CI)
+npx mac-cleaner-cli clean --categories trash,browser-cache,homebrew --yes
+
+# Preview first
+npx mac-cleaner-cli clean --categories dev-cache --dry-run
+
+# Clean everything that is safe, no selection UI
+npx mac-cleaner-cli clean --all --yes
+```
+
+Risky categories (downloads, iOS backups, etc) are always skipped unless you pass `--unsafe`.
+
 ### Uninstall Apps
 
 Remove applications completely with all their preferences, caches, and support files:
