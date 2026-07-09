@@ -54,11 +54,11 @@
   "devDependencies": {
     "@eslint/js": "10",
     "@types/bun": "^1.2.7",
-    "@types/node": "^25.0.3",
+    "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "^4.0.15",
     "eslint": "10",
     "tsdown": "^0.22.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.56.1",
     "vitest": "^4.0.15"
   },
