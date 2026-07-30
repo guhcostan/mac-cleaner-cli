@@ -197,6 +197,41 @@ export async function getItems(
   return items;
 }
 
+/**
+ * Depth to search for sockets below a candidate directory. Runtime directories
+ * keep their sockets at or near the top, so a shallow search is enough.
+ */
+const SOCKET_SEARCH_MAX_DEPTH = 2;
+
+/**
+ * Reports whether a directory holds a unix socket or FIFO, which marks it as the
+ * runtime directory of a running process (e.g. $TMPDIR/podman). Such a directory
+ * holds no reclaimable space, and deleting it severs the IPC the process needs.
+ */
+async function holdsLiveSocket(dirPath: string, depth = SOCKET_SEARCH_MAX_DEPTH): Promise<boolean> {
+  try {
+    const entries = await readdir(dirPath, { withFileTypes: true });
+
+    if (entries.some((entry) => entry.isSocket() || entry.isFIFO())) {
+      return true;
+    }
+
+    if (depth <= 0) {
+      return false;
+    }
+
+    for (const entry of entries) {
+      if (entry.isDirectory() && (await holdsLiveSocket(join(dirPath, entry.name), depth - 1))) {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
 export async function getDirectoryItems(dirPath: string): Promise<CleanableItem[]> {
   const items: CleanableItem[] = [];
 
@@ -205,6 +240,13 @@ export async function getDirectoryItems(dirPath: string): Promise<CleanableItem[
 
     for (const entry of entries) {
       const fullPath = join(dirPath, entry.name);
+
+      if (entry.isSocket() || entry.isFIFO()) {
+        continue;
+      }
+      if (entry.isDirectory() && (await holdsLiveSocket(fullPath))) {
+        continue;
+      }
 
       try {
         const stats = await lstat(fullPath);
