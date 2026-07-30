@@ -65,7 +65,7 @@
   "dependencies": {
     "@inquirer/checkbox": "^5.0.2",
     "@inquirer/confirm": "^6.0.2",
-    "chalk": "^5.3.0",
+    "chalk": "^6.0.0",
     "commander": "^15.0.0",
     "ora": "^9.0.0"
   },
