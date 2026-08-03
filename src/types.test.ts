@@ -18,6 +18,7 @@ describe('CATEGORIES', () => {
       'language-files',
       'large-files',
       'node-modules',
+      'git-worktrees',
       'duplicates',
       'launch-agents',
     ];
@@ -50,7 +51,7 @@ describe('CATEGORIES', () => {
   });
 
   it('should mark risky categories correctly', () => {
-    const riskyCategories = ['downloads', 'ios-backups', 'mail-attachments', 'language-files', 'large-files'];
+    const riskyCategories = ['downloads', 'ios-backups', 'mail-attachments', 'language-files', 'large-files', 'git-worktrees'];
 
     for (const id of riskyCategories) {
       expect(CATEGORIES[id as keyof typeof CATEGORIES].safetyLevel).toBe('risky');

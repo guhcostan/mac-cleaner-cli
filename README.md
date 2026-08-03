@@ -119,6 +119,7 @@ That's it. No installation needed. The CLI will:
 | `duplicates` | Duplicate files (keeps newest) |
 | `large-files` | Files larger than 500MB |
 | `language-files` | Unused language localizations |
+| `git-worktrees` | Stale or orphaned git worktrees (agents, feature checkouts) |
 
 ## 📖 Usage
 

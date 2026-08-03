@@ -12,10 +12,11 @@ import {
   useRef,
 } from "@inquirer/core";
 import type { ScanResult, CategoryId } from "../types.js";
-import { formatSize } from "../utils/index.js";
+import { formatRelativeAge, formatSize } from "../utils/index.js";
 import { copyToClipboard } from "../utils/clipboard.js";
 import { truncateFileName } from "../utils/paths.js";
 import { groupFilesByDirectory } from "../utils/grouping.js";
+import type { CleanableItem } from "../types.js";
 
 interface FilePickerConfig {
   message: string;
@@ -44,13 +45,20 @@ type FilePickerStatesStore = Record<string, FilePickerState>;
 
 // NOTE: maybe put these in config later?
 const FILES_PAGE_SIZE = 6;
-const FILE_NAME_WIDTH = 35;
+const FILE_NAME_WIDTH = 40;
+const DETAIL_WIDTH = 12;
 const INDENT = "    ";
 const DIR_VIS_CHILD_LIMIT = 5;
 const EXPAND_INCREMENT = 10;
 const GRAPH_MIN_WIDTH = 0.2;
 const GRAPH_MAX_WIDTH = 20;
 const GRAPH_FRACTIONS = ["▏", "▎", "▍", "▌", "█"];
+
+function formatItemDetail(item: CleanableItem): string {
+  if (item.detail) return item.detail;
+  if (item.modifiedAt) return formatRelativeAge(item.modifiedAt);
+  return "";
+}
 
 /**
  * Renders a horizontal bar sized relative to the largest category, so the
@@ -701,9 +709,11 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
               FILE_NAME_WIDTH,
             );
             const fileName = truncatedFileName.padEnd(FILE_NAME_WIDTH);
+            const detail = formatItemDetail(fileItem).padStart(DETAIL_WIDTH);
             const fileSize = formatSize(file.size ?? 0).padStart(10);
             const caretIndicator = isFileCaret ? chalk.cyan("> ") : "  ";
-            const itemText = `${INDENT}${caretIndicator}${fileCheckbox} ${fileName} ${chalk.magenta(fileSize)}`;
+            const detailText = detail.trim() ? chalk.dim(detail) : detail;
+            const itemText = `${INDENT}${caretIndicator}${fileCheckbox} ${fileName} ${detailText} ${chalk.magenta(fileSize)}`;
             fileLine = dimFiles ? chalk.dim(itemText) : itemText;
           }
 

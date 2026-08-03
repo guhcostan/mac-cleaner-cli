@@ -13,6 +13,7 @@ export type CategoryId =
   | 'language-files'
   | 'large-files'
   | 'node-modules'
+  | 'git-worktrees'
   | 'duplicates'
   | 'launch-agents';
 
@@ -36,6 +37,7 @@ export interface CleanableItem {
   name: string;
   isDirectory: boolean;
   modifiedAt?: Date;
+  detail?: string;
 }
 
 export interface ScanResult {
@@ -186,6 +188,15 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'Orphaned node_modules in old projects',
     safetyLevel: 'moderate',
     safetyNote: 'Projects will need npm install to restore',
+  },
+  'git-worktrees': {
+    id: 'git-worktrees',
+    name: 'Git Worktrees',
+    group: 'Development',
+    description: 'Stale or orphaned git worktrees from agents and local checkouts',
+    safetyLevel: 'risky',
+    safetyNote: 'Worktrees may contain uncommitted work. Review each path before deleting.',
+    supportsFileSelection: true,
   },
   'duplicates': {
     id: 'duplicates',

@@ -19,6 +19,7 @@ describe("scanners index", () => {
       "language-files",
       "large-files",
       "node-modules",
+      "git-worktrees",
       "duplicates",
       "launch-agents",
     ];
@@ -36,7 +37,7 @@ describe("scanners index", () => {
   it("should get all scanners", () => {
     const scanners = getAllScanners();
 
-    expect(scanners).toHaveLength(16);
+    expect(scanners).toHaveLength(17);
     for (const scanner of scanners) {
       expect(scanner.category).toBeDefined();
       expect(scanner.scan).toBeDefined();

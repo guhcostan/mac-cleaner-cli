@@ -147,7 +147,7 @@ export function formatAsDisplayItems(
     // Add visible files
     for (let i = 0; i < visibleCount; i++) {
       const file = group.files[i];
-      const fileName = path.basename(file.path);
+      const fileName = file.name || path.basename(file.path);
       result.push({
         type: "file",
         path: file.path,
