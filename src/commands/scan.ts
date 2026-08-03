@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import type { CategoryId, CategoryGroup, ScanSummary, ScanResult, SafetyLevel } from '../types.js';
 import { CATEGORIES } from '../types.js';
 import { runAllScans, runScans, getAllScanners } from '../scanners/index.js';
-import { formatSize, createScanProgress } from '../utils/index.js';
+import { formatRelativeAge, formatSize, createScanProgress } from '../utils/index.js';
 
 const SAFETY_ICONS: Record<SafetyLevel, string> = {
   safe: chalk.green('●'),
@@ -106,7 +106,11 @@ function printScanResults(summary: ScanSummary, verbose = false): void {
       if (verbose && result.items.length > 0) {
         const topItems = result.items.sort((a, b) => b.size - a.size).slice(0, 5);
         for (const item of topItems) {
-          console.log(chalk.dim(`      └─ ${item.name.padEnd(24)} ${formatSize(item.size).padStart(10)}`));
+          const detail = item.detail ?? (item.modifiedAt ? formatRelativeAge(item.modifiedAt) : '');
+          const detailPart = detail ? ` ${detail.padStart(10)}` : '';
+          console.log(
+            chalk.dim(`      └─ ${item.name.padEnd(36)}${detailPart} ${formatSize(item.size).padStart(10)}`)
+          );
         }
         if (result.items.length > 5) {
           console.log(chalk.dim(`      └─ ... and ${result.items.length - 5} more`));

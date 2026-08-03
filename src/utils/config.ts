@@ -10,10 +10,10 @@ const CONFIG_PATHS = [
 
 // Valid category IDs for validation
 const VALID_CATEGORIES: CategoryId[] = [
-  'system-cache', 'system-logs', 'browser-cache', 'dev-cache', 
-  'node-modules', 'downloads', 'trash', 'temp-files', 'ios-backups',
-  'mail-attachments', 'large-files', 'duplicates', 'docker', 
-  'homebrew', 'language-files'
+  'system-cache', 'system-logs', 'browser-cache', 'dev-cache',
+  'node-modules', 'git-worktrees', 'downloads', 'trash', 'temp-files',
+  'ios-backups', 'mail-attachments', 'large-files', 'duplicates',
+  'docker', 'homebrew', 'language-files', 'launch-agents',
 ];
 
 export interface Config {

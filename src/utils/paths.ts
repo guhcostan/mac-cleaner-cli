@@ -30,6 +30,9 @@ export const PATHS = {
   cocoapodsCache: join(HOME, 'Library', 'Caches', 'CocoaPods'),
   gradleCache: join(HOME, '.gradle', 'caches'),
   cargoCache: join(HOME, '.cargo', 'registry'),
+  cursorWorktrees: join(HOME, '.cursor', 'worktrees'),
+  codexWorktrees: join(HOME, '.codex', 'worktrees'),
+  claudeWorktrees: join(HOME, '.claude', 'worktrees'),
 
   iosBackups: join(HOME, 'Library', 'Application Support', 'MobileSync', 'Backup'),
 

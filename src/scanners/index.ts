@@ -13,6 +13,7 @@ import { MailAttachmentsScanner } from './mail-attachments.js';
 import { LanguageFilesScanner } from './language-files.js';
 import { LargeFilesScanner } from './large-files.js';
 import { NodeModulesScanner } from './node-modules.js';
+import { GitWorktreesScanner } from './git-worktrees.js';
 import { DuplicatesScanner } from './duplicates.js';
 import { LaunchAgentsScanner } from './launch-agents.js';
 
@@ -31,6 +32,7 @@ export const ALL_SCANNERS: Record<CategoryId, Scanner> = {
   'language-files': new LanguageFilesScanner(),
   'large-files': new LargeFilesScanner(),
   'node-modules': new NodeModulesScanner(),
+  'git-worktrees': new GitWorktreesScanner(),
   'duplicates': new DuplicatesScanner(),
   'launch-agents': new LaunchAgentsScanner(),
 };
@@ -154,6 +156,7 @@ export {
   LanguageFilesScanner,
   LargeFilesScanner,
   NodeModulesScanner,
+  GitWorktreesScanner,
   DuplicatesScanner,
   LaunchAgentsScanner,
 };
