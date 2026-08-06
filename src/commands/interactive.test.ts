@@ -354,6 +354,139 @@ describe('interactive command', () => {
 
     consoleSpy.mockRestore();
   });
+  describe('dry run and risk warnings', () => {
+    // The flow the CLI actually runs by default had no dry run at all: `-d` only
+    // existed on the `clean` subcommand. It also never printed safetyNote, so
+    // the user chose blind.
+    const setupTrash = (mockScanner: unknown) => {
+      vi.mocked(scanners.runAllScans).mockResolvedValue({
+        results: [
+          {
+            category: trashCategory,
+            items: [{ path: '/test', size: 1000, name: 'test', isDirectory: false }],
+            totalSize: 1000,
+          },
+        ],
+        totalSize: 1000,
+        totalItems: 1,
+      });
+      vi.mocked(scanners.getScanner).mockReturnValue(
+        mockScanner as ReturnType<typeof scanners.getScanner>
+      );
+      vi.mocked(inquirerPrompts.filePicker).mockResolvedValue({
+        selectedCategories: new Set(['trash']),
+        selectedFilesByCategory: new Map(),
+      });
+      vi.mocked(inquirerPrompts.confirm).mockResolvedValue(true);
+    };
+
+    const trashScanner = () => ({
+      category: trashCategory,
+      scan: vi.fn(),
+      clean: vi.fn().mockResolvedValue({
+        category: trashCategory,
+        cleanedItems: 1,
+        freedSpace: 1000,
+        errors: [],
+      }),
+    });
+
+    it('passes dryRun down to the scanner clean()', async () => {
+      const mockScanner = trashScanner();
+      setupTrash(mockScanner);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await interactiveCommand({ dryRun: true });
+
+      // Passing it down (instead of simulating here) matters: Docker and
+      // Homebrew override clean() with external commands and have their own
+      // dry-run branch.
+      expect(mockScanner.clean).toHaveBeenCalledWith(expect.anything(), true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('does not pass dryRun when the flag is absent', async () => {
+      const mockScanner = trashScanner();
+      setupTrash(mockScanner);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await interactiveCommand({});
+
+      expect(mockScanner.clean).toHaveBeenCalledWith(expect.anything(), undefined);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('labels the output as a dry run, never as deletion done', async () => {
+      const mockScanner = trashScanner();
+      setupTrash(mockScanner);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await interactiveCommand({ dryRun: true });
+
+      const output = consoleSpy.mock.calls.flat().join('\n');
+      expect(output).toContain('[DRY RUN]');
+      expect(output).toContain('Nothing was deleted');
+      expect(output).not.toContain('Cleaning Complete');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('prints the safetyNote of every selected risky category', async () => {
+      const mockScanner = {
+        category: downloadsCategory,
+        scan: vi.fn(),
+        clean: vi.fn().mockResolvedValue({
+          category: downloadsCategory,
+          cleanedItems: 1,
+          freedSpace: 1000,
+          errors: [],
+        }),
+      };
+
+      vi.mocked(scanners.runAllScans).mockResolvedValue({
+        results: [
+          {
+            category: downloadsCategory,
+            items: [{ path: '/test', size: 1000, name: 'test.zip', isDirectory: false }],
+            totalSize: 1000,
+          },
+        ],
+        totalSize: 1000,
+        totalItems: 1,
+      });
+      vi.mocked(scanners.getScanner).mockReturnValue(
+        mockScanner as unknown as ReturnType<typeof scanners.getScanner>
+      );
+      vi.mocked(inquirerPrompts.filePicker).mockResolvedValue({
+        selectedCategories: new Set(['downloads']),
+        selectedFilesByCategory: new Map(),
+      });
+      vi.mocked(inquirerPrompts.confirm).mockResolvedValue(false);
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await interactiveCommand({ includeRisky: true });
+
+      const output = consoleSpy.mock.calls.flat().join('\n');
+      expect(output).toContain('WARNING');
+      expect(output).toContain('May contain important files');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('warns that deletion is permanent and does not use the Trash', async () => {
+      setupTrash(trashScanner());
+      vi.mocked(inquirerPrompts.confirm).mockResolvedValue(false);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await interactiveCommand({});
+
+      const output = consoleSpy.mock.calls.flat().join('\n');
+      expect(output).toContain('Deletion is permanent');
+
+      consoleSpy.mockRestore();
+    });
+  });
 });
-
-

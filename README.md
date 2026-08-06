@@ -132,6 +132,9 @@ npx mac-cleaner-cli
 # Include risky categories
 npx mac-cleaner-cli --risky
 
+# Preview what would be deleted, without deleting anything
+npx mac-cleaner-cli --dry-run
+
 # Enable file picker for all categories
 npx mac-cleaner-cli --risky -f
 ```
