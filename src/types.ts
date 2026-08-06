@@ -155,6 +155,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'iPhone and iPad backup files',
     safetyLevel: 'risky',
     safetyNote: 'DANGER: You may lose important device backups permanently!',
+    supportsFileSelection: true,
   },
   'mail-attachments': {
     id: 'mail-attachments',
@@ -163,6 +164,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'Downloaded email attachments from Mail.app',
     safetyLevel: 'risky',
     safetyNote: 'May contain important documents and files',
+    supportsFileSelection: true,
   },
   'language-files': {
     id: 'language-files',
@@ -171,6 +173,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'Unused language localizations in applications',
     safetyLevel: 'risky',
     safetyNote: 'May break apps if you switch system language',
+    supportsFileSelection: true,
   },
   'large-files': {
     id: 'large-files',
@@ -205,6 +208,7 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     description: 'Files with identical content',
     safetyLevel: 'risky',
     safetyNote: 'Review carefully - keeps newest copy by default',
+    supportsFileSelection: true,
   },
   'launch-agents': {
     id: 'launch-agents',
