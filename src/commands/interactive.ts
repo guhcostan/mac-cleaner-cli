@@ -98,9 +98,12 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   console.log(`  Space to free: ${chalk.green(formatSize(totalToClean))}`);
   console.log();
 
+  // Deletion here is permanent (rm -rf, no Trash). A prompt's default is the
+  // answer a distracted user gives by hitting Enter — and that answer must
+  // never be "delete".
   const proceed = await confirm({
     message: `Proceed with cleaning?`,
-    default: true,
+    default: false,
   });
 
   if (!proceed) {
