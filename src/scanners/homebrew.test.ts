@@ -53,7 +53,10 @@ describe('HomebrewScanner', () => {
     expect(scanner.category.id).toBe('homebrew');
     expect(scanner.category.name).toBe('Homebrew Cache');
     expect(scanner.category.group).toBe('Development');
-    expect(scanner.category.safetyLevel).toBe('safe');
+    // NOT 'safe': `brew cleanup --prune=all` removes old formula versions, not
+    // just the download cache.
+    expect(scanner.category.safetyLevel).toBe('moderate');
+    expect(scanner.category.safetyNote).toBeDefined();
   });
 
   it('should handle homebrew not installed', async () => {

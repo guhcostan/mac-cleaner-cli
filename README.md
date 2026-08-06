@@ -97,8 +97,6 @@ That's it. No installation needed. The CLI will:
 | `trash` | Files in the Trash bin |
 | `temp-files` | Temporary files in /tmp and /var/folders |
 | `browser-cache` | Chrome, Safari, Firefox, Arc cache |
-| `homebrew` | Homebrew download cache |
-| `docker` | Unused Docker images, containers, volumes |
 
 ### 🟡 Moderate (generally safe)
 
@@ -108,6 +106,14 @@ That's it. No installation needed. The CLI will:
 | `system-logs` | System and application logs |
 | `dev-cache` | npm, yarn, pip, Xcode DerivedData, CocoaPods |
 | `node-modules` | Orphaned node_modules in old projects |
+| `homebrew` | Homebrew download cache **and old formula versions** (`brew cleanup --prune=all`) |
+| `docker` | Unused images, stopped containers, build cache — **only the types you select** |
+
+> `docker` and `homebrew` are **not** "safe": their cleanup is performed by the
+> external tool, and it removes more than downloaded files. Docker removes images
+> that aren't used by a *running* container (they must be pulled or rebuilt
+> again), and Homebrew removes old formula versions. Docker **volumes are never
+> touched** — that's your data, not cache.
 
 ### 🔴 Risky (use `--risky` flag)
 
@@ -118,7 +124,7 @@ That's it. No installation needed. The CLI will:
 | `mail-attachments` | Downloaded email attachments |
 | `duplicates` | Duplicate files (keeps newest) |
 | `large-files` | Files larger than 500MB |
-| `language-files` | Unused language localizations |
+| `language-files` | Unused language localizations — **breaks the app's code signature** |
 | `git-worktrees` | Stale or orphaned git worktrees (agents, feature checkouts) |
 
 ## 📖 Usage
