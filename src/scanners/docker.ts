@@ -69,6 +69,11 @@ function execCommand(command: string, args: string[]): Promise<string> {
 }
 
 export class DockerScanner extends BaseScanner {
+  // Cleanup here is `docker system prune`: the external tool does the deleting,
+  // not us. There is no file to move, so backup does not apply — and pretending
+  // it does would be the same facade as before.
+  readonly supportsBackup = false;
+
   category = CATEGORIES['docker'];
   private dockerPath: string | null = null;
 

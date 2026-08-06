@@ -196,8 +196,35 @@ npx mac-cleaner-cli config --show
 
 # Manage backups
 npx mac-cleaner-cli backup --list
+npx mac-cleaner-cli backup --restore <dir>
 npx mac-cleaner-cli backup --clean
 ```
+
+### Backups (opt-in)
+
+By default, cleaning is **permanent**: files are removed with `rm -rf` and do
+**not** go to the Trash.
+
+You can opt into backups by setting `backupEnabled` in `~/.maccleanerrc`:
+
+```json
+{ "backupEnabled": true }
+```
+
+With backups on, selected items are **moved** to `~/.mac-cleaner-cli/backup/<timestamp>/`
+instead of being deleted, and can be brought back with `backup --restore`.
+
+Two honest caveats:
+
+- **Moving does not free disk space.** The files still occupy the same volume.
+  Space is only reclaimed by `backup --clean`, which deletes backups older than
+  7 days permanently.
+- **Docker and Homebrew cannot be backed up.** Their cleanup is performed by the
+  external tool (`docker system prune`, `brew cleanup`), so there is no file for
+  us to move. The CLI warns you before proceeding when these are selected.
+
+If a backup fails, the item is **not** deleted — it stays where it is and the
+failure is reported.
 
 ### Flags
 

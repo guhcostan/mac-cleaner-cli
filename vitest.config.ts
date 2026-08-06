@@ -16,7 +16,9 @@ export default defineConfig({
         '**/index.ts',
         'src/scanners/duplicates.ts',
         'src/scanners/node-modules.ts',
-        'src/utils/backup.ts',
+        // src/utils/backup.ts left this list: it is no longer dead code and now
+        // runs on the deletion path. A module that can lose a user's file does
+        // not sit outside the coverage count.
         'src/utils/checkbox.ts',
       ],
       thresholds: {

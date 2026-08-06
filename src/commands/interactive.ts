@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import confirm from '@inquirer/confirm';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
-import { formatSize, createScanProgress, createCleanProgress, hasFullDiskAccess, FULL_DISK_ACCESS_HINT } from '../utils/index.js';
+import { formatSize, createScanProgress, createCleanProgress, hasFullDiskAccess, FULL_DISK_ACCESS_HINT, loadConfig, ensureBackupDir, getBackupDir } from '../utils/index.js';
 import filePickerPrompt from '../pickers/file-picker.js';
 
 const SAFETY_ICONS: Record<SafetyLevel, string> = {
@@ -92,10 +92,43 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   const totalItems = selectedItems.reduce((sum, s) => sum + s.items.length, 0);
 
   // Step 5: Confirm
+  // `backupEnabled` comes from ~/.maccleanerrc. Until now `loadConfig()` was
+  // only ever called by `config --show` — the file `config --init` wrote had no
+  // effect whatsoever on cleaning.
+  const config = await loadConfig();
+  const backupEnabled = config.backupEnabled === true;
+
+  const categoriesWithoutBackup = backupEnabled
+    ? selectedItems
+        .map(({ categoryId }) => getScanner(categoryId))
+        .filter((scanner) => scanner?.supportsBackup === false)
+        .map((scanner) => scanner.category.name)
+    : [];
+
   console.log();
   console.log(chalk.bold('Summary:'));
   console.log(`  Items to delete: ${chalk.yellow(totalItems.toString())}`);
   console.log(`  Space to free: ${chalk.green(formatSize(totalToClean))}`);
+
+  if (backupEnabled) {
+    console.log();
+    console.log(chalk.cyan(`  Backup is ON — items will be MOVED to ${getBackupDir()}`));
+    // The awkward part, said plainly: moving does not free space. Without this,
+    // the final report ("0 B freed") would look like a bug.
+    console.log(
+      chalk.yellow(
+        `  ⚠ Moving does NOT free disk space. Run "mac-cleaner-cli backup --clean" to reclaim it.`
+      )
+    );
+    if (categoriesWithoutBackup.length > 0) {
+      console.log(
+        chalk.red(
+          `  ⚠ No backup possible for: ${categoriesWithoutBackup.join(', ')} (external tool does the cleanup) — these WILL be deleted.`
+        )
+      );
+    }
+  }
+
   console.log();
 
   const proceed = await confirm({
@@ -109,11 +142,21 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   }
 
   // Step 6: Clean
+  // The backup directory is created ONCE per run, and only if some scanner in
+  // this run can actually back up — otherwise we would leave empty timestamped
+  // folders behind.
+  const backupDir =
+    backupEnabled && selectedItems.some(({ categoryId }) => getScanner(categoryId)?.supportsBackup !== false)
+      ? await ensureBackupDir()
+      : undefined;
+
   const cleanProgress = showProgress ? createCleanProgress(selectedItems.length) : null;
 
   const cleanResults: CleanSummary = {
     results: [],
     totalFreedSpace: 0,
+    totalBackedUpSize: 0,
+    backupDir,
     totalCleanedItems: 0,
     totalErrors: 0,
   };
@@ -123,9 +166,11 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
     const scanner = getScanner(categoryId);
     cleanProgress?.update(cleanedCount, `Cleaning ${scanner.category.name}...`);
 
-    const result = await scanner.clean(items);
+    const scannerBackupDir = scanner.supportsBackup === false ? undefined : backupDir;
+    const result = await scanner.clean(items, false, scannerBackupDir);
     cleanResults.results.push(result);
     cleanResults.totalFreedSpace += result.freedSpace;
+    cleanResults.totalBackedUpSize = (cleanResults.totalBackedUpSize ?? 0) + (result.backedUpSize ?? 0);
     cleanResults.totalCleanedItems += result.cleanedItems;
     cleanResults.totalErrors += result.errors.length;
     cleanedCount++;
@@ -192,8 +237,11 @@ function printCleanResults(summary: CleanSummary): void {
 
   for (const result of summary.results) {
     if (result.cleanedItems > 0) {
+      const backedUp = (result.backedUpSize ?? 0) > 0;
       console.log(
-        `  ${result.category.name.padEnd(30)} ${chalk.green('✓')} ${formatSize(result.freedSpace)} freed`
+        backedUp
+          ? `  ${result.category.name.padEnd(30)} ${chalk.cyan('↦')} ${formatSize(result.backedUpSize ?? 0)} moved to backup`
+          : `  ${result.category.name.padEnd(30)} ${chalk.green('✓')} ${formatSize(result.freedSpace)} freed`
       );
     }
     for (const error of result.errors) {
@@ -205,6 +253,16 @@ function printCleanResults(summary: CleanSummary): void {
   console.log(chalk.dim('─'.repeat(50)));
   console.log(chalk.bold(`🎉 Freed ${chalk.green(formatSize(summary.totalFreedSpace))} of disk space!`));
   console.log(chalk.dim(`   Cleaned ${summary.totalCleanedItems} items`));
+
+  if ((summary.totalBackedUpSize ?? 0) > 0) {
+    console.log();
+    console.log(
+      chalk.cyan(`   ${formatSize(summary.totalBackedUpSize ?? 0)} moved to backup (still on disk):`)
+    );
+    console.log(chalk.dim(`     ${summary.backupDir}`));
+    console.log(chalk.dim(`     restore: mac-cleaner-cli backup --restore "${summary.backupDir}"`));
+    console.log(chalk.dim(`     reclaim: mac-cleaner-cli backup --clean`));
+  }
 
   if (summary.totalErrors > 0) {
     console.log(chalk.red(`   Errors: ${summary.totalErrors}`));
