@@ -1,44 +1,8 @@
-import { spawn } from 'child_process';
+import { execCommand } from '../utils/exec.js';
+import type { MaintenanceResult } from './types.js';
 
-export interface MaintenanceResult {
-  success: boolean;
-  message: string;
-  error?: string;
-  requiresSudo?: boolean;
-}
-
-/**
- * Executes a command using spawn (safer than exec).
- */
-function execCommand(command: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, {
-      timeout: 60000, // 60 second timeout (purge can take a while)
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve(stdout);
-      } else {
-        reject(new Error(stderr || `Process exited with code ${code}`));
-      }
-    });
-
-    proc.on('error', reject);
-  });
-}
+// purge can take a while
+const PURGE_TIMEOUT = 60_000;
 
 /**
  * Frees purgeable disk space on macOS.
@@ -58,7 +22,7 @@ export async function freePurgeableSpace(): Promise<MaintenanceResult> {
   try {
     if (isRoot) {
       // Running as root, execute directly
-      await execCommand(purgePath, []);
+      await execCommand(purgePath, [], PURGE_TIMEOUT);
       return {
         success: true,
         message: 'Purgeable space freed successfully',
@@ -66,7 +30,7 @@ export async function freePurgeableSpace(): Promise<MaintenanceResult> {
     }
     
     // Try with sudo -n first (non-interactive)
-    await execCommand('sudo', ['-n', purgePath]);
+    await execCommand('sudo', ['-n', purgePath], PURGE_TIMEOUT);
     return {
       success: true,
       message: 'Purgeable space freed successfully',
@@ -74,7 +38,7 @@ export async function freePurgeableSpace(): Promise<MaintenanceResult> {
   } catch {
     // sudo -n failed, try without sudo (might work in some configurations)
     try {
-      await execCommand(purgePath, []);
+      await execCommand(purgePath, [], PURGE_TIMEOUT);
       return {
         success: true,
         message: 'Purgeable space freed successfully',

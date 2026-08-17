@@ -1,5 +1,6 @@
 import type { Scanner, Category, ScanResult, CleanResult, CleanableItem, ScannerOptions } from '../types.js';
 import { removeItems } from '../utils/fs.js';
+import { sumItemSizes } from '../utils/size.js';
 
 export abstract class BaseScanner implements Scanner {
   abstract category: Category;
@@ -33,7 +34,7 @@ export abstract class BaseScanner implements Scanner {
   }
 
   protected createResult(items: CleanableItem[], error?: string): ScanResult {
-    const totalSize = items.reduce((sum, item) => sum + item.size, 0);
+    const totalSize = sumItemSizes(items);
     return {
       category: this.category,
       items,

@@ -1,4 +1,5 @@
 import type { Scanner, CategoryId, ScanResult, ScannerOptions, ScanSummary } from '../types.js';
+import { mapPool } from '../utils/index.js';
 import { SystemCacheScanner } from './system-cache.js';
 import { SystemLogsScanner } from './system-logs.js';
 import { TempFilesScanner } from './temp-files.js';
@@ -59,34 +60,17 @@ async function runWithConcurrency<T>(
   tasks: Array<{ fn: () => Promise<T>; label?: string }>,
   concurrency: number
 ): Promise<T[]> {
-  const results: (T | undefined)[] = new Array(tasks.length);
-  const executing: Set<Promise<void>> = new Set();
-  const limit = Math.max(1, Math.min(concurrency, tasks.length || 1));
-
-  for (let i = 0; i < tasks.length; i++) {
-    const index = i;
-    const task = tasks[index];
-    const p: Promise<void> = task.fn()
-      .then((result) => {
-        results[index] = result;
-      })
-      .catch((error) => {
-        // Log error but don't fail entire batch
-        const taskLabel = task.label ? ` (${task.label})` : ` ${index}`;
-        console.error(`Scanner task${taskLabel} failed:`, error);
-        results[index] = undefined;
-      })
-      .finally(() => {
-        executing.delete(p);
-      });
-    executing.add(p);
-
-    if (executing.size >= limit) {
-      await Promise.race(executing);
+  const results = await mapPool(tasks, concurrency, async (task, index) => {
+    try {
+      return await task.fn();
+    } catch (error) {
+      // Log error but don't fail entire batch
+      const taskLabel = task.label ? ` (${task.label})` : ` ${index}`;
+      console.error(`Scanner task${taskLabel} failed:`, error);
+      return undefined;
     }
-  }
+  });
 
-  await Promise.allSettled(executing);
   return results.filter((r): r is T => r !== undefined);
 }
 

@@ -1,8 +1,7 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem, type CleanResult } from '../types.js';
-import { spawn } from 'child_process';
-import { access } from 'fs/promises';
-import { constants } from 'fs';
+import { execCommand, findExecutable } from '../utils/exec.js';
+import { sumItemSizes } from '../utils/size.js';
 
 /**
  * Known safe Docker binary locations on macOS.
@@ -23,49 +22,8 @@ const VALID_DOCKER_TYPES = ['images', 'containers', 'local volumes', 'build cach
 /**
  * Finds the Docker binary in known safe locations.
  */
-async function findDockerBinary(): Promise<string | null> {
-  for (const path of DOCKER_PATHS) {
-    try {
-      await access(path, constants.X_OK);
-      return path;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
-/**
- * Executes a command using spawn (safer than exec) and returns stdout.
- */
-function execCommand(command: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, {
-      timeout: 30000, // 30 second timeout
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve(stdout);
-      } else {
-        reject(new Error(stderr || `Process exited with code ${code}`));
-      }
-    });
-
-    proc.on('error', reject);
-  });
+function findDockerBinary(): Promise<string | null> {
+  return findExecutable(DOCKER_PATHS);
 }
 
 export class DockerScanner extends BaseScanner {
@@ -138,7 +96,7 @@ export class DockerScanner extends BaseScanner {
       return {
         category: this.category,
         cleanedItems: items.length,
-        freedSpace: items.reduce((sum, item) => sum + item.size, 0),
+        freedSpace: sumItemSizes(items),
         errors: [],
       };
     }
@@ -162,7 +120,7 @@ export class DockerScanner extends BaseScanner {
         };
       }
 
-      const beforeSize = items.reduce((sum, item) => sum + item.size, 0);
+      const beforeSize = sumItemSizes(items);
       
       // Use spawn with explicit arguments instead of exec
       // Note: We intentionally exclude --volumes to prevent accidental data loss

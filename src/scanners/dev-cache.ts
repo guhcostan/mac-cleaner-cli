@@ -1,7 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { PATHS, exists, getSize, getDirectoryItems } from '../utils/index.js';
-import { stat } from 'fs/promises';
+import { PATHS, collectDirectoryItems, createPathItem } from '../utils/index.js';
 
 export class DevCacheScanner extends BaseScanner {
   category = CATEGORIES['dev-cache'];
@@ -20,51 +19,25 @@ export class DevCacheScanner extends BaseScanner {
     ];
 
     for (const dev of devPaths) {
-      if (await exists(dev.path)) {
-        try {
-          const size = await getSize(dev.path);
-          if (size > 0) {
-            const stats = await stat(dev.path);
-            items.push({
-              path: dev.path,
-              size,
-              name: dev.name,
-              isDirectory: true,
-              modifiedAt: stats.mtime,
-            });
-          }
-        } catch {
-          continue;
-        }
+      const item = await createPathItem(dev.path, dev.name, { skipEmpty: true });
+      if (item) {
+        items.push(item);
       }
     }
 
-    if (await exists(PATHS.xcodeDerivedData)) {
-      const xcodeItems = await getDirectoryItems(PATHS.xcodeDerivedData);
-      for (const item of xcodeItems) {
-        items.push({
-          ...item,
-          name: `Xcode: ${item.name}`,
-        });
-      }
+    const xcodeItems = await collectDirectoryItems([PATHS.xcodeDerivedData]);
+    for (const item of xcodeItems) {
+      items.push({
+        ...item,
+        name: `Xcode: ${item.name}`,
+      });
     }
 
-    if (await exists(PATHS.xcodeArchives)) {
-      try {
-        const size = await getSize(PATHS.xcodeArchives);
-        if (size > 0) {
-          const stats = await stat(PATHS.xcodeArchives);
-          items.push({
-            path: PATHS.xcodeArchives,
-            size,
-            name: 'Xcode Archives',
-            isDirectory: true,
-            modifiedAt: stats.mtime,
-          });
-        }
-      } catch {
-        // Ignore
-      }
+    const archivesItem = await createPathItem(PATHS.xcodeArchives, 'Xcode Archives', {
+      skipEmpty: true,
+    });
+    if (archivesItem) {
+      items.push(archivesItem);
     }
 
     return this.createResult(items);

@@ -1,9 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem, type CleanResult } from '../types.js';
-import { exists, getSize } from '../utils/index.js';
-import { spawn } from 'child_process';
-import { stat, access } from 'fs/promises';
-import { constants } from 'fs';
+import { createPathItem, execCommand, findExecutable, sumItemSizes } from '../utils/index.js';
 import { homedir } from 'os';
 import { join, resolve } from 'path';
 
@@ -29,49 +26,8 @@ const EXPECTED_CACHE_PREFIXES = [
 /**
  * Finds the Homebrew binary in known safe locations.
  */
-async function findBrewBinary(): Promise<string | null> {
-  for (const path of BREW_PATHS) {
-    try {
-      await access(path, constants.X_OK);
-      return path;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
-/**
- * Executes a command using spawn and returns stdout.
- */
-function execCommand(command: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, {
-      timeout: 30000,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve(stdout);
-      } else {
-        reject(new Error(stderr || `Process exited with code ${code}`));
-      }
-    });
-
-    proc.on('error', reject);
-  });
+function findBrewBinary(): Promise<string | null> {
+  return findExecutable(BREW_PATHS);
 }
 
 export class HomebrewScanner extends BaseScanner {
@@ -102,18 +58,9 @@ export class HomebrewScanner extends BaseScanner {
         return this.createResult(items);
       }
 
-      if (await exists(brewCache)) {
-        const size = await getSize(brewCache);
-        if (size > 0) {
-          const stats = await stat(brewCache);
-          items.push({
-            path: brewCache,
-            size,
-            name: 'Homebrew Download Cache',
-            isDirectory: true,
-            modifiedAt: stats.mtime,
-          });
-        }
+      const item = await createPathItem(brewCache, 'Homebrew Download Cache', { skipEmpty: true });
+      if (item) {
+        items.push(item);
       }
     } catch {
       // Homebrew may not be installed
@@ -127,7 +74,7 @@ export class HomebrewScanner extends BaseScanner {
       return {
         category: this.category,
         cleanedItems: items.length,
-        freedSpace: items.reduce((sum, item) => sum + item.size, 0),
+        freedSpace: sumItemSizes(items),
         errors: [],
       };
     }
@@ -158,7 +105,7 @@ export class HomebrewScanner extends BaseScanner {
     let freedSpace = 0;
 
     try {
-      const beforeSize = items.reduce((sum, item) => sum + item.size, 0);
+      const beforeSize = sumItemSizes(items);
       await execCommand(this.brewPath, ['cleanup', '--prune=all']);
       freedSpace = beforeSize;
     } catch (error) {

@@ -1,7 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { exists, getFileHash } from '../utils/index.js';
-import { readdir, stat } from 'fs/promises';
+import { getFileHash, walkFiles } from '../utils/index.js';
 import { join } from 'path';
 import { homedir } from 'os';
 
@@ -28,9 +27,7 @@ export class DuplicatesScanner extends BaseScanner {
     const filesBySize = new Map<number, FileInfo[]>();
 
     for (const searchPath of DEFAULT_SEARCH_PATHS) {
-      if (await exists(searchPath)) {
-        await this.collectFiles(searchPath, filesBySize, minSize, MAX_DEPTH);
-      }
+      await this.collectFiles(searchPath, filesBySize, minSize, MAX_DEPTH);
     }
 
     const duplicates = await this.findDuplicates(filesBySize);
@@ -39,45 +36,22 @@ export class DuplicatesScanner extends BaseScanner {
     return this.createResult(items);
   }
 
-  private async collectFiles(
+  private collectFiles(
     dir: string,
     filesBySize: Map<number, FileInfo[]>,
     minSize: number,
-    maxDepth: number,
-    currentDepth = 0
+    maxDepth: number
   ): Promise<void> {
-    if (currentDepth > maxDepth) return;
-
-    try {
-      const entries = await readdir(dir, { withFileTypes: true });
-
-      for (const entry of entries) {
-        if (entry.name.startsWith('.')) continue;
-
-        const fullPath = join(dir, entry.name);
-
-        try {
-          if (entry.isFile()) {
-            const stats = await stat(fullPath);
-            if (stats.size >= minSize) {
-              const files = filesBySize.get(stats.size) ?? [];
-              files.push({
-                path: fullPath,
-                size: stats.size,
-                modifiedAt: stats.mtime,
-              });
-              filesBySize.set(stats.size, files);
-            }
-          } else if (entry.isDirectory()) {
-            await this.collectFiles(fullPath, filesBySize, minSize, maxDepth, currentDepth + 1);
-          }
-        } catch {
-          continue;
-        }
-      }
-    } catch {
-      // Ignore permission errors
-    }
+    return walkFiles(dir, { maxDepth }, (filePath, stats) => {
+      if (stats.size < minSize) return;
+      const files = filesBySize.get(stats.size) ?? [];
+      files.push({
+        path: filePath,
+        size: stats.size,
+        modifiedAt: stats.mtime,
+      });
+      filesBySize.set(stats.size, files);
+    });
   }
 
   private async findDuplicates(

@@ -1,40 +1,7 @@
-import { spawn } from 'child_process';
-import type { MaintenanceResult } from './dns-cache.js';
+import { execCommand } from '../utils/exec.js';
+import type { MaintenanceResult } from './types.js';
 
 const TMUTIL = '/usr/bin/tmutil';
-
-/**
- * Executes a command using spawn (safer than exec).
- */
-function execCommand(command: string, args: string[], timeout = 30000): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, {
-      timeout,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', (code: number | null) => {
-      if (code === 0) {
-        resolve(stdout);
-      } else {
-        reject(new Error(stderr || `Process exited with code ${code}`));
-      }
-    });
-
-    proc.on('error', reject);
-  });
-}
 
 /**
  * Checks if we can run sudo without a password (non-interactive).

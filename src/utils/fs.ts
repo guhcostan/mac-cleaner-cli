@@ -1,4 +1,4 @@
-import { lstat, readdir, rm, access, unlink } from 'fs/promises';
+import { lstat, readdir, rm, access, stat, unlink } from 'fs/promises';
 import { join, resolve } from 'path';
 import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
@@ -194,6 +194,47 @@ export async function getItems(
   }
 
   await processDir(dirPath, 0);
+  return items;
+}
+
+/**
+ * Builds a CleanableItem for a single path. Returns null when the path cannot
+ * be read, or when it is empty and `skipEmpty` is set.
+ */
+export async function createPathItem(
+  path: string,
+  name: string,
+  options: { skipEmpty?: boolean } = {}
+): Promise<CleanableItem | null> {
+  try {
+    const size = await getSize(path);
+    if (options.skipEmpty && size === 0) return null;
+
+    const stats = await stat(path);
+    return {
+      path,
+      size,
+      name,
+      isDirectory: stats.isDirectory(),
+      modifiedAt: stats.mtime,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Lists the direct children of every path that exists, skipping missing or
+ * unreadable directories.
+ */
+export async function collectDirectoryItems(dirPaths: string[]): Promise<CleanableItem[]> {
+  const items: CleanableItem[] = [];
+
+  for (const dirPath of dirPaths) {
+    if (!(await exists(dirPath))) continue;
+    items.push(...(await getDirectoryItems(dirPath)));
+  }
+
   return items;
 }
 

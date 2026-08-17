@@ -1,15 +1,10 @@
 import chalk from 'chalk';
 import confirm from '@inquirer/confirm';
-import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
-import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
+import type { CategoryId, CleanSummary, CleanableItem, ScanResult } from '../types.js';
+import { runAllScans, getAllScanners } from '../scanners/index.js';
 import { formatSize, createScanProgress, createCleanProgress, hasFullDiskAccess, FULL_DISK_ACCESS_HINT } from '../utils/index.js';
 import filePickerPrompt from '../pickers/file-picker.js';
-
-const SAFETY_ICONS: Record<SafetyLevel, string> = {
-  safe: chalk.green('●'),
-  moderate: chalk.yellow('●'),
-  risky: chalk.red('●'),
-};
+import { SAFETY_ICONS, countSelectedItems, runCleanSelections, sumSelectedSize } from './shared.js';
 
 interface InteractiveOptions {
   includeRisky?: boolean;
@@ -88,8 +83,8 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
     return null;
   }
 
-  const totalToClean = selectedItems.reduce((sum, s) => sum + s.items.reduce((is, i) => is + i.size, 0), 0);
-  const totalItems = selectedItems.reduce((sum, s) => sum + s.items.length, 0);
+  const totalToClean = sumSelectedSize(selectedItems);
+  const totalItems = countSelectedItems(selectedItems);
 
   // Step 5: Confirm
   console.log();
@@ -111,25 +106,7 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   // Step 6: Clean
   const cleanProgress = showProgress ? createCleanProgress(selectedItems.length) : null;
 
-  const cleanResults: CleanSummary = {
-    results: [],
-    totalFreedSpace: 0,
-    totalCleanedItems: 0,
-    totalErrors: 0,
-  };
-
-  let cleanedCount = 0;
-  for (const { categoryId, items } of selectedItems) {
-    const scanner = getScanner(categoryId);
-    cleanProgress?.update(cleanedCount, `Cleaning ${scanner.category.name}...`);
-
-    const result = await scanner.clean(items);
-    cleanResults.results.push(result);
-    cleanResults.totalFreedSpace += result.freedSpace;
-    cleanResults.totalCleanedItems += result.cleanedItems;
-    cleanResults.totalErrors += result.errors.length;
-    cleanedCount++;
-  }
+  const cleanResults = await runCleanSelections(selectedItems, { progress: cleanProgress });
 
   cleanProgress?.finish();
 

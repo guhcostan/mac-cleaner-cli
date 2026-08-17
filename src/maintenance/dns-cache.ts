@@ -1,52 +1,14 @@
-import { spawn } from 'child_process';
+import { execCommand } from '../utils/exec.js';
+import type { MaintenanceResult } from './types.js';
 
-export interface MaintenanceResult {
-  success: boolean;
-  message: string;
-  error?: string;
-  requiresSudo?: boolean;
-}
-
-/**
- * Executes a command using spawn (safer than exec).
- * Returns a promise that resolves with stdout or rejects with error.
- */
-function execCommand(command: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(command, args, {
-      timeout: 10000, // 10 second timeout
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve(stdout);
-      } else {
-        reject(new Error(stderr || `Process exited with code ${code}`));
-      }
-    });
-
-    proc.on('error', reject);
-  });
-}
+const DNS_TIMEOUT = 10_000;
 
 /**
  * Checks if we can run sudo without a password (non-interactive).
  */
 async function canSudoWithoutPassword(): Promise<boolean> {
   try {
-    await execCommand('sudo', ['-n', 'true']);
+    await execCommand('sudo', ['-n', 'true'], DNS_TIMEOUT);
     return true;
   } catch {
     return false;
@@ -82,12 +44,12 @@ export async function flushDnsCache(): Promise<MaintenanceResult> {
   try {
     if (isRoot) {
       // Running as root, execute directly
-      await execCommand('/usr/bin/dscacheutil', ['-flushcache']);
-      await execCommand('/usr/bin/killall', ['-HUP', 'mDNSResponder']);
+      await execCommand('/usr/bin/dscacheutil', ['-flushcache'], DNS_TIMEOUT);
+      await execCommand('/usr/bin/killall', ['-HUP', 'mDNSResponder'], DNS_TIMEOUT);
     } else {
       // Use sudo -n (non-interactive)
-      await execCommand('sudo', ['-n', '/usr/bin/dscacheutil', '-flushcache']);
-      await execCommand('sudo', ['-n', '/usr/bin/killall', '-HUP', 'mDNSResponder']);
+      await execCommand('sudo', ['-n', '/usr/bin/dscacheutil', '-flushcache'], DNS_TIMEOUT);
+      await execCommand('sudo', ['-n', '/usr/bin/killall', '-HUP', 'mDNSResponder'], DNS_TIMEOUT);
     }
 
     return {

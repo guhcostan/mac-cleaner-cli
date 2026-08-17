@@ -1,7 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { PATHS, exists, getSize } from '../utils/index.js';
-import { stat } from 'fs/promises';
+import { PATHS, createPathItem } from '../utils/index.js';
 
 export class BrowserCacheScanner extends BaseScanner {
   category = CATEGORIES['browser-cache'];
@@ -17,20 +16,9 @@ export class BrowserCacheScanner extends BaseScanner {
     ];
 
     for (const browser of browserPaths) {
-      if (await exists(browser.path)) {
-        try {
-          const size = await getSize(browser.path);
-          const stats = await stat(browser.path);
-          items.push({
-            path: browser.path,
-            size,
-            name: `${browser.name} Cache`,
-            isDirectory: true,
-            modifiedAt: stats.mtime,
-          });
-        } catch {
-          continue;
-        }
+      const item = await createPathItem(browser.path, `${browser.name} Cache`);
+      if (item) {
+        items.push(item);
       }
     }
 

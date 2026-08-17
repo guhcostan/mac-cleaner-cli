@@ -1,7 +1,7 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { PATHS, exists, getSize } from '../utils/index.js';
-import { readdir, stat } from 'fs/promises';
+import { PATHS, exists, createPathItem } from '../utils/index.js';
+import { readdir } from 'fs/promises';
 import { join } from 'path';
 
 const KEEP_LANGUAGES = ['en', 'en_US', 'en_GB', 'pt', 'pt_BR', 'pt_PT', 'Base'];
@@ -28,19 +28,9 @@ export class LanguageFilesScanner extends BaseScanner {
             );
 
             for (const lproj of lprojDirs) {
-              const lprojPath = join(resourcesPath, lproj);
-              try {
-                const size = await getSize(lprojPath);
-                const stats = await stat(lprojPath);
-                items.push({
-                  path: lprojPath,
-                  size,
-                  name: `${app}: ${lproj}`,
-                  isDirectory: true,
-                  modifiedAt: stats.mtime,
-                });
-              } catch {
-                continue;
+              const item = await createPathItem(join(resourcesPath, lproj), `${app}: ${lproj}`);
+              if (item) {
+                items.push(item);
               }
             }
           } catch {

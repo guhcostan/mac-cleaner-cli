@@ -21,6 +21,10 @@ export function parseSize(sizeStr: string): number {
   return value * Math.pow(1024, unitIndex);
 }
 
+export function sumItemSizes(items: readonly { size: number }[]): number {
+  return items.reduce((sum, item) => sum + item.size, 0);
+}
+
 export const SIZE_THRESHOLDS = {
   LARGE_FILE: 500 * 1024 * 1024,
   MEDIUM_FILE: 100 * 1024 * 1024,

@@ -1,14 +1,9 @@
 import chalk from 'chalk';
-import type { CategoryId, CategoryGroup, ScanSummary, ScanResult, SafetyLevel } from '../types.js';
+import type { CategoryId, CategoryGroup, ScanSummary, ScanResult } from '../types.js';
 import { CATEGORIES } from '../types.js';
 import { runAllScans, runScans, getAllScanners } from '../scanners/index.js';
 import { formatRelativeAge, formatSize, createScanProgress } from '../utils/index.js';
-
-const SAFETY_ICONS: Record<SafetyLevel, string> = {
-  safe: chalk.green('●'),
-  moderate: chalk.yellow('●'),
-  risky: chalk.red('●'),
-};
+import { SAFETY_ICONS } from './shared.js';
 
 interface ScanCommandOptions {
   category?: CategoryId;

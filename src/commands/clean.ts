@@ -2,9 +2,10 @@ import chalk from 'chalk';
 import confirm from '@inquirer/confirm';
 import checkbox from '@inquirer/checkbox';
 import { spawn } from 'child_process';
-import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
+import type { CategoryId, CleanSummary, CleanableItem, ScanResult } from '../types.js';
 import { runAllScans, runScans, getScanner, getAllScanners } from '../scanners/index.js';
-import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
+import { formatSize, sumItemSizes, createScanProgress, createCleanProgress } from '../utils/index.js';
+import { SAFETY_ICONS, countSelectedItems, runCleanSelections, sumSelectedSize } from './shared.js';
 
 const DONATION_URL = 'https://ko-fi.com/guhcostan';
 
@@ -46,12 +47,6 @@ interface CleanCommandOptions {
   unsafe?: boolean;
   noProgress?: boolean;
 }
-
-const SAFETY_ICONS: Record<SafetyLevel, string> = {
-  safe: chalk.green('●'),
-  moderate: chalk.yellow('●'),
-  risky: chalk.red('●'),
-};
 
 interface CategoryChoice {
   name: string;
@@ -122,8 +117,8 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     return null;
   }
 
-  const totalToClean = selectedItems.reduce((sum, s) => sum + s.items.reduce((is, i) => is + i.size, 0), 0);
-  const totalItems = selectedItems.reduce((sum, s) => sum + s.items.length, 0);
+  const totalToClean = sumSelectedSize(selectedItems);
+  const totalItems = countSelectedItems(selectedItems);
 
   if (!options.yes && !options.dryRun) {
     const proceed = await confirm({
@@ -141,7 +136,7 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     console.log(chalk.cyan('\n[DRY RUN] Would clean the following:'));
     for (const { categoryId, items } of selectedItems) {
       const scanner = getScanner(categoryId);
-      const size = items.reduce((sum, i) => sum + i.size, 0);
+      const size = sumItemSizes(items);
       console.log(`  ${scanner.category.name}: ${items.length} items (${formatSize(size)})`);
     }
     console.log(chalk.cyan(`\n[DRY RUN] Would free ${formatSize(totalToClean)}\n`));
@@ -150,25 +145,10 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
 
   const cleanProgress = showProgress ? createCleanProgress(selectedItems.length) : null;
 
-  const cleanResults: CleanSummary = {
-    results: [],
-    totalFreedSpace: 0,
-    totalCleanedItems: 0,
-    totalErrors: 0,
-  };
-
-  let cleanedCount = 0;
-  for (const { categoryId, items } of selectedItems) {
-    const scanner = getScanner(categoryId);
-    cleanProgress?.update(cleanedCount, `Cleaning ${scanner.category.name}...`);
-
-    const result = await scanner.clean(items, options.dryRun);
-    cleanResults.results.push(result);
-    cleanResults.totalFreedSpace += result.freedSpace;
-    cleanResults.totalCleanedItems += result.cleanedItems;
-    cleanResults.totalErrors += result.errors.length;
-    cleanedCount++;
-  }
+  const cleanResults = await runCleanSelections(selectedItems, {
+    dryRun: options.dryRun,
+    progress: cleanProgress,
+  });
 
   cleanProgress?.finish();
 

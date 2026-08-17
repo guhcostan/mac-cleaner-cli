@@ -3,7 +3,7 @@ import { readdir, readFile, stat, lstat } from 'fs/promises';
 import { basename, dirname, join } from 'path';
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type CleanableItem, type ScanResult, type ScannerOptions } from '../types.js';
-import { HOME, PATHS, exists, formatRelativeAge, getSize } from '../utils/index.js';
+import { HOME, PATHS, exists, formatRelativeAge, getSize, mapPool } from '../utils/index.js';
 
 const DEFAULT_DAYS_OLD = 7;
 const HOME_MAX_DEPTH = 5;
@@ -294,26 +294,3 @@ function directorySizeBytes(path: string): Promise<number> {
   });
 }
 
-async function mapPool<T, R>(
-  items: readonly T[],
-  concurrency: number,
-  fn: (item: T) => Promise<R>
-): Promise<R[]> {
-  if (items.length === 0) return [];
-
-  const results = new Array<R>(items.length);
-  let next = 0;
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    async () => {
-      while (next < items.length) {
-        const index = next;
-        next += 1;
-        results[index] = await fn(items[index]);
-      }
-    }
-  );
-
-  await Promise.all(workers);
-  return results;
-}
