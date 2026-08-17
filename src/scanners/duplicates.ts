@@ -1,6 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { exists, getFileHash } from '../utils/index.js';
+import { exists, getFileHash, debugError } from '../utils/index.js';
 import { readdir, stat } from 'fs/promises';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -71,12 +71,13 @@ export class DuplicatesScanner extends BaseScanner {
           } else if (entry.isDirectory()) {
             await this.collectFiles(fullPath, filesBySize, minSize, maxDepth, currentDepth + 1);
           }
-        } catch {
+        } catch (error) {
+          debugError(`duplicates entry (${fullPath})`, error);
           continue;
         }
       }
-    } catch {
-      // Ignore permission errors
+    } catch (error) {
+      debugError(`duplicates scan (${dir})`, error);
     }
   }
 
@@ -96,7 +97,8 @@ export class DuplicatesScanner extends BaseScanner {
           const hashFiles = filesByHash.get(hash) ?? [];
           hashFiles.push(file);
           filesByHash.set(hash, hashFiles);
-        } catch {
+        } catch (error) {
+          debugError(`duplicates hash (${file.path})`, error);
           continue;
         }
       }

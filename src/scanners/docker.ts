@@ -3,6 +3,7 @@ import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem, t
 import { spawn } from 'child_process';
 import { access } from 'fs/promises';
 import { constants } from 'fs';
+import { debugError } from '../utils/index.js';
 
 /**
  * Known safe Docker binary locations on macOS.
@@ -108,8 +109,9 @@ export class DockerScanner extends BaseScanner {
           });
         }
       }
-    } catch {
+    } catch (error) {
       // Docker may not be installed or running
+      debugError('docker scan', error);
     }
 
     return this.createResult(items);

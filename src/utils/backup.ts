@@ -2,6 +2,7 @@ import { mkdir, rename, readdir, stat, rm } from 'fs/promises';
 import { join, dirname, resolve, relative } from 'path';
 import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
+import { debugError, errorCode } from './errors.js';
 
 const BACKUP_DIR = join(homedir(), '.mac-cleaner-cli', 'backup');
 const BACKUP_RETENTION_DAYS = 7;
@@ -35,38 +36,50 @@ export async function ensureBackupDir(): Promise<string> {
 }
 
 export async function backupItem(item: CleanableItem, backupDir: string): Promise<boolean> {
+  return (await backupItemWithError(item, backupDir)) === null;
+}
+
+/**
+ * Same as backupItem, but returns the failure reason (an errno code like
+ * 'EXDEV') instead of a boolean. Returns null on success.
+ */
+export async function backupItemWithError(
+  item: CleanableItem,
+  backupDir: string
+): Promise<string | null> {
   try {
     const relativePath = item.path.replace(homedir(), 'HOME');
     const backupPath = join(backupDir, relativePath);
     await mkdir(dirname(backupPath), { recursive: true });
     await rename(item.path, backupPath);
-    return true;
-  } catch {
-    return false;
+    return null;
+  } catch (error) {
+    debugError(`backupItem(${item.path})`, error);
+    return errorCode(error);
   }
 }
 
 export async function backupItems(
   items: CleanableItem[],
   onProgress?: (current: number, total: number, item: CleanableItem) => void
-): Promise<{ backupDir: string; success: number; failed: number }> {
+): Promise<{ backupDir: string; success: number; failed: number; errors: string[] }> {
   const backupDir = await ensureBackupDir();
   let success = 0;
-  let failed = 0;
+  const errors: string[] = [];
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     onProgress?.(i + 1, items.length, item);
 
-    const backed = await backupItem(item, backupDir);
-    if (backed) {
+    const error = await backupItemWithError(item, backupDir);
+    if (error === null) {
       success++;
     } else {
-      failed++;
+      errors.push(`${item.path}: ${error}`);
     }
   }
 
-  return { backupDir, success, failed };
+  return { backupDir, success, failed: errors.length, errors };
 }
 
 export async function cleanOldBackups(): Promise<number> {
@@ -85,12 +98,14 @@ export async function cleanOldBackups(): Promise<number> {
           await rm(entryPath, { recursive: true, force: true });
           cleaned++;
         }
-      } catch {
+      } catch (error) {
+        debugError(`cleanOldBackups(${entryPath})`, error);
         continue;
       }
     }
-  } catch {
+  } catch (error) {
     // Backup dir may not exist
+    debugError(`cleanOldBackups(${BACKUP_DIR})`, error);
   }
 
   return cleaned;
@@ -114,12 +129,14 @@ export async function listBackups(): Promise<{ path: string; date: Date; size: n
             size,
           });
         }
-      } catch {
+      } catch (error) {
+        debugError(`listBackups(${entryPath})`, error);
         continue;
       }
     }
-  } catch {
+  } catch (error) {
     // Backup dir may not exist
+    debugError(`listBackups(${BACKUP_DIR})`, error);
   }
 
   return backups.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -140,12 +157,13 @@ async function getBackupSize(dir: string): Promise<number> {
         } else if (entry.isDirectory()) {
           size += await getBackupSize(entryPath);
         }
-      } catch {
+      } catch (error) {
+        debugError(`getBackupSize(${entryPath})`, error);
         continue;
       }
     }
-  } catch {
-    // Ignore errors
+  } catch (error) {
+    debugError(`getBackupSize(${dir})`, error);
   }
 
   return size;

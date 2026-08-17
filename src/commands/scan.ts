@@ -49,6 +49,12 @@ export async function scanCommand(options: ScanCommandOptions): Promise<ScanSumm
     printScanResults(summary, options.verbose);
   }
 
+  // A category that could not be scanned is a partial failure: report it
+  // through the exit code so scripts don't treat the output as complete
+  if (summary.results.some((r) => r.error)) {
+    process.exitCode = 1;
+  }
+
   return summary;
 }
 
@@ -58,9 +64,14 @@ export async function scanCommand(options: ScanCommandOptions): Promise<ScanSumm
  * only with --verbose to keep the default output small.
  */
 function toJsonSummary(summary: ScanSummary, verbose = false) {
+  const failed = summary.results.filter((r) => r.error);
+
   return {
     totalSize: summary.totalSize,
     totalItems: summary.totalItems,
+    ...(failed.length > 0 && {
+      errors: failed.map((r) => ({ id: r.category.id, error: r.error })),
+    }),
     categories: summary.results
       .filter((r) => r.items.length > 0)
       .map((r) => ({
@@ -119,6 +130,8 @@ function printScanResults(summary: ScanSummary, verbose = false): void {
     }
   }
 
+  printScanErrors(summary.results);
+
   console.log();
   console.log(chalk.dim('─'.repeat(60)));
   console.log(
@@ -127,6 +140,22 @@ function printScanResults(summary: ScanSummary, verbose = false): void {
   console.log();
   console.log(chalk.dim('Safety: ') + `${SAFETY_ICONS.safe} safe  ${SAFETY_ICONS.moderate} moderate  ${SAFETY_ICONS.risky} risky (use --unsafe)`);
   console.log();
+}
+
+/**
+ * Categories that failed to scan are reported explicitly — otherwise they look
+ * indistinguishable from categories that simply found nothing.
+ */
+export function printScanErrors(results: ScanResult[]): void {
+  const failed = results.filter((r) => r.error);
+  if (failed.length === 0) return;
+
+  console.log();
+  console.log(chalk.bold.yellow(`⚠ ${failed.length} category(ies) could not be scanned:`));
+  for (const result of failed) {
+    console.log(chalk.yellow(`  ${result.category.name.padEnd(28)} ${result.error}`));
+  }
+  console.log(chalk.dim('  Run with MAC_CLEANER_DEBUG=1 for details.'));
 }
 
 function groupResultsByCategory(results: ScanResult[]): Record<CategoryGroup, ScanResult[]> {

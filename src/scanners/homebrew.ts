@@ -1,6 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem, type CleanResult } from '../types.js';
-import { exists, getSize } from '../utils/index.js';
+import { exists, getSize, debugError } from '../utils/index.js';
 import { spawn } from 'child_process';
 import { stat, access } from 'fs/promises';
 import { constants } from 'fs';
@@ -115,8 +115,9 @@ export class HomebrewScanner extends BaseScanner {
           });
         }
       }
-    } catch {
+    } catch (error) {
       // Homebrew may not be installed
+      debugError('homebrew scan', error);
     }
 
     return this.createResult(items);
@@ -145,8 +146,9 @@ export class HomebrewScanner extends BaseScanner {
     try {
       const cachePath = await execCommand(this.brewPath, ['--cache']);
       brewCache = cachePath.trim();
-    } catch {
-      // Ignore - fall back to direct deletion
+    } catch (error) {
+      // Fall back to direct deletion
+      debugError('homebrew --cache', error);
     }
 
     const selectedBrewCacheRoot = brewCache ? items.some((item) => item.path === brewCache) : false;

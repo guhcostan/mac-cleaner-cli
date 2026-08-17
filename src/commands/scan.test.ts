@@ -12,10 +12,12 @@ vi.mock('../scanners/index.js', () => ({
 describe('scan command', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.exitCode = undefined;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    process.exitCode = undefined;
   });
 
   describe('scanCommand', () => {
@@ -152,6 +154,88 @@ describe('scan command', () => {
 
       const parsed = JSON.parse(consoleSpy.mock.calls[0][0]);
       expect(parsed.categories[0].items).toEqual([{ path: '/test', size: 1000 }]);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should report failed scanners in JSON output and exit code', async () => {
+      vi.mocked(scanners.runAllScans).mockResolvedValue({
+        results: [
+          {
+            category: {
+              id: 'trash',
+              name: 'Trash',
+              group: 'Storage',
+              description: 'Trash',
+              safetyLevel: 'safe',
+            },
+            items: [],
+            totalSize: 0,
+            error: 'Scan failed: EPERM: operation not permitted',
+          },
+        ],
+        totalSize: 0,
+        totalItems: 0,
+      });
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await scanCommand({ json: true });
+
+      const parsed = JSON.parse(consoleSpy.mock.calls[0][0]);
+      expect(parsed.errors).toEqual([
+        { id: 'trash', error: 'Scan failed: EPERM: operation not permitted' },
+      ]);
+      expect(process.exitCode).toBe(1);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should print failed scanners in human-readable output', async () => {
+      vi.mocked(scanners.runAllScans).mockResolvedValue({
+        results: [
+          {
+            category: {
+              id: 'trash',
+              name: 'Trash',
+              group: 'Storage',
+              description: 'Trash',
+              safetyLevel: 'safe',
+            },
+            items: [],
+            totalSize: 0,
+            error: 'Scan failed: EPERM: operation not permitted',
+          },
+        ],
+        totalSize: 0,
+        totalItems: 0,
+      });
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await scanCommand({});
+
+      const output = consoleSpy.mock.calls.flat().join('\n');
+      expect(output).toContain('Trash');
+      expect(output).toContain('EPERM: operation not permitted');
+      expect(output).toContain('MAC_CLEANER_DEBUG=1');
+      expect(process.exitCode).toBe(1);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should leave the exit code untouched when all scans succeed', async () => {
+      vi.mocked(scanners.runAllScans).mockResolvedValue({
+        results: [],
+        totalSize: 0,
+        totalItems: 0,
+      });
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await scanCommand({});
+
+      expect(process.exitCode).toBeUndefined();
 
       consoleSpy.mockRestore();
     });

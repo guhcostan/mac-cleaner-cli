@@ -1,6 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions } from '../types.js';
-import { PATHS, exists, getDirectoryItems } from '../utils/index.js';
+import { PATHS, exists, getDirectoryItems, debugError } from '../utils/index.js';
 
 export class SystemLogsScanner extends BaseScanner {
   category = CATEGORIES['system-logs'];
@@ -17,8 +17,9 @@ export class SystemLogsScanner extends BaseScanner {
       try {
         const systemLogItems = await getDirectoryItems(PATHS.systemLogs);
         items.push(...systemLogItems);
-      } catch {
+      } catch (error) {
         // May not have permission to read system logs
+        debugError('system-logs', error);
       }
     }
 

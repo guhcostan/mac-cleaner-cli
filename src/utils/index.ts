@@ -8,3 +8,4 @@ export * from './config.js';
 export * from './hash.js';
 export * from './checkbox.js';
 export * from './fda.js';
+export * from './errors.js';

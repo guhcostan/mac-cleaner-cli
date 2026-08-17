@@ -1,6 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions } from '../types.js';
-import { PATHS, exists, getDirectoryItems } from '../utils/index.js';
+import { PATHS, exists, getDirectoryItems, debugError } from '../utils/index.js';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
 
@@ -19,8 +19,9 @@ export class TempFilesScanner extends BaseScanner {
       try {
         const varFolderItems = await this.scanVarFolders();
         items.push(...varFolderItems);
-      } catch {
+      } catch (error) {
         // May not have permission
+        debugError('temp-files var folders', error);
       }
     }
 
@@ -43,12 +44,13 @@ export class TempFilesScanner extends BaseScanner {
               items.push(...tempItems);
             }
           }
-        } catch {
+        } catch (error) {
+          debugError(`temp-files (${dir1})`, error);
           continue;
         }
       }
-    } catch {
-      // Ignore errors
+    } catch (error) {
+      debugError('temp-files scan', error);
     }
 
     return items;

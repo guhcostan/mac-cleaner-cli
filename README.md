@@ -210,6 +210,19 @@ npx mac-cleaner-cli backup --clean
     --no-progress      Disable progress bars
 ```
 
+### Troubleshooting
+
+Scans tolerate unreadable paths (missing Full Disk Access, permission errors), so a
+category can come back empty without an obvious reason. Set `MAC_CLEANER_DEBUG=1` to
+print every skipped path and the underlying error:
+
+```bash
+MAC_CLEANER_DEBUG=1 npx mac-cleaner-cli scan
+```
+
+Exit codes: `0` on success, `1` when a category could not be scanned or an item could
+not be deleted. `scan --json` also reports failures in an `errors` array.
+
 ## 💻 Global Installation
 
 If you use this tool frequently:

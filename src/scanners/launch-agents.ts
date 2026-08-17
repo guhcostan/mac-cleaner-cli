@@ -3,7 +3,7 @@ import { join, isAbsolute } from 'path';
 import { homedir } from 'os';
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type CleanableItem, type ScanResult, type ScannerOptions } from '../types.js';
-import { exists } from '../utils/index.js';
+import { exists, debugError } from '../utils/index.js';
 
 const SYSTEM_BINARY_PREFIXES = [
   '/usr/bin/',
@@ -67,7 +67,8 @@ export class LaunchAgentsScanner extends BaseScanner {
               modifiedAt: stats.mtime,
             });
           }
-        } catch {
+        } catch (error) {
+          debugError(`launch-agents (${plistPath})`, error);
           continue;
         }
       }
@@ -100,7 +101,8 @@ export class LaunchAgentsScanner extends BaseScanner {
 
       // No program path found
       return null;
-    } catch {
+    } catch (error) {
+      debugError('launch-agents plist', error);
       return null;
     }
   }

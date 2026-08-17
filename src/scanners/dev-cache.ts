@@ -1,6 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { PATHS, exists, getSize, getDirectoryItems } from '../utils/index.js';
+import { PATHS, exists, getSize, getDirectoryItems, debugError } from '../utils/index.js';
 import { stat } from 'fs/promises';
 
 export class DevCacheScanner extends BaseScanner {
@@ -33,7 +33,8 @@ export class DevCacheScanner extends BaseScanner {
               modifiedAt: stats.mtime,
             });
           }
-        } catch {
+        } catch (error) {
+          debugError(`dev-cache (${dev.path})`, error);
           continue;
         }
       }
@@ -62,8 +63,8 @@ export class DevCacheScanner extends BaseScanner {
             modifiedAt: stats.mtime,
           });
         }
-      } catch {
-        // Ignore
+      } catch (error) {
+        debugError('dev-cache Xcode archives', error);
       }
     }
 

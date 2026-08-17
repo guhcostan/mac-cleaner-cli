@@ -4,6 +4,7 @@ import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel }
 import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
 import { formatSize, createScanProgress, createCleanProgress, hasFullDiskAccess, FULL_DISK_ACCESS_HINT } from '../utils/index.js';
 import filePickerPrompt from '../pickers/file-picker.js';
+import { printScanErrors } from './scan.js';
 
 const SAFETY_ICONS: Record<SafetyLevel, string> = {
   safe: chalk.green('●'),
@@ -46,6 +47,8 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   });
 
   scanProgress?.finish();
+
+  printScanErrors(summary.results);
 
   if (summary.totalSize === 0) {
     console.log(chalk.green('✓ Your Mac is already clean! Nothing to remove.\n'));
@@ -135,6 +138,10 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
 
   // Step 7: Show results
   printCleanResults(cleanResults);
+
+  if (cleanResults.totalErrors > 0) {
+    process.exitCode = 1;
+  }
 
   return cleanResults;
 }

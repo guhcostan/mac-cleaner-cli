@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
-import { tmpdir } from 'os';
+import { homedir, tmpdir } from 'os';
 import * as backup from './backup.js';
 
 describe('backup utilities', () => {
@@ -119,6 +119,50 @@ describe('backup utilities', () => {
 
       expect(result.success + result.failed).toBe(2);
       await rm(result.backupDir, { recursive: true, force: true });
+    });
+
+    it('should report the reason each item failed to back up', async () => {
+      const result = await backup.backupItems([
+        { path: '/non/existent.txt', size: 0, name: 'fail.txt', isDirectory: false },
+      ]);
+
+      expect(result.failed).toBe(1);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toBe('/non/existent.txt: ENOENT');
+      await rm(result.backupDir, { recursive: true, force: true });
+    });
+  });
+
+  describe('backupItemWithError', () => {
+    it('should return the error code for a missing item', async () => {
+      const dir = await backup.ensureBackupDir();
+
+      const error = await backup.backupItemWithError(
+        { path: '/non/existent/file.txt', size: 0, name: 'file.txt', isDirectory: false },
+        dir
+      );
+
+      expect(error).toBe('ENOENT');
+      await rm(dir, { recursive: true, force: true });
+    });
+
+    it('should return null when the item is backed up', async () => {
+      // The source must live on the same filesystem as the backup dir (rename)
+      const sourceDir = join(homedir(), '.mac-cleaner-backup-src-test-' + Date.now());
+      await mkdir(sourceDir, { recursive: true });
+      const testFile = join(sourceDir, 'with-error.txt');
+      await writeFile(testFile, 'test content');
+
+      const dir = await backup.ensureBackupDir();
+
+      const error = await backup.backupItemWithError(
+        { path: testFile, size: 12, name: 'with-error.txt', isDirectory: false },
+        dir
+      );
+
+      expect(error).toBeNull();
+      await rm(sourceDir, { recursive: true, force: true });
+      await rm(dir, { recursive: true, force: true });
     });
   });
 
