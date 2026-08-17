@@ -82,6 +82,34 @@ describe('hash utilities', () => {
       const hash = await getFileHashPartial(testFile, 1000);
       expect(hash).toBeDefined();
     });
+
+    it('should hash only the requested prefix', async () => {
+      await mkdir(testDir, { recursive: true });
+      const shortFile = join(testDir, 'prefix-short.txt');
+      const longFile = join(testDir, 'prefix-long.txt');
+      await writeFile(shortFile, 'a'.repeat(1000));
+      await writeFile(longFile, 'a'.repeat(1000) + 'b'.repeat(1000));
+
+      const shortHash = await getFileHashPartial(shortFile, 1000);
+      const longHash = await getFileHashPartial(longFile, 1000);
+      const fullLongHash = await getFileHashPartial(longFile, 2000);
+
+      expect(longHash).toBe(shortHash);
+      expect(fullLongHash).not.toBe(shortHash);
+    });
+
+    it('should use specified algorithm', async () => {
+      await mkdir(testDir, { recursive: true });
+      const testFile = join(testDir, 'partial-algo.txt');
+      await writeFile(testFile, 'test');
+
+      const hash = await getFileHashPartial(testFile, 1000, 'sha256');
+      expect(hash.length).toBe(64);
+    });
+
+    it('should reject for non-existent file', async () => {
+      await expect(getFileHashPartial('/non/existent/file.txt')).rejects.toThrow();
+    });
   });
 });
 

@@ -35,6 +35,30 @@ describe("copyToClipboard", () => {
     );
   });
 
+  it("should throw a helpful error when pbcopy is missing", async () => {
+    const execSyncMock = vi.mocked(child_process.execSync);
+    execSyncMock.mockImplementationOnce(() => {
+      const error: NodeJS.ErrnoException = new Error("spawnSync pbcopy ENOENT");
+      error.code = "ENOENT";
+      throw error;
+    });
+
+    await expect(copyToClipboard("/test/path")).rejects.toThrow(
+      "Failed to copy: `pbcopy` was not found. Make sure you have `pbcopy` in your $PATH.",
+    );
+  });
+
+  it("should throw a generic error for non-Error failures", async () => {
+    const execSyncMock = vi.mocked(child_process.execSync);
+    execSyncMock.mockImplementationOnce(() => {
+      throw "boom";
+    });
+
+    await expect(copyToClipboard("/test/path")).rejects.toThrow(
+      "Failed to copy to clipboard",
+    );
+  });
+
   it("should handle empty string", async () => {
     const execSyncMock = vi.mocked(child_process.execSync);
     execSyncMock.mockReturnValueOnce(Buffer.from(""));
