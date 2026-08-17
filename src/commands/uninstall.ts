@@ -4,7 +4,7 @@ import checkbox from '@inquirer/checkbox';
 import { readdir, stat, rm, readFile, lstat, unlink } from 'fs/promises';
 import { join, basename, resolve } from 'path';
 import { homedir } from 'os';
-import { exists, getSize, formatSize, createCleanProgress, isProtectedPath, validatePathSafety } from '../utils/index.js';
+import { exists, getSize, formatSize, createCleanProgress, isProtectedPath, validatePathSafety, sanitizeDisplayName } from '../utils/index.js';
 
 /**
  * Escapes all regex metacharacters in a string.
@@ -105,7 +105,7 @@ export async function uninstallCommand(options: UninstallCommandOptions): Promis
   }
 
   const choices = apps.map((app) => ({
-    name: `${app.name.padEnd(35)} ${chalk.yellow(formatSize(app.totalSize).padStart(10))} ${chalk.dim(`(+${app.relatedPaths.length} related)`)}`,
+    name: `${sanitizeDisplayName(app.name).padEnd(35)} ${chalk.yellow(formatSize(app.totalSize).padStart(10))} ${chalk.dim(`(+${app.relatedPaths.length} related)`)}`,
     value: app.name,
     checked: false,
   }));
@@ -128,9 +128,9 @@ export async function uninstallCommand(options: UninstallCommandOptions): Promis
   console.log();
   console.log(chalk.bold('Applications to uninstall:'));
   for (const app of appsToRemove) {
-    console.log(`  ${chalk.red('✗')} ${app.name} (${formatSize(app.totalSize)})`);
+    console.log(`  ${chalk.red('✗')} ${sanitizeDisplayName(app.name)} (${formatSize(app.totalSize)})`);
     for (const related of app.relatedPaths) {
-      console.log(chalk.dim(`      └─ ${related.replace(homedir(), '~')}`));
+      console.log(chalk.dim(`      └─ ${sanitizeDisplayName(related.replace(homedir(), '~'))}`));
     }
   }
   console.log();
@@ -163,13 +163,13 @@ export async function uninstallCommand(options: UninstallCommandOptions): Promis
 
   for (let i = 0; i < appsToRemove.length; i++) {
     const app = appsToRemove[i];
-    progress?.update(i, `Uninstalling ${app.name}...`);
+    progress?.update(i, `Uninstalling ${sanitizeDisplayName(app.name)}...`);
 
     try {
       // Use safe remove with security checks
       const removed = await safeRemove(app.path);
       if (!removed) {
-        errors.push(`${app.name}: Failed to remove (security check failed or permission denied)`);
+        errors.push(`${sanitizeDisplayName(app.name)}: Failed to remove (security check failed or permission denied)`);
         continue;
       }
       freedSpace += app.size;
@@ -191,7 +191,7 @@ export async function uninstallCommand(options: UninstallCommandOptions): Promis
     } catch (error) {
       // Sanitize error message to avoid leaking path information
       const message = error instanceof Error ? error.message : 'Unknown error';
-      errors.push(`${app.name}: ${message.replace(homedir(), '~')}`);
+      errors.push(`${sanitizeDisplayName(app.name)}: ${sanitizeDisplayName(message.replace(homedir(), '~'))}`);
     }
   }
 

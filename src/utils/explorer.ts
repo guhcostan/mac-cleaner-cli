@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import type { CleanableItem } from '../types.js';
 import { getDirectoryItems } from './fs.js';
 import { formatSize } from './size.js';
+import { sanitizeDisplayName } from './display.js';
 import { explorerPrompt } from './explorer-prompt.js';
 
 interface ExplorerOptions {
@@ -27,7 +28,7 @@ async function runExplorerLoop(
     const choiceItems = currentFrame.items.map((item) => {
       const isDirectory = item.isDirectory;
       const icon = isDirectory ? '📂' : '📄';
-      const nameStr = item.name.substring(0, 40).padEnd(40);
+      const nameStr = sanitizeDisplayName(item.name).substring(0, 40).padEnd(40);
       const sizeStr = chalk.yellow(formatSize(item.size).padStart(10));
 
       return {
@@ -45,7 +46,7 @@ async function runExplorerLoop(
     });
 
     const result = await explorerPrompt({
-      message: `Browsing: ${currentFrame.path ?? 'Root Scan Results'}`,
+      message: `Browsing: ${currentFrame.path ? sanitizeDisplayName(currentFrame.path) : 'Root Scan Results'}`,
       choices: choiceItems,
       pageSize: options.pageSize || 15,
       loop: false,

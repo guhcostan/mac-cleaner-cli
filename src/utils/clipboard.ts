@@ -1,5 +1,8 @@
 import { execSync } from "node:child_process";
 
+/** Absolute path so a hijacked $PATH cannot substitute the binary. */
+const PBCOPY = "/usr/bin/pbcopy";
+
 /**
  * Utility function - Copies text to the system clipboard using `pbcopy`.
  *
@@ -8,7 +11,7 @@ import { execSync } from "node:child_process";
  */
 export async function copyToClipboard(text: string): Promise<void> {
   try {
-    execSync("pbcopy", {
+    execSync(PBCOPY, {
       input: text,
       encoding: "utf-8",
     });
@@ -19,8 +22,7 @@ export async function copyToClipboard(text: string): Promise<void> {
       (error as NodeJS.ErrnoException).code === "ENOENT"
     ) {
       throw new Error(
-        "Failed to copy: `pbcopy` was not found. " +
-          "Make sure you have `pbcopy` in your $PATH.",
+        `Failed to copy: \`pbcopy\` was not found at ${PBCOPY}.`,
         { cause: error },
       );
     }

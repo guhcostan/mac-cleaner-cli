@@ -2,6 +2,7 @@ import { lstat, readdir, rm, access, unlink } from 'fs/promises';
 import { join, resolve } from 'path';
 import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
+import { sanitizeDisplayName } from './display.js';
 
 /**
  * System paths that should NEVER be deleted.
@@ -60,7 +61,7 @@ export function validatePathSafety(path: string): string | null {
   
   // Check for protected system paths
   if (isProtectedPath(resolved)) {
-    return `Refusing to delete protected system path: ${path}`;
+    return `Refusing to delete protected system path: ${sanitizeDisplayName(path)}`;
   }
   
   // Check for root directory
@@ -279,7 +280,7 @@ export async function removeItemWithError(path: string, dryRun = false): Promise
     // Log the error for debugging but don't expose details to potential attackers
     const code = (error as NodeJS.ErrnoException).code;
     if (code !== 'ENOENT' && code !== 'EACCES' && code !== 'EPERM') {
-      console.error(`Failed to remove ${path}: ${code || 'unknown error'}`);
+      console.error(`Failed to remove ${sanitizeDisplayName(path)}: ${code || 'unknown error'}`);
     }
     return code || 'UNKNOWN';
   }

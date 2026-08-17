@@ -18,7 +18,7 @@ describe("copyToClipboard", () => {
 
     await copyToClipboard(testText);
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: testText,
       encoding: "utf-8",
     });
@@ -41,7 +41,7 @@ describe("copyToClipboard", () => {
 
     await copyToClipboard("");
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: "",
       encoding: "utf-8",
     });
@@ -54,7 +54,7 @@ describe("copyToClipboard", () => {
 
     await copyToClipboard(testText);
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: testText,
       encoding: "utf-8",
     });
@@ -67,7 +67,7 @@ describe("copyToClipboard", () => {
 
     await copyToClipboard(testText);
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: testText,
       encoding: "utf-8",
     });
@@ -81,7 +81,7 @@ describe("copyToClipboard", () => {
 
     await copyToClipboard(testText);
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: testText,
       encoding: "utf-8",
     });

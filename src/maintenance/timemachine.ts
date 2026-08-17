@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import type { MaintenanceResult } from './dns-cache.js';
 
 const TMUTIL = '/usr/bin/tmutil';
+const SUDO = '/usr/bin/sudo';
 
 /**
  * Executes a command using spawn (safer than exec).
@@ -41,7 +42,7 @@ function execCommand(command: string, args: string[], timeout = 30000): Promise<
  */
 async function canSudoWithoutPassword(): Promise<boolean> {
   try {
-    await execCommand('sudo', ['-n', 'true']);
+    await execCommand(SUDO, ['-n', '/usr/bin/true']);
     return true;
   } catch {
     return false;
@@ -107,7 +108,7 @@ export async function clearTimeMachineSnapshots(): Promise<MaintenanceResult> {
       if (isRoot) {
         await execCommand(TMUTIL, ['deletelocalsnapshots', date], 60000);
       } else {
-        await execCommand('sudo', ['-n', TMUTIL, 'deletelocalsnapshots', date], 60000);
+        await execCommand(SUDO, ['-n', TMUTIL, 'deletelocalsnapshots', date], 60000);
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
