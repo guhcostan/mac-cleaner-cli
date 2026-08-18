@@ -268,7 +268,7 @@ Looking for a place to start? Check issues labeled [`good first issue`](https://
 
 If this tool saved you disk space, a star goes a long way! It helps more Mac users discover this free alternative to paid cleaners.
 
-[![Star History Chart](https://api.star-history.com/svg?repos=guhcostan/mac-cleaner-cli&type=Date)](https://star-history.com/#guhcostan/mac-cleaner-cli&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=guhcostan/mac-cleaner-cli&type=Date)](https://star-history.dera.page/#guhcostan/mac-cleaner-cli&Date)
 
 ## 💚 Support
 
