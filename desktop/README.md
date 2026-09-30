@@ -4,13 +4,13 @@ A macOS menu bar app that keeps your Mac clean on its own. It uses the same scan
 [`mac-cleaner-cli`](../README.md) (they are bundled straight from `../src`), so every
 category, safety rule and protected-path check of the CLI applies here too.
 
-<p align="center"><img src="../assets/icon.png" width="96" alt="Mac Cleaner icon"></p>
+<p align="center"><img src="build/icon.png" width="96" alt="Mac Cleaner icon"></p>
 
 ## What it does
 
 | | |
 |---|---|
-| **Lives in the menu bar** | A broom icon at the top of the screen. Click it to open the popover; right click for a quick menu. There is no Dock icon. |
+| **Lives in the menu bar** | A sparkle icon at the top of the screen. Click it to open the popover; right click for a quick menu. There is no Dock icon. |
 | **Daily automatic clean** | Once a day at the time you pick (default 10:00) it quietly cleans the categories you selected. If the Mac was asleep or off at that time, it runs as soon as it wakes. It never runs twice on the same day, and right after install it waits for the first scheduled time instead of cleaning immediately. |
 | **Clean Now** | Runs the same selection as the daily clean, on demand. |
 | **Deep Clean (hard delete)** | Scans many more places (system caches, dev caches, node_modules, Docker, Trash… and, if you opt in, risky ones like old Downloads or iOS backups), shows what was found per category with the largest items, and permanently deletes only what you tick, after an explicit confirmation. |

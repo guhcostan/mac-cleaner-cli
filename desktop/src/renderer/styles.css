@@ -72,10 +72,8 @@ body {
 }
 
 .brand-mark {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  background: linear-gradient(135deg, #34c759, #0a84ff);
+  width: 20px;
+  height: 20px;
 }
 
 .tabs {

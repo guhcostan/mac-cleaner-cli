@@ -1,91 +1,107 @@
-"""Generates the app icon and the menu bar (template) icons.
+"""Generates the app icon, the menu bar (template) icons and the in-app logo.
 
     python3 scripts/make-icons.py
 
-Requires Pillow. Outputs:
+Requires Pillow. The mark is a pair of sparkles drawn from an astroid curve,
+on a light macOS-style squircle. Outputs:
   build/icon.png                1024x1024 app icon (electron-builder turns it into .icns)
   assets/trayTemplate.png       16x16 monochrome menu bar icon
   assets/trayTemplate@2x.png    32x32 retina variant
+  src/renderer/logo.png         64x64 logo shown in the popover header
 """
 
+import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE_ICON = ROOT.parent / "assets" / "icon.png"
+
+MINT_TOP = (52, 211, 153, 255)
+MINT_BOTTOM = (16, 160, 120, 255)
+BG_TOP = (255, 255, 255, 255)
+BG_BOTTOM = (236, 239, 243, 255)
 
 
-def make_app_icon() -> None:
-    src = Image.open(SOURCE_ICON).convert("RGBA")
-    w, h = src.size
-
-    # The source has a white background around the rounded square: make it transparent
-    # by flood filling from the corners.
-    mask = Image.new("L", (w + 2, h + 2), 0)
-    rgb = src.convert("RGB")
-    padded = Image.new("RGB", (w + 2, h + 2), (255, 255, 255))
-    padded.paste(rgb, (1, 1))
-    ImageDraw.floodfill(padded, (0, 0), (255, 0, 255), thresh=40)
-    px = padded.load()
-    mpx = mask.load()
-    for y in range(h + 2):
-        for x in range(w + 2):
-            if px[x, y] == (255, 0, 255):
-                mpx[x, y] = 255
-    mask = mask.crop((1, 1, w + 1, h + 1))
-    alpha = Image.eval(mask, lambda v: 255 - v)
-    src.putalpha(alpha)
-
-    # Fit the artwork to the macOS icon grid (824px body inside a 1024px canvas).
-    bbox = src.getbbox()
-    body = src.crop(bbox)
-    body = body.resize((824, int(824 * body.height / body.width)), Image.LANCZOS)
-    out = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
-    out.paste(body, ((1024 - body.width) // 2, (1024 - body.height) // 2), body)
-
-    (ROOT / "build").mkdir(exist_ok=True)
-    out.save(ROOT / "build" / "icon.png")
+def squircle(size: float, n: float = 5.0, steps: int = 720) -> list[tuple[float, float]]:
+    r = size / 2
+    pts = []
+    for i in range(steps):
+        t = 2 * math.pi * i / steps
+        c, s = math.cos(t), math.sin(t)
+        pts.append((r + r * math.copysign(abs(c) ** (2 / n), c), r + r * math.copysign(abs(s) ** (2 / n), s)))
+    return pts
 
 
-def draw_broom(size: int) -> Image.Image:
-    scale = 16
-    s = size * scale
-    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    black = (0, 0, 0, 255)
-
-    def p(x: float, y: float) -> tuple[float, float]:
-        return (x / 16 * s, y / 16 * s)
-
-    # Handle
-    d.line([p(2.2, 1.6), p(7.6, 8.2)], fill=black, width=int(1.7 / 16 * s))
-    d.ellipse([p(1.35, 0.75), p(3.05, 2.45)], fill=black)
-    # Ferrule
-    d.polygon([p(5.4, 9.2), p(9.4, 5.9), p(10.5, 7.2), p(6.5, 10.5)], fill=black)
-    # Bristles
-    d.polygon(
-        [p(6.9, 11.0), p(10.9, 7.7), p(15.0, 12.2), p(12.4, 12.1), p(13.6, 14.2), p(10.6, 13.4), p(10.4, 15.4), p(8.4, 13.4)],
-        fill=black,
-    )
-    # Sparkle
-    cx, cy, r, t = 12.6, 2.6, 2.3, 0.55
-    d.polygon(
-        [p(cx, cy - r), p(cx + t, cy - t), p(cx + r, cy), p(cx + t, cy + t), p(cx, cy + r), p(cx - t, cy + t), p(cx - r, cy), p(cx - t, cy - t)],
-        fill=black,
-    )
-
-    return img.resize((size, size), Image.LANCZOS)
+def sparkle(cx: float, cy: float, r: float, e: float = 2.6, steps: int = 400) -> list[tuple[float, float]]:
+    """Four-pointed star with concave sides (a generalized astroid)."""
+    pts = []
+    for i in range(steps):
+        t = 2 * math.pi * i / steps
+        c, s = math.cos(t), math.sin(t)
+        pts.append((cx + r * math.copysign(abs(c) ** e, c), cy + r * math.copysign(abs(s) ** e, s)))
+    return pts
 
 
-def make_tray_icons() -> None:
-    assets = ROOT / "assets"
-    assets.mkdir(exist_ok=True)
-    draw_broom(16).save(assets / "trayTemplate.png")
-    draw_broom(32).save(assets / "trayTemplate@2x.png")
+def vertical_gradient(w: int, h: int, top: tuple, bottom: tuple) -> Image.Image:
+    g = Image.new("RGBA", (w, h))
+    d = ImageDraw.Draw(g)
+    for y in range(h):
+        k = y / (h - 1)
+        d.line([(0, y), (w, y)], fill=tuple(int(top[i] + (bottom[i] - top[i]) * k) for i in range(4)))
+    return g
+
+
+def draw_mark(
+    draw: ImageDraw.ImageDraw, size: float, cx: float, cy: float, e: float = 2.6, small: float = 100
+) -> None:
+    """The two sparkles, laid out for a square of `size` centered on (cx, cy)."""
+    u = size / 824
+    draw.polygon(sparkle(cx - 40 * u, cy + 30 * u, 280 * u, e), fill=255)
+    draw.polygon(sparkle(cx + 215 * u, cy - 215 * u, small * u, e), fill=255)
+
+
+def make_app_icon(size: int = 1024, supersample: int = 4) -> Image.Image:
+    w = size * supersample
+    body = int(824 / 1024 * w)
+    off = (w - body) // 2
+    out = Image.new("RGBA", (w, w), (0, 0, 0, 0))
+
+    shadow = Image.new("L", (w, w), 0)
+    ImageDraw.Draw(shadow).polygon([(x + off, y + off + w * 0.014) for x, y in squircle(body)], fill=45)
+    shadow = shadow.filter(ImageFilter.GaussianBlur(w * 0.018))
+    out.paste((0, 0, 0, 255), (0, 0), shadow)
+
+    body_mask = Image.new("L", (w, w), 0)
+    ImageDraw.Draw(body_mask).polygon([(x + off, y + off) for x, y in squircle(body)], fill=255)
+    out.paste(vertical_gradient(w, w, BG_TOP, BG_BOTTOM), (0, 0), body_mask)
+
+    mark_mask = Image.new("L", (w, w), 0)
+    draw_mark(ImageDraw.Draw(mark_mask), body, w / 2, w / 2)
+    out.paste(vertical_gradient(w, w, MINT_TOP, MINT_BOTTOM), (0, 0), mark_mask)
+
+    return out.resize((size, size), Image.LANCZOS)
+
+
+def make_tray_icon(size: int) -> Image.Image:
+    """Black on transparent: macOS tints template images for light/dark menu bars."""
+    w = size * 16
+    mask = Image.new("L", (w, w), 0)
+    # The mark fills the whole square here, there is no squircle around it. At 16pt the
+    # points need to be sharper and the small sparkle bigger to still read as sparkles.
+    draw_mark(ImageDraw.Draw(mask), w * 1.3, w / 2 + w * 0.03, w / 2 + w * 0.02, e=3.4, small=125)
+    out = Image.new("RGBA", (w, w), (0, 0, 0, 0))
+    out.paste((0, 0, 0, 255), (0, 0), mask)
+    return out.resize((size, size), Image.LANCZOS)
 
 
 if __name__ == "__main__":
-    make_app_icon()
-    make_tray_icons()
+    (ROOT / "build").mkdir(exist_ok=True)
+    (ROOT / "assets").mkdir(exist_ok=True)
+
+    icon = make_app_icon()
+    icon.save(ROOT / "build" / "icon.png")
+    icon.resize((64, 64), Image.LANCZOS).save(ROOT / "src" / "renderer" / "logo.png")
+    make_tray_icon(16).save(ROOT / "assets" / "trayTemplate.png")
+    make_tray_icon(32).save(ROOT / "assets" / "trayTemplate@2x.png")
     print("icons written")

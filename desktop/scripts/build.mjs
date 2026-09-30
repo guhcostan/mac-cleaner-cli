@@ -52,3 +52,4 @@ await Promise.all([
 
 await cp(join(root, 'src/renderer/index.html'), join(dist, 'renderer/index.html'));
 await cp(join(root, 'src/renderer/styles.css'), join(dist, 'renderer/styles.css'));
+await cp(join(root, 'src/renderer/logo.png'), join(dist, 'renderer/logo.png'));
