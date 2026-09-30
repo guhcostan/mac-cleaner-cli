@@ -55,6 +55,17 @@ That's it. No installation needed. The CLI will:
 3. ✅ **Let you select** exactly what to clean
 4. 🗑️ **Clean** only what you chose
 
+## 🖥️ Desktop App (menu bar) — new
+
+Prefer not to open a terminal? **Mac Cleaner** is a menu bar app built on the same scanners as the CLI:
+
+- 🧹 **Cleans automatically every day** (temp files, browser cache, Homebrew cache, logs — you choose)
+- ⚡ **Clean Now** from the menu bar whenever you want
+- 🔥 **Deep Clean** — scan more places, review what was found and permanently delete it
+- 📊 Shows how much space every run freed, with a full history
+
+Download the latest `.dmg` from [Releases](https://github.com/guhcostan/mac-cleaner-cli/releases). See [`desktop/`](desktop/README.md) for details and how to build it yourself.
+
 ## 🎬 See It In Action
 
 <p align="center">
@@ -242,6 +253,16 @@ bun run dev      # Run in dev mode
 bun run test     # Run tests
 bun run lint     # Run linter
 bun run build    # Build for production
+```
+
+Desktop app (Electron, lives in [`desktop/`](desktop/README.md)):
+
+```bash
+cd desktop
+bun install
+bun run start    # Build and launch the menu bar app
+bun run test     # Run desktop tests
+bun run dist     # Package .dmg/.zip into desktop/release (macOS only)
 ```
 
 ## 🤝 Contributing

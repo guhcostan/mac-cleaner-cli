@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mac Cleaner</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app">
+      <header class="header">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">Mac Cleaner</span>
+        </div>
+        <nav class="tabs" role="tablist">
+          <button class="tab" role="tab" data-view="home">Home</button>
+          <button class="tab" role="tab" data-view="deep">Deep Clean</button>
+          <button class="tab" role="tab" data-view="history">History</button>
+          <button class="tab" role="tab" data-view="settings" aria-label="Settings">Settings</button>
+        </nav>
+      </header>
+      <main id="view" class="view"></main>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
