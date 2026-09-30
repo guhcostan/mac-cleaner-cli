@@ -17,6 +17,7 @@ import { copyToClipboard } from "../utils/clipboard.js";
 import { truncateFileName } from "../utils/paths.js";
 import { groupFilesByDirectory } from "../utils/grouping.js";
 import type { CleanableItem } from "../types.js";
+import { autoSelectableFilePaths } from "./selection-rules.js";
 
 interface FilePickerConfig {
   message: string;
@@ -130,6 +131,9 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
 
     const categoriesWithFileSelection =
       config.categoriesWithFileSelection || new Set<CategoryId>();
+
+    const autoSelected = (categoryId: CategoryId): Set<string> =>
+      new Set(autoSelectableFilePaths(results, categoryId));
 
     // Helper: Get picker state for a category (returns default if not exists)
     const getPickerState = (categoryId: CategoryId): FilePickerState => {
@@ -273,15 +277,10 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
             // Show files pane when selecting a category with file selection
             if (categoriesWithFileSelection.has(currentCategory)) {
               updatePickerState(currentCategory, { visible: true });
-              const categoryResult = results.find(
-                (r) => r.category.id === currentCategory,
+              newFileSelections.set(
+                currentCategory,
+                autoSelected(currentCategory),
               );
-              if (categoryResult) {
-                const allFilePaths = new Set(
-                  categoryResult.items.map((item) => item.path),
-                );
-                newFileSelections.set(currentCategory, allFilePaths);
-              }
             }
           }
 
@@ -305,10 +304,10 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
 
             for (const result of results) {
               if (categoriesWithFileSelection.has(result.category.id)) {
-                const allFilePaths = new Set(
-                  result.items.map((item) => item.path),
+                newFileSelections.set(
+                  result.category.id,
+                  autoSelected(result.category.id),
                 );
-                newFileSelections.set(result.category.id, allFilePaths);
                 // Show file picker for this category
                 updatePickerState(result.category.id, { visible: true });
               }
@@ -334,10 +333,10 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
 
               // If this category supports file selection, auto-select all files
               if (categoriesWithFileSelection.has(result.category.id)) {
-                const allFilePaths = new Set(
-                  result.items.map((item) => item.path),
+                newFileSelections.set(
+                  result.category.id,
+                  autoSelected(result.category.id),
                 );
-                newFileSelections.set(result.category.id, allFilePaths);
                 updatePickerState(result.category.id, { visible: true });
               }
             }

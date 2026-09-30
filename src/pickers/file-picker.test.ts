@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CategoryId, ScanResult } from "../types.js";
+import { autoSelectableFilePaths } from "./selection-rules.js";
 
 vi.mock("../utils/clipboard.js", () => ({
   copyToClipboard: vi.fn().mockResolvedValue(undefined),
@@ -665,5 +666,58 @@ describe("filePicker selection logic", () => {
       expect(state.selectedFilesByCategory.get("large-files")?.size).toBe(1);
       expect(state.selectedFilesByCategory.get("trash")?.size).toBe(1);
     });
+  });
+});
+
+/**
+ * These call the REAL exported function (not a copy of the logic living in the
+ * test file), because the rule they protect is a safety rule: a `risky`
+ * category must never come with files pre-checked.
+ */
+describe("autoSelectableFilePaths (what is pre-checked on category toggle)", () => {
+  const withSafety = (
+    categoryId: CategoryId,
+    safetyLevel: "safe" | "moderate" | "risky",
+  ): ScanResult => {
+    const result = createMockScanResult(categoryId, categoryId, [
+      { path: `/a/${categoryId}-1`, size: 10, name: "1" },
+      { path: `/a/${categoryId}-2`, size: 20, name: "2" },
+    ]);
+    return { ...result, category: { ...result.category, safetyLevel } };
+  };
+
+  it("pre-checks every file of a NON risky category", () => {
+    const results = [withSafety("trash", "safe")];
+
+    expect(autoSelectableFilePaths(results, "trash")).toEqual([
+      "/a/trash-1",
+      "/a/trash-2",
+    ]);
+  });
+
+  it("pre-checks every file of a moderate category", () => {
+    const results = [withSafety("system-cache", "moderate")];
+
+    expect(autoSelectableFilePaths(results, "system-cache")).toHaveLength(2);
+  });
+
+  it("pre-checks NOTHING on a risky category", () => {
+    const results = [withSafety("ios-backups", "risky")];
+
+    expect(autoSelectableFilePaths(results, "ios-backups")).toEqual([]);
+  });
+
+  it("applies the rule per category, without leaking across them", () => {
+    const results = [
+      withSafety("trash", "safe"),
+      withSafety("duplicates", "risky"),
+    ];
+
+    expect(autoSelectableFilePaths(results, "trash")).toHaveLength(2);
+    expect(autoSelectableFilePaths(results, "duplicates")).toEqual([]);
+  });
+
+  it("returns empty when the category is not in the results", () => {
+    expect(autoSelectableFilePaths([], "trash")).toEqual([]);
   });
 });

@@ -81,6 +81,26 @@ describe('CATEGORIES', () => {
     }
   });
 
+  // A rule, not a fixed list: any future `risky` category is born requiring
+  // per-file review. Without it, checking the category sent 100% of its items
+  // to deletion in one keystroke — which is how iOS Backups, Mail Attachments,
+  // Duplicates and Language Files ended up with no review at all.
+  it('should require per-file selection on EVERY risky category', () => {
+    const riskyWithoutFileSelection = Object.values(CATEGORIES)
+      .filter((c) => c.safetyLevel === 'risky' && !c.supportsFileSelection)
+      .map((c) => c.id);
+
+    expect(riskyWithoutFileSelection).toEqual([]);
+  });
+
+  it('should have a safetyNote on EVERY risky category', () => {
+    const riskyWithoutNote = Object.values(CATEGORIES)
+      .filter((c) => c.safetyLevel === 'risky' && !c.safetyNote)
+      .map((c) => c.id);
+
+    expect(riskyWithoutNote).toEqual([]);
+  });
+
   it('should have valid groups', () => {
     const validGroups = ['System Junk', 'Development', 'Storage', 'Browsers', 'Large Files'];
 
