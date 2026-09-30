@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BusyError, CleanerController, DEEP_SCAN_MAX_AGE_MS } from './controller.js';
+import { BusyError, CleanerController, DEEP_SCAN_MAX_AGE_MS, StaleScanError } from './controller.js';
 import { Store } from './store.js';
 import { fakeScanner, item } from './test-helpers.js';
 
@@ -85,12 +85,27 @@ describe('CleanerController', () => {
     expect(registry['system-cache'].scan).toHaveBeenCalledTimes(1);
   });
 
-  it('rescans before deleting when the preview is stale', async () => {
+  it('refuses to delete from a stale preview instead of rescanning', async () => {
     const { controller, registry } = await setup();
     await controller.scanDeep(['system-cache']);
     clock = new Date(clock.getTime() + DEEP_SCAN_MAX_AGE_MS + 1);
-    await controller.cleanDeep(['system-cache']);
-    expect(registry['system-cache'].scan).toHaveBeenCalledTimes(2);
+    await expect(controller.cleanDeep(['system-cache'])).rejects.toBeInstanceOf(StaleScanError);
+    expect(registry['system-cache'].scan).toHaveBeenCalledTimes(1);
+    expect(registry['system-cache'].clean).not.toHaveBeenCalled();
+    expect(controller.isBusy).toBe(false);
+  });
+
+  it('refuses to delete categories that were not in the preview', async () => {
+    const { controller, registry } = await setup();
+    await controller.scanDeep(['system-cache']);
+    await expect(controller.cleanDeep(['system-cache', 'downloads'])).rejects.toBeInstanceOf(StaleScanError);
+    expect(registry.downloads.scan).not.toHaveBeenCalled();
+    expect(registry['system-cache'].clean).not.toHaveBeenCalled();
+  });
+
+  it('refuses to delete when nothing was scanned', async () => {
+    const { controller } = await setup();
+    await expect(controller.cleanDeep(['trash'])).rejects.toBeInstanceOf(StaleScanError);
   });
 
   it('ignores unknown category ids from the renderer', async () => {

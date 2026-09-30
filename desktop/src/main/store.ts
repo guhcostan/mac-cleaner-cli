@@ -8,6 +8,8 @@ export const MAX_HISTORY = 100;
 interface PersistedData {
   installedAt: string;
   lastAutoRunAt: string | null;
+  /** Lifetime total, kept separately because history is capped. */
+  totalFreed: number;
   settings: Settings;
   history: RunRecord[];
 }
@@ -40,11 +42,16 @@ export class Store {
     const raw = (await readJson(path)) as Partial<PersistedData> | undefined;
     const isFirstLaunch = raw === undefined;
 
+    const history = Array.isArray(raw?.history) ? raw.history.slice(0, MAX_HISTORY) : [];
     const data: PersistedData = {
       installedAt: typeof raw?.installedAt === 'string' ? raw.installedAt : now.toISOString(),
       lastAutoRunAt: typeof raw?.lastAutoRunAt === 'string' ? raw.lastAutoRunAt : null,
+      totalFreed:
+        typeof raw?.totalFreed === 'number' && Number.isFinite(raw.totalFreed) && raw.totalFreed >= 0
+          ? raw.totalFreed
+          : history.reduce((sum, r) => sum + (r.freedSpace || 0), 0),
       settings: loadSettingsFrom(raw?.settings),
-      history: Array.isArray(raw?.history) ? raw.history.slice(0, MAX_HISTORY) : [],
+      history,
     };
 
     const store = new Store(path, data);
@@ -69,7 +76,7 @@ export class Store {
   }
 
   get totalFreed(): number {
-    return this.data.history.reduce((sum, r) => sum + (r.freedSpace || 0), 0);
+    return this.data.totalFreed;
   }
 
   async updateSettings(patch: SettingsPatch): Promise<Settings> {
@@ -80,12 +87,14 @@ export class Store {
 
   async addRun(record: RunRecord): Promise<void> {
     this.data.history = [record, ...this.data.history].slice(0, MAX_HISTORY);
+    this.data.totalFreed += record.freedSpace || 0;
     if (record.mode === 'auto') {
       this.data.lastAutoRunAt = record.startedAt;
     }
     await this.save();
   }
 
+  /** Clears the run list; the lifetime total is kept. */
   async clearHistory(): Promise<void> {
     this.data.history = [];
     await this.save();

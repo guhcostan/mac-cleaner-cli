@@ -70,6 +70,24 @@ describe('Store', () => {
     expect(store.history[0].freedSpace).toBe(MAX_HISTORY + 4);
   });
 
+  it('keeps the lifetime total when old runs fall out of history', async () => {
+    const store = await Store.open(dir);
+    const runs = MAX_HISTORY + 5;
+    for (let i = 0; i < runs; i++) {
+      await store.addRun(run('quick', 10));
+    }
+    expect(store.totalFreed).toBe(runs * 10);
+    expect((await Store.open(dir)).totalFreed).toBe(runs * 10);
+  });
+
+  it('derives the lifetime total from history for state files that predate it', async () => {
+    await writeFile(
+      join(dir, 'state.json'),
+      JSON.stringify({ installedAt: '2026-09-01T00:00:00.000Z', history: [run('auto', 30), run('deep', 70)] })
+    );
+    expect((await Store.open(dir)).totalFreed).toBe(100);
+  });
+
   it('recovers from a corrupted state file', async () => {
     await writeFile(join(dir, 'state.json'), '{not json');
     const store = await Store.open(dir);
@@ -81,6 +99,8 @@ describe('Store', () => {
     const store = await Store.open(dir);
     await store.addRun(run('quick', 1));
     await store.clearHistory();
-    expect((await Store.open(dir)).history).toEqual([]);
+    const reopened = await Store.open(dir);
+    expect(reopened.history).toEqual([]);
+    expect(reopened.totalFreed).toBe(1);
   });
 });

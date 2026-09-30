@@ -20,7 +20,7 @@ category, safety rule and protected-path check of the CLI applies here too.
 
 - Unattended runs (daily and Clean Now) can only use categories that are **not** marked risky. This is enforced in the main process, not just in the UI.
 - Automatic runs skip temp files touched in the last 24 hours (configurable) because running apps may still be using them.
-- Deep Clean never deletes without a scan preview and a confirmation, and rescans if the preview is older than 15 minutes.
+- Deep Clean only deletes exactly what a scan preview showed and you confirmed. If the preview is older than 15 minutes, it refuses and asks you to scan again instead of rescanning on its own.
 - All deletions go through the CLI's `removeItem`, which refuses system paths, `/` and your home folder, and never follows symlinks.
 - The UI runs in a sandboxed renderer with a strict Content Security Policy and no Node.js access; it can only call the handful of actions exposed by the preload script.
 

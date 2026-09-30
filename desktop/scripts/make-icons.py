@@ -5,15 +5,18 @@
 Requires Pillow. The mark is a pair of sparkles drawn from an astroid curve,
 on a light macOS-style squircle. Outputs:
   build/icon.png                1024x1024 app icon (electron-builder turns it into .icns)
-  assets/trayTemplate.png       16x16 monochrome menu bar icon
-  assets/trayTemplate@2x.png    32x32 retina variant
+  assets/trayTemplate.png       18x18 outlined menu bar icon (template image)
+  assets/trayTemplate@2x.png    36x36 retina variant
   src/renderer/logo.png         64x64 logo shown in the popover header
+  branding/logo-mark.png        1024x1024 colored mark, transparent background
+  branding/menubar-black.png    576x576 outlined menu bar mark, black, transparent background
+  branding/menubar-white.png    576x576 outlined menu bar mark, white, transparent background
 """
 
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -83,16 +86,62 @@ def make_app_icon(size: int = 1024, supersample: int = 4) -> Image.Image:
     return out.resize((size, size), Image.LANCZOS)
 
 
-def make_tray_icon(size: int) -> Image.Image:
+def outline_mark(points: float, scale: int, stroke_pt: float = 1.6, supersample: int = 8) -> Image.Image:
+    """
+    Menu bar version of the mark, in the style of SF Symbols' "sparkles": the big sparkle
+    outlined, the small one solid, sized for an 18pt menu bar slot. Returns an "L" mask
+    at `points * scale` pixels.
+    """
+    px = points * scale
+    w = px * supersample
+    stroke = stroke_pt * scale * supersample
+    size = w * 1.22
+    u = size / 824
+    cx, cy = w / 2 + w * 0.03, w / 2 + w * 0.03
+
+    big = sparkle(cx - 40 * u, cy + 30 * u, 280 * u, e=3.0, steps=2400)
+    fill = Image.new("L", (w, w), 0)
+    ImageDraw.Draw(fill).polygon(big, fill=255)
+
+    # The stroke is the band of the shape within `stroke` of its edge: a union of discs along
+    # the edge, clipped to the shape. Uniform width even on the concave sides.
+    band = Image.new("L", (w, w), 0)
+    bd = ImageDraw.Draw(band)
+    for x, y in big:
+        bd.ellipse([x - stroke, y - stroke, x + stroke, y + stroke], fill=255)
+    mask = ImageChops.multiply(fill, band)
+
+    ImageDraw.Draw(mask).polygon(sparkle(cx + 215 * u, cy - 215 * u, 120 * u, e=2.6), fill=255)
+    return mask.resize((px, px), Image.LANCZOS)
+
+
+def make_tray_icon(scale: int) -> Image.Image:
     """Black on transparent: macOS tints template images for light/dark menu bars."""
-    w = size * 16
-    mask = Image.new("L", (w, w), 0)
-    # The mark fills the whole square here, there is no squircle around it. At 16pt the
-    # points need to be sharper and the small sparkle bigger to still read as sparkles.
-    draw_mark(ImageDraw.Draw(mask), w * 1.3, w / 2 + w * 0.03, w / 2 + w * 0.02, e=3.4, small=125)
-    out = Image.new("RGBA", (w, w), (0, 0, 0, 0))
+    mask = outline_mark(18, scale)
+    out = Image.new("RGBA", mask.size, (0, 0, 0, 0))
     out.paste((0, 0, 0, 255), (0, 0), mask)
-    return out.resize((size, size), Image.LANCZOS)
+    return out
+
+
+def make_logo_files() -> None:
+    """Standalone transparent PNGs of the mark, for README, website or other menu bar uses."""
+    out_dir = ROOT / "branding"
+    out_dir.mkdir(exist_ok=True)
+
+    # Colored filled mark, no background.
+    w = 1024 * 4
+    mask = Image.new("L", (w, w), 0)
+    draw_mark(ImageDraw.Draw(mask), w * 1.1, w / 2 + w * 0.02, w / 2 + w * 0.02)
+    logo = Image.new("RGBA", (w, w), (0, 0, 0, 0))
+    logo.paste(vertical_gradient(w, w, MINT_TOP, MINT_BOTTOM), (0, 0), mask)
+    logo.resize((1024, 1024), Image.LANCZOS).save(out_dir / "logo-mark.png")
+
+    # Menu bar outline in black and white, large enough to rescale.
+    outline = outline_mark(18, 32)
+    for name, color in (("menubar-black.png", (0, 0, 0, 255)), ("menubar-white.png", (255, 255, 255, 255))):
+        img = Image.new("RGBA", outline.size, (0, 0, 0, 0))
+        img.paste(color, (0, 0), outline)
+        img.save(out_dir / name)
 
 
 if __name__ == "__main__":
@@ -102,6 +151,7 @@ if __name__ == "__main__":
     icon = make_app_icon()
     icon.save(ROOT / "build" / "icon.png")
     icon.resize((64, 64), Image.LANCZOS).save(ROOT / "src" / "renderer" / "logo.png")
-    make_tray_icon(16).save(ROOT / "assets" / "trayTemplate.png")
-    make_tray_icon(32).save(ROOT / "assets" / "trayTemplate@2x.png")
+    make_tray_icon(1).save(ROOT / "assets" / "trayTemplate.png")
+    make_tray_icon(2).save(ROOT / "assets" / "trayTemplate@2x.png")
+    make_logo_files()
     print("icons written")

@@ -138,6 +138,10 @@ async function runDeepClean(): Promise<void> {
     deep.result = record;
     deep.preview = null;
     render();
+  } else if (error?.includes('out of date')) {
+    // The main process refuses to delete from an old preview: go back so the user rescans.
+    deep.preview = null;
+    render();
   }
 }
 
@@ -189,12 +193,17 @@ function fdaBanner(s: AppState): HTMLElement | null {
 
 function runBreakdown(record: RunRecord): HTMLElement {
   const rows = record.categories.filter((c) => c.cleanedItems > 0 || c.errors.length > 0);
-  if (rows.length === 0) {
+  // Scanner failures live on the run, not on a category.
+  const scanErrors = (record.errors ?? []).map((message) =>
+    h('div', { class: 'list-item' }, h('div', { class: 'grow small danger-text' }, message))
+  );
+  if (rows.length === 0 && scanErrors.length === 0) {
     return h('div', { class: 'muted small' }, 'Nothing needed to be removed.');
   }
   return h(
     'div',
     { class: 'list' },
+    ...scanErrors,
     ...rows.map((c) =>
       h(
         'div',

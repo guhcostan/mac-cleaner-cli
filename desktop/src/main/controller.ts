@@ -29,6 +29,12 @@ export class BusyError extends Error {
   }
 }
 
+export class StaleScanError extends Error {
+  constructor() {
+    super('The scan is out of date. Scan again to review what will be deleted.');
+  }
+}
+
 export interface ControllerDeps {
   store: Store;
   registry: ScannerRegistry;
@@ -120,25 +126,26 @@ export class CleanerController {
   }
 
   /**
-   * Hard delete: permanently removes everything found in the selected
-   * categories of the last deep scan (rescanning if it is stale).
+   * Hard delete: permanently removes exactly what the last deep scan found in
+   * the selected categories. Never rescans on its own: anything deleted must
+   * have been shown in a preview, so a stale or incomplete preview is refused.
    */
   async cleanDeep(categoryIds: CategoryId[]): Promise<RunRecord> {
     const ids = this.validIds(categoryIds);
-    const record = await this.exclusive('deep', async () => {
-      const scan = this.lastDeepScan;
-      const fresh = scan && this.now().getTime() - scan.at.getTime() < DEEP_SCAN_MAX_AGE_MS;
-      const cached = fresh ? scan.results.filter((r) => ids.includes(r.category.id)) : [];
-      const missing = ids.filter((id) => !cached.some((r) => r.category.id === id));
-      const rescanned = missing.length
-        ? await scanCategories(this.deps.registry, missing, (e) => this.setProgress('deep', e))
-        : [];
+    const scan = this.lastDeepScan;
+    const fresh = scan !== null && this.now().getTime() - scan.at.getTime() < DEEP_SCAN_MAX_AGE_MS;
+    const confirmed = fresh ? scan.results.filter((r) => ids.includes(r.category.id)) : [];
+    if (!fresh || confirmed.length !== ids.length) {
+      this.lastDeepScan = null;
+      throw new StaleScanError();
+    }
 
-      return cleanScanResults(this.deps.registry, 'deep', [...cached, ...rescanned], {
+    const record = await this.exclusive('deep', () =>
+      cleanScanResults(this.deps.registry, 'deep', confirmed, {
         now: this.now,
         onProgress: (e) => this.setProgress('deep', e),
-      });
-    });
+      })
+    );
 
     this.lastDeepScan = null;
     await this.finishRun(record);
