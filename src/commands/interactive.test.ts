@@ -354,6 +354,40 @@ describe('interactive command', () => {
 
     consoleSpy.mockRestore();
   });
+
+  // Regression guard: deletion is permanent (rm -rf, no Trash). With the prompt
+  // defaulting to `true`, a distracted Enter deletes everything. This test locks
+  // the default itself, not just the cancel path — the existing cancel test above
+  // stays green even with the wrong default, so it cannot catch this.
+  it('should default the destructive confirmation to NO', async () => {
+    vi.mocked(scanners.runAllScans).mockResolvedValue({
+      results: [
+        {
+          category: trashCategory,
+          items: [{ path: '/test', size: 1000, name: 'test', isDirectory: false }],
+          totalSize: 1000,
+        },
+      ],
+      totalSize: 1000,
+      totalItems: 1,
+    });
+
+    vi.mocked(inquirerPrompts.filePicker).mockResolvedValue({
+      selectedCategories: new Set(['trash']),
+      selectedFilesByCategory: new Map(),
+    });
+    vi.mocked(inquirerPrompts.confirm).mockResolvedValue(false);
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await interactiveCommand({});
+
+    expect(inquirerPrompts.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ default: false })
+    );
+
+    consoleSpy.mockRestore();
+  });
 });
 
 
