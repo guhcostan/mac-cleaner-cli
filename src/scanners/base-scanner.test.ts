@@ -178,7 +178,8 @@ describe('BaseScanner backup routing', () => {
 
   it('reports an error and keeps the file when the backup fails', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const outside = join(tmpdir(), 'scanner-outside-home.txt');
+    const outsideDir = await mkdtemp(join(tmpdir(), 'scanner-outside-home-'));
+    const outside = join(outsideDir, 'scanner-outside-home.txt');
     await writeFile(outside, 'x');
 
     const backupDir = await ensureBackupDir();
@@ -193,7 +194,7 @@ describe('BaseScanner backup routing', () => {
     expect(result.errors[0]).toContain('nothing was deleted');
     expect(existsSync(outside)).toBe(true);
 
-    await rm(outside, { force: true });
+    await rm(outsideDir, { recursive: true, force: true });
     await rm(backupDir, { recursive: true, force: true });
     consoleSpy.mockRestore();
   });

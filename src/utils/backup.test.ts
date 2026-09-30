@@ -87,7 +87,8 @@ describe('backup utilities', () => {
 
     it('should refuse paths outside the home directory', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const outside = join(tmpdir(), 'outside-home.txt');
+      const outsideDir = await mkdtemp(join(tmpdir(), 'outside-home-'));
+      const outside = join(outsideDir, 'outside-home.txt');
       await writeFile(outside, 'x');
 
       const dir = await backup.ensureBackupDir();
@@ -100,7 +101,7 @@ describe('backup utilities', () => {
       expect(ok).toBe(false);
       expect(existsSync(outside)).toBe(true);
 
-      await rm(outside, { force: true });
+      await rm(outsideDir, { recursive: true, force: true });
       await rm(dir, { recursive: true, force: true });
       consoleSpy.mockRestore();
     });
