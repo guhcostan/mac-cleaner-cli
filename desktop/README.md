@@ -26,7 +26,7 @@ category, safety rule and protected-path check of the CLI applies here too.
 
 ### Default automatic categories
 
-`temp-files`, `browser-cache`, `homebrew`, `system-logs`. You can add any other non-risky category (User Cache, Trash, Development Cache, Docker…) in **Settings**.
+`temp-files`, `browser-cache`, `system-logs`. You can add any other non-risky category (Homebrew, User Cache, Trash, Development Cache, Docker…) in **Settings**.
 
 ## Install
 

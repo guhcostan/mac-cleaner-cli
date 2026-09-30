@@ -9,6 +9,12 @@ updates:
       # commander >=15 requires Node >=22.12.0; revisit when engines.node is raised
       - dependency-name: "commander"
         update-types: ["version-update:semver-major"]
+      # chalk >=6 requires Node >=22; same reason as commander
+      - dependency-name: "chalk"
+        update-types: ["version-update:semver-major"]
+      # typescript-eslint 8 supports TypeScript <6.1; revisit when it supports TS 7
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         patterns:
