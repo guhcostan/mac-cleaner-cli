@@ -1,0 +1,27 @@
+{
+  "name": "mac-cleaner-desktop",
+  "productName": "Mac Cleaner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Menu bar app that keeps your Mac clean automatically, powered by mac-cleaner-cli",
+  "author": "guhcostan",
+  "license": "MIT",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/build.mjs --dev && electron .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "icons": "python3 scripts/make-icons.py",
+    "dist": "node scripts/build.mjs && electron-builder --mac --config electron-builder.config.cjs --publish never"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.0.15"
+  }
+}

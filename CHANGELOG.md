@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### Added
+- **Desktop app (`desktop/`)** — a macOS menu bar app built with Electron on top of the CLI scanners: daily automatic clean of safe categories (runs on wake if the Mac was asleep), one-click Clean Now, Deep Clean with a reviewable preview and explicit confirmation before permanently deleting, run history, notifications, launch at login and Full Disk Access guidance. Packaged as `.dmg`/`.zip` for Apple Silicon and Intel by the new `Desktop App` workflow and attached to GitHub releases
 - **`scan` command** — scan without deleting; supports `--category`, `--verbose`, and `--json` for scripts and integrations
 - **`clean` command** — non-interactive cleaning for automation: `--all`, `--categories <ids>`, `--yes`, `--dry-run`, `--unsafe`
 - **Visual size bars** in the category picker to spot the biggest space savings at a glance (idea from #46 by @alibosworth)

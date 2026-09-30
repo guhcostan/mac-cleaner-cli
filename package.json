@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "tsdown src/index.ts --format esm --dts --clean",
-    "lint": "eslint src",
+    "lint": "eslint src desktop/src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
