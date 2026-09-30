@@ -202,7 +202,18 @@ npx mac-cleaner-cli maintenance --dns
 
 # Free purgeable space
 npx mac-cleaner-cli maintenance --purgeable
+
+# Delete Time Machine local snapshots (requires sudo, asks for confirmation)
+sudo npx mac-cleaner-cli maintenance --timemachine
+
+# Preview it first, or skip the prompt
+npx mac-cleaner-cli maintenance --timemachine --dry-run
+sudo npx mac-cleaner-cli maintenance --timemachine --yes
 ```
+
+Local snapshots are taken automatically by Time Machine and can grow to hundreds of gigabytes.
+Deleting them is irreversible — they are your only local rollback point while the backup disk is
+disconnected — but macOS recreates them as needed once it is reconnected.
 
 ### Other Commands
 

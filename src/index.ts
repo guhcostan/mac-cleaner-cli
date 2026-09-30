@@ -135,12 +135,20 @@ program
   .option('--dns', 'Flush DNS cache')
   .option('--purgeable', 'Free purgeable space')
   .option('--timemachine', 'Delete Time Machine local snapshots')
+  .option('-y, --yes', 'Skip confirmation prompts')
+  .option('-d, --dry-run', 'Show what would be done without changing anything')
   .action(async (options) => {
-    await maintenanceCommand({
-      dns: options.dns,
-      purgeable: options.purgeable,
-      timemachine: options.timemachine,
-    });
+    try {
+      await maintenanceCommand({
+        dns: options.dns,
+        purgeable: options.purgeable,
+        timemachine: options.timemachine,
+        yes: options.yes,
+        dryRun: options.dryRun,
+      });
+    } catch (error) {
+      handleCleanExit(error);
+    }
   });
 
 program

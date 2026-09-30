@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { maintenanceCommand } from './maintenance.js';
 import * as maintenance from '../maintenance/index.js';
+import confirm from '@inquirer/confirm';
 
 vi.mock('../maintenance/index.js', () => ({
   flushDnsCache: vi.fn(),
   freePurgeableSpace: vi.fn(),
+  clearTimeMachineSnapshots: vi.fn(),
+  listTimeMachineSnapshotDates: vi.fn(),
+}));
+
+vi.mock('@inquirer/confirm', () => ({
+  default: vi.fn(),
 }));
 
 describe('maintenance command', () => {
@@ -90,6 +97,101 @@ describe('maintenance command', () => {
     expect(maintenance.flushDnsCache).toHaveBeenCalled();
 
     consoleSpy.mockRestore();
+  });
+
+  describe('--timemachine', () => {
+    const twoSnapshots = ['2024-01-15-123456', '2024-01-16-010203'];
+
+    beforeEach(() => {
+      vi.mocked(maintenance.clearTimeMachineSnapshots).mockResolvedValue({
+        success: true,
+        message: 'Deleted 2 Time Machine snapshots',
+      });
+    });
+
+    it('deletes snapshots after the user confirms', async () => {
+      vi.mocked(maintenance.listTimeMachineSnapshotDates).mockResolvedValue({ dates: twoSnapshots });
+      vi.mocked(confirm).mockResolvedValue(true);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await maintenanceCommand({ timemachine: true });
+
+      expect(confirm).toHaveBeenCalled();
+      expect(maintenance.clearTimeMachineSnapshots).toHaveBeenCalledWith({
+        dates: twoSnapshots,
+        dryRun: undefined,
+      });
+
+      consoleSpy.mockRestore();
+    });
+
+    it('deletes nothing when the user declines', async () => {
+      vi.mocked(maintenance.listTimeMachineSnapshotDates).mockResolvedValue({ dates: twoSnapshots });
+      vi.mocked(confirm).mockResolvedValue(false);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await maintenanceCommand({ timemachine: true });
+
+      expect(maintenance.clearTimeMachineSnapshots).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('cancelled'));
+      expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('No maintenance tasks'));
+
+      consoleSpy.mockRestore();
+    });
+
+    it('does not prompt with --yes', async () => {
+      vi.mocked(maintenance.listTimeMachineSnapshotDates).mockResolvedValue({ dates: twoSnapshots });
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await maintenanceCommand({ timemachine: true, yes: true });
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(maintenance.clearTimeMachineSnapshots).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('does not prompt with --dry-run and forwards the flag', async () => {
+      vi.mocked(maintenance.listTimeMachineSnapshotDates).mockResolvedValue({ dates: twoSnapshots });
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await maintenanceCommand({ timemachine: true, dryRun: true });
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(maintenance.clearTimeMachineSnapshots).toHaveBeenCalledWith({
+        dates: twoSnapshots,
+        dryRun: true,
+      });
+
+      consoleSpy.mockRestore();
+    });
+
+    it('does not prompt when there are no snapshots', async () => {
+      vi.mocked(maintenance.listTimeMachineSnapshotDates).mockResolvedValue({ dates: [] });
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await maintenanceCommand({ timemachine: true });
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(maintenance.clearTimeMachineSnapshots).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('surfaces a listing error without prompting', async () => {
+      vi.mocked(maintenance.listTimeMachineSnapshotDates).mockResolvedValue({
+        dates: [],
+        error: 'tmutil not available or Time Machine is not configured on this Mac',
+      });
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await maintenanceCommand({ timemachine: true });
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(maintenance.clearTimeMachineSnapshots).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
   });
 });
 
