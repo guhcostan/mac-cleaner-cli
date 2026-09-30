@@ -3,6 +3,7 @@ import { join, resolve } from 'path';
 import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
 import { sanitizeDisplayName } from './display.js';
+import { debugError, errorCode, isExpectedFsError } from './errors.js';
 
 /**
  * System paths that should NEVER be deleted.
@@ -100,7 +101,8 @@ export async function getSize(path: string): Promise<number> {
       return await getDirectorySize(path);
     }
     return 0;
-  } catch {
+  } catch (error) {
+    debugError(`getSize(${path})`, error);
     return 0;
   }
 }
@@ -123,11 +125,13 @@ export async function getDirectorySize(dirPath: string): Promise<number> {
         } else if (entry.isDirectory()) {
           totalSize += await getDirectorySize(fullPath);
         }
-      } catch {
+      } catch (error) {
+        debugError(`getDirectorySize(${fullPath})`, error);
         continue;
       }
     }
-  } catch {
+  } catch (error) {
+    debugError(`getDirectorySize(${dirPath})`, error);
     return 0;
   }
 
@@ -185,11 +189,13 @@ export async function getItems(
           if (recursive && entry.isDirectory() && !stats.isSymbolicLink()) {
             await processDir(fullPath, depth + 1);
           }
-        } catch {
+        } catch (error) {
+          debugError(`getItems(${fullPath})`, error);
           continue;
         }
       }
-    } catch {
+    } catch (error) {
+      debugError(`getItems(${currentPath})`, error);
       return;
     }
   }
@@ -267,11 +273,13 @@ export async function getDirectoryItems(dirPath: string): Promise<CleanableItem[
           isDirectory: entry.isDirectory(),
           modifiedAt: stats.mtime,
         });
-      } catch {
+      } catch (error) {
+        debugError(`getDirectoryItems(${fullPath})`, error);
         continue;
       }
     }
-  } catch {
+  } catch (error) {
+    debugError(`getDirectoryItems(${dirPath})`, error);
     return [];
   }
 
@@ -325,11 +333,12 @@ export async function removeItemWithError(path: string, dryRun = false): Promise
     return null;
   } catch (error) {
     // Log the error for debugging but don't expose details to potential attackers
-    const code = (error as NodeJS.ErrnoException).code;
-    if (code !== 'ENOENT' && code !== 'EACCES' && code !== 'EPERM') {
-      console.error(`Failed to remove ${sanitizeDisplayName(path)}: ${code || 'unknown error'}`);
+    if (isExpectedFsError(error)) {
+      debugError(`removeItem(${path})`, error);
+    } else {
+      console.error(`Failed to remove ${sanitizeDisplayName(path)}: ${errorCode(error)}`);
     }
-    return code || 'UNKNOWN';
+    return errorCode(error);
   }
 }
 

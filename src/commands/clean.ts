@@ -5,6 +5,7 @@ import { spawn } from 'child_process';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, runScans, getScanner, getAllScanners } from '../scanners/index.js';
 import { formatSize, createScanProgress, createCleanProgress, sanitizeDisplayName, loadConfig, ensureBackupDir, getBackupDir } from '../utils/index.js';
+import { printScanErrors } from './scan.js';
 
 const DONATION_URL = 'https://ko-fi.com/guhcostan';
 
@@ -81,6 +82,8 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     : await runAllScans(scanOptions);
 
   scanProgress?.finish();
+
+  printScanErrors(summary.results);
 
   if (summary.totalSize === 0) {
     console.log(chalk.green('\n✓ Your Mac is already clean!\n'));
@@ -209,6 +212,11 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
   cleanProgress?.finish();
 
   await printCleanResults(cleanResults);
+
+  // Failures during deletion must be visible to callers (CI, cron, scripts)
+  if (cleanResults.totalErrors > 0) {
+    process.exitCode = 1;
+  }
 
   return cleanResults;
 }

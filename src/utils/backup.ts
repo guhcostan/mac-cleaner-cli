@@ -3,6 +3,7 @@ import { join, dirname, resolve, relative } from 'path';
 import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
 import { validatePathSafety } from './fs.js';
+import { debugError } from './errors.js';
 
 const BACKUP_DIR = join(homedir(), '.mac-cleaner-cli', 'backup');
 const BACKUP_RETENTION_DAYS = 7;
@@ -114,6 +115,7 @@ export async function backupItem(item: CleanableItem, backupDir: string): Promis
     return true;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'EXDEV') {
+      debugError(`backupItem(${item.path})`, error);
       return false;
     }
   }
@@ -129,7 +131,8 @@ export async function backupItem(item: CleanableItem, backupDir: string): Promis
     });
     await rm(item.path, { recursive: true, force: true });
     return true;
-  } catch {
+  } catch (error) {
+    debugError(`backupItem(${item.path})`, error);
     return false;
   }
 }
@@ -187,12 +190,14 @@ export async function cleanOldBackups(): Promise<number> {
           await rm(entryPath, { recursive: true, force: true });
           cleaned++;
         }
-      } catch {
+      } catch (error) {
+        debugError(`cleanOldBackups(${entryPath})`, error);
         continue;
       }
     }
-  } catch {
+  } catch (error) {
     // Backup dir may not exist
+    debugError(`cleanOldBackups(${BACKUP_DIR})`, error);
   }
 
   return cleaned;
@@ -216,12 +221,14 @@ export async function listBackups(): Promise<{ path: string; date: Date; size: n
             size,
           });
         }
-      } catch {
+      } catch (error) {
+        debugError(`listBackups(${entryPath})`, error);
         continue;
       }
     }
-  } catch {
+  } catch (error) {
     // Backup dir may not exist
+    debugError(`listBackups(${BACKUP_DIR})`, error);
   }
 
   return backups.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -242,12 +249,13 @@ async function getBackupSize(dir: string): Promise<number> {
         } else if (entry.isDirectory()) {
           size += await getBackupSize(entryPath);
         }
-      } catch {
+      } catch (error) {
+        debugError(`getBackupSize(${entryPath})`, error);
         continue;
       }
     }
-  } catch {
-    // Ignore errors
+  } catch (error) {
+    debugError(`getBackupSize(${dir})`, error);
   }
 
   return size;

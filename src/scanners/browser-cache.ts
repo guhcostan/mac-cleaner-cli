@@ -1,6 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { PATHS, exists, getSize } from '../utils/index.js';
+import { PATHS, exists, getSize, debugError } from '../utils/index.js';
 import { stat } from 'fs/promises';
 
 export class BrowserCacheScanner extends BaseScanner {
@@ -28,7 +28,8 @@ export class BrowserCacheScanner extends BaseScanner {
             isDirectory: true,
             modifiedAt: stats.mtime,
           });
-        } catch {
+        } catch (error) {
+          debugError(`browser-cache (${browser.path})`, error);
           continue;
         }
       }

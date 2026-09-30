@@ -1,6 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { PATHS, exists, getSize } from '../utils/index.js';
+import { PATHS, exists, getSize, debugError } from '../utils/index.js';
 import { readdir, stat } from 'fs/promises';
 import { join } from 'path';
 
@@ -39,11 +39,13 @@ export class LanguageFilesScanner extends BaseScanner {
                   isDirectory: true,
                   modifiedAt: stats.mtime,
                 });
-              } catch {
+              } catch (error) {
+                debugError(`language-files (${lprojPath})`, error);
                 continue;
               }
             }
-          } catch {
+          } catch (error) {
+            debugError(`language-files (${app})`, error);
             continue;
           }
         }

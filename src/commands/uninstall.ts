@@ -5,6 +5,7 @@ import { readdir, stat, rm, readFile, lstat, unlink } from 'fs/promises';
 import { join, basename, resolve } from 'path';
 import { homedir } from 'os';
 import { exists, getSize, formatSize, createCleanProgress, isProtectedPath, validatePathSafety, sanitizeDisplayName } from '../utils/index.js';
+import { debugError, errorCode, formatError } from '../utils/errors.js';
 
 /**
  * Escapes all regex metacharacters in a string.
@@ -34,20 +35,22 @@ async function getBundleId(appPath: string): Promise<string | null> {
       }
     }
     return null;
-  } catch {
+  } catch (error) {
+    debugError(`getBundleId(${appPath})`, error);
     return null;
   }
 }
 
 /**
  * Safely removes a file or directory with security checks.
+ * Returns the failure reason, or null on success.
  */
-async function safeRemove(path: string): Promise<boolean> {
+async function safeRemove(path: string): Promise<string | null> {
   // Validate path safety
   const safetyError = validatePathSafety(path);
   if (safetyError) {
     console.error(safetyError);
-    return false;
+    return 'blocked by safety check';
   }
 
   try {
@@ -57,9 +60,10 @@ async function safeRemove(path: string): Promise<boolean> {
     } else {
       await rm(path, { recursive: true, force: true });
     }
-    return true;
-  } catch {
-    return false;
+    return null;
+  } catch (error) {
+    debugError(`safeRemove(${path})`, error);
+    return errorCode(error);
   }
 }
 
@@ -167,31 +171,29 @@ export async function uninstallCommand(options: UninstallCommandOptions): Promis
 
     try {
       // Use safe remove with security checks
-      const removed = await safeRemove(app.path);
-      if (!removed) {
-        errors.push(`${sanitizeDisplayName(app.name)}: Failed to remove (security check failed or permission denied)`);
+      const removeError = await safeRemove(app.path);
+      if (removeError) {
+        errors.push(`${sanitizeDisplayName(app.name)}: Failed to remove app bundle (${removeError})`);
         continue;
       }
       freedSpace += app.size;
 
       for (const relatedPath of app.relatedPaths) {
-        try {
-          // Use safe remove for related paths too
-          const relatedRemoved = await safeRemove(relatedPath);
-          if (relatedRemoved) {
-            const size = await getSize(relatedPath).catch(() => 0);
-            freedSpace += size;
-          }
-        } catch {
-          // Ignore errors for related paths but don't silently fail
+        const relatedSize = await getSize(relatedPath);
+        // Use safe remove for related paths too
+        const relatedError = await safeRemove(relatedPath);
+        if (relatedError) {
+          // Leftover files are not fatal, but the user needs to know they remain
+          errors.push(`${app.name}: Failed to remove ${relatedPath.replace(homedir(), '~')} (${relatedError})`);
+          continue;
         }
+        freedSpace += relatedSize;
       }
 
       uninstalledCount++;
     } catch (error) {
       // Sanitize error message to avoid leaking path information
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      errors.push(`${sanitizeDisplayName(app.name)}: ${sanitizeDisplayName(message.replace(homedir(), '~'))}`);
+      errors.push(`${sanitizeDisplayName(app.name)}: ${sanitizeDisplayName(formatError(error).replaceAll(homedir(), '~'))}`);
     }
   }
 
@@ -209,6 +211,7 @@ export async function uninstallCommand(options: UninstallCommandOptions): Promis
     for (const error of errors) {
       console.log(chalk.red(`  ✗ ${error}`));
     }
+    process.exitCode = 1;
   }
 
   console.log();
@@ -238,7 +241,7 @@ async function getInstalledApps(): Promise<AppInfo[]> {
 
           let totalRelatedSize = 0;
           for (const path of relatedPaths) {
-            totalRelatedSize += await getSize(path).catch(() => 0);
+            totalRelatedSize += await getSize(path);
           }
 
           apps.push({
@@ -248,11 +251,13 @@ async function getInstalledApps(): Promise<AppInfo[]> {
             relatedPaths,
             totalSize: appSize + totalRelatedSize,
           });
-        } catch {
+        } catch (error) {
+          debugError(`getInstalledApps(${appPath})`, error);
           continue;
         }
       }
-    } catch {
+    } catch (error) {
+      debugError(`getInstalledApps(${appDir})`, error);
       continue;
     }
   }
@@ -310,7 +315,8 @@ async function findRelatedPaths(appName: string, appPath?: string): Promise<stri
                 }
               }
             }
-          } catch {
+          } catch (error) {
+            debugError(`findRelatedPaths(${dir})`, error);
             continue;
           }
         }

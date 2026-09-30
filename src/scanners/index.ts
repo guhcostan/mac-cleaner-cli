@@ -1,4 +1,5 @@
 import type { Scanner, CategoryId, ScanResult, ScannerOptions, ScanSummary } from '../types.js';
+import { debugError, formatError } from '../utils/errors.js';
 import { SystemCacheScanner } from './system-cache.js';
 import { SystemLogsScanner } from './system-logs.js';
 import { TempFilesScanner } from './temp-files.js';
@@ -71,9 +72,11 @@ async function runWithConcurrency<T>(
         results[index] = result;
       })
       .catch((error) => {
-        // Log error but don't fail entire batch
-        const taskLabel = task.label ? ` (${task.label})` : ` ${index}`;
-        console.error(`Scanner task${taskLabel} failed:`, error);
+        // Individual tasks already convert failures into error results; reaching
+        // here means the wrapper itself failed, so keep the batch alive and
+        // record it for debugging instead of corrupting the progress output
+        const taskLabel = task.label ?? String(index);
+        debugError(`scanner task ${taskLabel}`, error);
         results[index] = undefined;
       })
       .finally(() => {
@@ -110,16 +113,18 @@ export async function runScans(
   const total = scanners.length;
   let results: ScanResult[];
 
+  const runScanner = async (scanner: Scanner): Promise<ScanResult> => {
+    const result = await safeScan(scanner, options);
+    completed++;
+    options?.onProgress?.(completed, total, scanner, result);
+    onProgress?.(scanner, result);
+    return result;
+  };
+
   if (parallel) {
     const tasks = scanners.map((scanner) => ({
       label: scanner.category.id,
-      fn: async () => {
-        const result = await scanner.scan(options);
-        completed++;
-        options?.onProgress?.(completed, total, scanner, result);
-        onProgress?.(scanner, result);
-        return result;
-      },
+      fn: () => runScanner(scanner),
     }));
 
     results = await runWithConcurrency(tasks, concurrency);
@@ -127,11 +132,7 @@ export async function runScans(
     results = [];
 
     for (const scanner of scanners) {
-      const result = await scanner.scan(options);
-      results.push(result);
-      completed++;
-      options?.onProgress?.(completed, total, scanner, result);
-      onProgress?.(scanner, result);
+      results.push(await runScanner(scanner));
     }
   }
 
@@ -139,6 +140,24 @@ export async function runScans(
   const totalItems = results.reduce((sum, r) => sum + r.items.length, 0);
 
   return { results, totalSize, totalItems };
+}
+
+/**
+ * Runs a scanner, converting a thrown error into a result carrying the failure
+ * so it is reported to the user instead of the category vanishing from output.
+ */
+async function safeScan(scanner: Scanner, options?: ScannerOptions): Promise<ScanResult> {
+  try {
+    return await scanner.scan(options);
+  } catch (error) {
+    debugError(`scanner ${scanner.category.id}`, error);
+    return {
+      category: scanner.category,
+      items: [],
+      totalSize: 0,
+      error: `Scan failed: ${formatError(error)}`,
+    };
+  }
 }
 
 export {
