@@ -79,7 +79,7 @@ jobs:
           CSC_FOR_PULL_REQUEST: "true"
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mac-cleaner-desktop
           path: |
