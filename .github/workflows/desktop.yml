@@ -16,6 +16,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build and attach the app to (e.g. v1.4.0). Leave empty to only build.'
+        required: false
+        type: string
 
 jobs:
   build:
@@ -27,6 +32,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # A manual run for a release builds the tagged source.
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -53,7 +61,12 @@ jobs:
 
       - name: Build app (.dmg / .zip)
         working-directory: desktop
-        run: bun run dist
+        run: |
+          # Secrets that are not configured arrive as empty strings, and electron-builder
+          # treats an empty CSC_LINK as a certificate path ("... not a file"). Drop them so
+          # the build falls back to ad-hoc signing.
+          if [ -z "$CSC_LINK" ]; then unset CSC_LINK CSC_KEY_PASSWORD; fi
+          bun run dist
         env:
           # Optional: set these repository secrets to ship a signed and notarized app.
           CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
@@ -61,6 +74,9 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # electron-builder skips signing on pull requests by default; sign there too so
+          # PR builds exercise the same path as releases.
+          CSC_FOR_PULL_REQUEST: "true"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -72,7 +88,8 @@ jobs:
           if-no-files-found: error
 
       - name: Attach to GitHub release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || inputs.tag != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" desktop/release/*.dmg desktop/release/*.zip --clobber
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" desktop/release/*.dmg desktop/release/*.zip --clobber
