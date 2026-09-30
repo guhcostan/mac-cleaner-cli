@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
+import { mkdir, mkdtemp, rm, writeFile, readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 import { join } from 'path';
-import { tmpdir } from 'os';
+import { tmpdir, homedir } from 'os';
 import * as backup from './backup.js';
 
 describe('backup utilities', () => {
@@ -46,79 +47,171 @@ describe('backup utilities', () => {
     });
   });
 
-  describe('backupItem', () => {
-    it('should return false for non-existent item', async () => {
+  describe('backupItem / backupItems (round-trip real)', () => {
+    // These move REAL files and check the content afterwards. The previous
+    // version only asserted `expect(typeof result).toBe('boolean')`, which
+    // passed even with the backup failing 100% of the time — which was exactly
+    // the state of this module: no callers, never exercised.
+    let sourceDir: string;
+
+    beforeEach(async () => {
+      // Must be INSIDE home: backupItem refuses anything else, because
+      // restoreBackup only knows how to restore what sits under the HOME/ prefix.
+      sourceDir = join(homedir(), '.mac-cleaner-cli-test-src');
+      await mkdir(sourceDir, { recursive: true });
+    });
+
+    afterEach(async () => {
+      await rm(sourceDir, { recursive: true, force: true });
+    });
+
+    it('should MOVE the file into the backup, not copy it', async () => {
+      const testFile = join(sourceDir, 'moved.txt');
+      await writeFile(testFile, 'conteudo original');
+
       const dir = await backup.ensureBackupDir();
-      const result = await backup.backupItem(
-        { path: '/non/existent/file.txt', size: 0, name: 'file.txt', isDirectory: false },
+      const ok = await backup.backupItem(
+        { path: testFile, size: 17, name: 'moved.txt', isDirectory: false },
         dir
       );
-      expect(result).toBe(false);
+
+      expect(ok).toBe(true);
+      expect(existsSync(testFile)).toBe(false);
+
+      const backedUpPath = backup.backupPathFor(testFile, dir);
+      expect(backedUpPath).not.toBeNull();
+      expect(await readFile(backedUpPath as string, 'utf-8')).toBe('conteudo original');
+
       await rm(dir, { recursive: true, force: true });
     });
 
-    it('should backup existing file', async () => {
-      const testFile = join(testBackupDir, 'test-backup.txt');
-      await writeFile(testFile, 'test content');
+    it('should refuse paths outside the home directory', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const outside = join(tmpdir(), 'outside-home.txt');
+      await writeFile(outside, 'x');
 
       const dir = await backup.ensureBackupDir();
-      const result = await backup.backupItem(
-        { path: testFile, size: 12, name: 'test-backup.txt', isDirectory: false },
+      const ok = await backup.backupItem(
+        { path: outside, size: 1, name: 'outside-home.txt', isDirectory: false },
         dir
       );
 
-      expect(typeof result).toBe('boolean');
+      // Refuses, rather than creating a backup restoreBackup could not undo.
+      expect(ok).toBe(false);
+      expect(existsSync(outside)).toBe(true);
+
+      await rm(outside, { force: true });
+      await rm(dir, { recursive: true, force: true });
+      consoleSpy.mockRestore();
+    });
+
+    it('should refuse protected system paths', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const dir = await backup.ensureBackupDir();
+
+      const ok = await backup.backupItem(
+        { path: '/var/log/system.log', size: 1, name: 'system.log', isDirectory: false },
+        dir
+      );
+
+      expect(ok).toBe(false);
+      await rm(dir, { recursive: true, force: true });
+      consoleSpy.mockRestore();
+    });
+
+    it('should not touch the disk in dry run but still report the item', async () => {
+      const testFile = join(sourceDir, 'dry.txt');
+      await writeFile(testFile, 'intacto');
+
+      const dir = await backup.ensureBackupDir();
+      const result = await backup.backupItems(
+        [{ path: testFile, size: 7, name: 'dry.txt', isDirectory: false }],
+        dir,
+        true
+      );
+
+      expect(result.success).toBe(1);
+      expect(result.backedUpSize).toBe(7);
+      expect(await readFile(testFile, 'utf-8')).toBe('intacto');
+
       await rm(dir, { recursive: true, force: true });
     });
-  });
 
-  describe('backupItems', () => {
-    it('should handle empty items array', async () => {
-      const result = await backup.backupItems([]);
+    it('should report backedUpSize separately from freed space', async () => {
+      const testFile = join(sourceDir, 'sized.txt');
+      await writeFile(testFile, 'abcdefghij');
 
-      expect(result.success).toBe(0);
-      expect(result.failed).toBe(0);
-      await rm(result.backupDir, { recursive: true, force: true });
+      const dir = await backup.ensureBackupDir();
+      const result = await backup.backupItems(
+        [{ path: testFile, size: 10, name: 'sized.txt', isDirectory: false }],
+        dir
+      );
+
+      expect(result.success).toBe(1);
+      expect(result.backedUpSize).toBe(10);
+
+      await rm(dir, { recursive: true, force: true });
     });
 
-    it('should backup multiple items', async () => {
-      const testFile = join(testBackupDir, 'test.txt');
-      await writeFile(testFile, 'test content');
+    it('should count failures without deleting the failed item', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const good = join(sourceDir, 'good.txt');
+      await writeFile(good, 'ok');
 
-      const result = await backup.backupItems([
-        { path: testFile, size: 12, name: 'test.txt', isDirectory: false },
-      ]);
+      const dir = await backup.ensureBackupDir();
+      const result = await backup.backupItems(
+        [
+          { path: good, size: 2, name: 'good.txt', isDirectory: false },
+          { path: join(sourceDir, 'ghost.txt'), size: 0, name: 'ghost.txt', isDirectory: false },
+        ],
+        dir
+      );
 
-      expect(result.backupDir).toBeDefined();
-      await rm(result.backupDir, { recursive: true, force: true });
+      expect(result.success).toBe(1);
+      expect(result.failed).toBe(1);
+
+      await rm(dir, { recursive: true, force: true });
+      consoleSpy.mockRestore();
     });
 
-    it('should call progress callback', async () => {
-      const testFile = join(testBackupDir, 'test2.txt');
-      await writeFile(testFile, 'test content');
-
+    it('should call the progress callback', async () => {
+      const testFile = join(sourceDir, 'progress.txt');
+      await writeFile(testFile, 'p');
       const progressFn = vi.fn();
 
-      const result = await backup.backupItems(
-        [{ path: testFile, size: 12, name: 'test2.txt', isDirectory: false }],
+      const dir = await backup.ensureBackupDir();
+      await backup.backupItems(
+        [{ path: testFile, size: 1, name: 'progress.txt', isDirectory: false }],
+        dir,
+        false,
         progressFn
       );
 
       expect(progressFn).toHaveBeenCalled();
-      await rm(result.backupDir, { recursive: true, force: true });
+      await rm(dir, { recursive: true, force: true });
     });
 
-    it('should count successes and failures', async () => {
-      const testFile = join(testBackupDir, 'success.txt');
-      await writeFile(testFile, 'test');
+    it('should survive a full backup -> restore round trip with identical content', async () => {
+      const testFile = join(sourceDir, 'roundtrip.txt');
+      const content = 'este conteudo precisa voltar identico';
+      await writeFile(testFile, content);
 
-      const result = await backup.backupItems([
-        { path: testFile, size: 4, name: 'success.txt', isDirectory: false },
-        { path: '/non/existent.txt', size: 0, name: 'fail.txt', isDirectory: false },
-      ]);
+      const dir = await backup.ensureBackupDir();
+      expect(
+        await backup.backupItem(
+          { path: testFile, size: content.length, name: 'roundtrip.txt', isDirectory: false },
+          dir
+        )
+      ).toBe(true);
+      expect(existsSync(testFile)).toBe(false);
 
-      expect(result.success + result.failed).toBe(2);
-      await rm(result.backupDir, { recursive: true, force: true });
+      const restored = await backup.restoreBackup(dir);
+
+      expect(restored.failed).toBe(0);
+      expect(restored.success).toBe(1);
+      expect(await readFile(testFile, 'utf-8')).toBe(content);
+
+      await rm(dir, { recursive: true, force: true });
     });
   });
 
@@ -185,5 +278,22 @@ describe('backup utilities', () => {
 
       await rm(testDir, { recursive: true, force: true });
     });
+  });
+});
+
+describe('ensureBackupDir uniqueness', () => {
+  // Regression guard: the name was just the ISO timestamp (millisecond
+  // resolution) and `mkdir` with `recursive: true` accepts an existing directory
+  // silently. Two sessions in the same millisecond would share the folder and
+  // one would overwrite the other. This surfaced as suite flakiness (vitest runs
+  // files in parallel) before it could surface as a production bug.
+  it('never hands out the same directory twice', async () => {
+    const dirs = await Promise.all(
+      Array.from({ length: 25 }, () => backup.ensureBackupDir())
+    );
+
+    expect(new Set(dirs).size).toBe(dirs.length);
+
+    await Promise.all(dirs.map((d) => rm(d, { recursive: true, force: true })));
   });
 });

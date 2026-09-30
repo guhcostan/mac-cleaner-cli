@@ -20,6 +20,14 @@ vi.mock('@inquirer/checkbox', () => ({
   default: vi.fn(),
 }));
 
+// loadConfig is mocked so tests never read the developer's real ~/.maccleanerrc
+// (and never hit its module-level cache). Default: backups off, which is the
+// shipped default.
+vi.mock('../utils/config.js', async () => {
+  const actual = await vi.importActual<typeof import('../utils/config.js')>('../utils/config.js');
+  return { ...actual, loadConfig: vi.fn(async () => ({ backupEnabled: false })) };
+});
+
 vi.mock('child_process', () => ({
   exec: vi.fn(),
   spawn: vi.fn(() => ({
@@ -31,6 +39,8 @@ const inquirerPrompts = {
   confirm: inquirerConfirm.default,
   checkbox: inquirerCheckbox.default,
 };
+
+const config = await import('../utils/config.js');
 
 const trashCategory: Category = {
   id: 'trash',
@@ -545,6 +555,109 @@ describe('clean command', () => {
 
     expect(result).not.toBeNull();
     expect(result?.totalFreedSpace).toBe(5000);
+
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('clean command backup handling', () => {
+  // The `clean` subcommand must honour `backupEnabled` exactly like the
+  // interactive flow. Backing up in one entry point and deleting permanently in
+  // the other is worse than not backing up at all: what happens to the user's
+  // files would depend on which command they happened to type.
+  const trashScanner = () => ({
+    category: trashCategory,
+    supportsBackup: true,
+    scan: vi.fn(),
+    clean: vi.fn().mockResolvedValue({
+      category: trashCategory,
+      cleanedItems: 1,
+      freedSpace: 0,
+      backedUpSize: 1000,
+      errors: [],
+    }),
+  });
+
+  const setup = (scanner: unknown) => {
+    vi.mocked(scanners.runAllScans).mockResolvedValue({
+      results: [
+        {
+          category: trashCategory,
+          items: [{ path: '/test', size: 1000, name: 'test', isDirectory: false }],
+          totalSize: 1000,
+        },
+      ],
+      totalSize: 1000,
+      totalItems: 1,
+    });
+    vi.mocked(scanners.getScanner).mockReturnValue(
+      scanner as ReturnType<typeof scanners.getScanner>
+    );
+    vi.mocked(inquirerPrompts.confirm).mockResolvedValue(true);
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(config.loadConfig).mockResolvedValue({ backupEnabled: false });
+  });
+
+  it('deletes permanently when backupEnabled is off', async () => {
+    const scanner = trashScanner();
+    setup(scanner);
+    vi.mocked(config.loadConfig).mockResolvedValue({ backupEnabled: false });
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await cleanCommand({ all: true, yes: true });
+
+    expect(scanner.clean).toHaveBeenCalledWith(expect.anything(), undefined, undefined);
+
+    consoleSpy.mockRestore();
+  });
+
+  it('passes a backup directory to the scanner when backupEnabled is on', async () => {
+    const scanner = trashScanner();
+    setup(scanner);
+    vi.mocked(config.loadConfig).mockResolvedValue({ backupEnabled: true });
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await cleanCommand({ all: true, yes: true });
+
+    const backupDirArg = scanner.clean.mock.calls[0][2];
+    expect(backupDirArg).toEqual(expect.stringContaining('.mac-cleaner-cli'));
+
+    consoleSpy.mockRestore();
+  });
+
+  it('warns that moving does not free disk space', async () => {
+    const scanner = trashScanner();
+    setup(scanner);
+    vi.mocked(config.loadConfig).mockResolvedValue({ backupEnabled: true });
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await cleanCommand({ all: true, yes: true });
+
+    const output = consoleSpy.mock.calls.flat().join('\n');
+    expect(output).toContain('does NOT free disk space');
+
+    consoleSpy.mockRestore();
+  });
+
+  it('warns which categories cannot be backed up and will be deleted', async () => {
+    const scanner = { ...trashScanner(), supportsBackup: false };
+    setup(scanner);
+    vi.mocked(config.loadConfig).mockResolvedValue({ backupEnabled: true });
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await cleanCommand({ all: true, yes: true });
+
+    const output = consoleSpy.mock.calls.flat().join('\n');
+    expect(output).toContain('No backup possible');
+    // An external-tool scanner must never receive a backup directory.
+    expect(scanner.clean).toHaveBeenCalledWith(expect.anything(), undefined, undefined);
 
     consoleSpy.mockRestore();
   });

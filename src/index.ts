@@ -3,7 +3,7 @@
 import { Command, InvalidArgumentError } from 'commander';
 import { ExitPromptError } from '@inquirer/core';
 import { cleanCommand, interactiveCommand, listCategories, maintenanceCommand, scanCommand, uninstallCommand } from './commands/index.js';
-import { initConfig, configExists, listBackups, cleanOldBackups, loadConfig, formatSize } from './utils/index.js';
+import { initConfig, configExists, listBackups, cleanOldBackups, restoreBackup, loadConfig, formatSize } from './utils/index.js';
 import { CATEGORIES, type CategoryId } from './types.js';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -193,18 +193,33 @@ program
   .command('backup')
   .description('Manage backups')
   .option('--list', 'List all backups')
-  .option('--clean', 'Clean old backups (older than 7 days)')
+  .option('--restore <dir>', 'Restore a backup back to its original locations')
+  .option('--clean', 'Delete old backups permanently (older than 7 days), reclaiming disk space')
   .action(async (options) => {
     if (options.list) {
       const backups = await listBackups();
       if (backups.length === 0) {
-        console.log('No backups found.');
+        console.log('No backups found. Backups only happen when "backupEnabled": true is set in ~/.maccleanerrc');
         return;
       }
       console.log('\nBackups:');
       for (const backup of backups) {
         console.log(`  ${backup.date.toLocaleDateString()} - ${formatSize(backup.size)}`);
         console.log(`    ${backup.path}`);
+      }
+      console.log('\nRestore with: mac-cleaner-cli backup --restore <path>');
+      return;
+    }
+
+    if (options.restore) {
+      const result = await restoreBackup(options.restore);
+      console.log(`Restored ${result.success} items.`);
+      if (result.failed > 0) {
+        console.log(`Failed: ${result.failed}`);
+        for (const error of result.errors) {
+          console.log(`  ✗ ${error}`);
+        }
+        process.exitCode = 1;
       }
       return;
     }
@@ -215,7 +230,7 @@ program
       return;
     }
 
-    console.log('Use --list to show backups or --clean to remove old ones.');
+    console.log('Use --list to show backups, --restore <dir> to bring one back, or --clean to remove old ones.');
   });
 
 program.parse();

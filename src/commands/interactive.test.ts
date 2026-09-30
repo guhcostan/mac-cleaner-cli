@@ -436,7 +436,7 @@ describe('interactive command', () => {
       // Passing it down (instead of simulating here) matters: Docker and
       // Homebrew override clean() with external commands and have their own
       // dry-run branch.
-      expect(mockScanner.clean).toHaveBeenCalledWith(expect.anything(), true);
+      expect(mockScanner.clean).toHaveBeenCalledWith(expect.anything(), true, undefined);
 
       consoleSpy.mockRestore();
     });
@@ -448,7 +448,7 @@ describe('interactive command', () => {
 
       await interactiveCommand({});
 
-      expect(mockScanner.clean).toHaveBeenCalledWith(expect.anything(), undefined);
+      expect(mockScanner.clean).toHaveBeenCalledWith(expect.anything(), undefined, undefined);
 
       consoleSpy.mockRestore();
     });

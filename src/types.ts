@@ -56,13 +56,19 @@ export interface ScanSummary {
 export interface CleanResult {
   category: Category;
   cleanedItems: number;
+  /** Space actually returned to the disk. Zero when items went to the backup. */
   freedSpace: number;
+  /** Size moved into the backup. Still occupying disk until `backup --clean`. */
+  backedUpSize?: number;
+  backupDir?: string;
   errors: string[];
 }
 
 export interface CleanSummary {
   results: CleanResult[];
   totalFreedSpace: number;
+  totalBackedUpSize?: number;
+  backupDir?: string;
   totalCleanedItems: number;
   totalErrors: number;
 }
@@ -75,8 +81,10 @@ export interface ScannerOptions {
 
 export interface Scanner {
   category: Category;
+  /** false when cleanup is delegated to an external tool and cannot be backed up. */
+  readonly supportsBackup?: boolean;
   scan(options?: ScannerOptions): Promise<ScanResult>;
-  clean(items: CleanableItem[], dryRun?: boolean): Promise<CleanResult>;
+  clean(items: CleanableItem[], dryRun?: boolean, backupDir?: string): Promise<CleanResult>;
 }
 
 export const CATEGORIES: Record<CategoryId, Category> = {

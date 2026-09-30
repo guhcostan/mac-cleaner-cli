@@ -75,6 +75,11 @@ function execCommand(command: string, args: string[]): Promise<string> {
 }
 
 export class HomebrewScanner extends BaseScanner {
+  // Cleanup here is `brew cleanup`: the external tool does the deleting, not us.
+  // There is no file to move, so backup does not apply — and pretending it does
+  // would be the same facade as before.
+  readonly supportsBackup = false;
+
   category = CATEGORIES['homebrew'];
   private brewPath: string | null = null;
 
