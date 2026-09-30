@@ -269,7 +269,7 @@ async function entryKind(path: string): Promise<'file' | 'directory' | null> {
 
 function directorySizeBytes(path: string): Promise<number> {
   return new Promise((resolve) => {
-    const proc = spawn('/usr/bin/du', ['-sk', path], {
+    const proc = spawn('/usr/bin/du', ['-sk', '--', path], {
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 120_000,
     });

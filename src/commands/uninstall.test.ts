@@ -15,6 +15,7 @@ vi.mock('../utils/index.js', async () => {
     })),
     isProtectedPath: vi.fn().mockReturnValue(false),
     validatePathSafety: vi.fn().mockReturnValue(null),
+    sanitizeDisplayName: vi.fn((text: string) => text),
   };
 });
 

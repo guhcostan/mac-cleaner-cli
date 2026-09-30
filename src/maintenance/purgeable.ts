@@ -66,7 +66,7 @@ export async function freePurgeableSpace(): Promise<MaintenanceResult> {
     }
     
     // Try with sudo -n first (non-interactive)
-    await execCommand('sudo', ['-n', purgePath]);
+    await execCommand('/usr/bin/sudo', ['-n', purgePath]);
     return {
       success: true,
       message: 'Purgeable space freed successfully',

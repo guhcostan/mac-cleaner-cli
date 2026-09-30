@@ -159,7 +159,7 @@ export async function restoreBackup(backupDir: string): Promise<{ success: numbe
 
   // Validate that backupDir is within our expected backup location
   const resolvedBackupDir = resolve(backupDir);
-  if (!resolvedBackupDir.startsWith(BACKUP_DIR)) {
+  if (!resolvedBackupDir.startsWith(BACKUP_DIR + '/') && resolvedBackupDir !== BACKUP_DIR) {
     return { 
       success: 0, 
       failed: 1, 

@@ -3,7 +3,7 @@ import { join, isAbsolute } from 'path';
 import { homedir } from 'os';
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type CleanableItem, type ScanResult, type ScannerOptions } from '../types.js';
-import { exists } from '../utils/index.js';
+import { exists, sanitizeDisplayName } from '../utils/index.js';
 
 const SYSTEM_BINARY_PREFIXES = [
   '/usr/bin/',
@@ -62,7 +62,7 @@ export class LaunchAgentsScanner extends BaseScanner {
             items.push({
               path: plistPath,
               size: stats.size,
-              name: `${plistFile} → ${programPath} (missing)`,
+              name: sanitizeDisplayName(`${plistFile} → ${programPath} (missing)`),
               isDirectory: false,
               modifiedAt: stats.mtime,
             });

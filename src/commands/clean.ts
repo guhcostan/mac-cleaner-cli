@@ -4,7 +4,7 @@ import checkbox from '@inquirer/checkbox';
 import { spawn } from 'child_process';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, runScans, getScanner, getAllScanners } from '../scanners/index.js';
-import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
+import { formatSize, createScanProgress, createCleanProgress, sanitizeDisplayName } from '../utils/index.js';
 
 const DONATION_URL = 'https://ko-fi.com/guhcostan';
 
@@ -219,7 +219,7 @@ async function selectItemsInteractively(
       }
       
       const itemChoices = result.items.map((item) => ({
-        name: `${item.name.substring(0, 40).padEnd(40)} ${chalk.yellow(formatSize(item.size).padStart(10))}`,
+        name: `${sanitizeDisplayName(item.name).substring(0, 40).padEnd(40)} ${chalk.yellow(formatSize(item.size).padStart(10))}`,
         value: item.path,
         checked: false,
       }));
