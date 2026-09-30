@@ -139,14 +139,22 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     name: 'Homebrew Cache',
     group: 'Development',
     description: 'Homebrew download cache and old versions',
-    safetyLevel: 'safe',
+    // Not `safe`: cleanup runs `brew cleanup --prune=all`, which removes ALL old
+    // formula versions — not just the download cache. Rolling back to a previous
+    // version then requires downloading it again (and that is not always possible).
+    safetyLevel: 'moderate',
+    safetyNote: 'Runs "brew cleanup --prune=all": old formula versions are removed, not just downloads',
   },
   'docker': {
     id: 'docker',
     name: 'Docker',
     group: 'Development',
-    description: 'Unused Docker images, containers, and volumes',
-    safetyLevel: 'safe',
+    description: 'Unused Docker images, containers, and build cache',
+    // Not `safe`: removing images not used by a running container forces a
+    // re-pull (or rebuild) of everything. On a poor connection, or for an image
+    // no longer present in the registry, that is not reversible.
+    safetyLevel: 'moderate',
+    safetyNote: 'Removes images not used by a RUNNING container — they must be pulled or rebuilt again',
   },
   'ios-backups': {
     id: 'ios-backups',
@@ -170,7 +178,12 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     group: 'System Junk',
     description: 'Unused language localizations in applications',
     safetyLevel: 'risky',
-    safetyNote: 'May break apps if you switch system language',
+    // The old note ("may break apps if you switch system language") described the
+    // smallest of the problems. Deleting .lproj folders from inside a .app
+    // modifies the bundle and BREAKS its code signature — Gatekeeper may refuse
+    // to open the app and delta/Sparkle updates may fail. It has nothing to do
+    // with switching the system language.
+    safetyNote: 'BREAKS the app code signature: macOS may refuse to open the app and updates may fail',
   },
   'large-files': {
     id: 'large-files',

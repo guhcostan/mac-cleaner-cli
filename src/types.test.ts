@@ -59,10 +59,25 @@ describe('CATEGORIES', () => {
   });
 
   it('should mark safe categories correctly', () => {
-    const safeCategories = ['trash', 'browser-cache', 'temp-files', 'homebrew', 'docker'];
+    // homebrew and docker left this list: both delegate cleanup to an external
+    // command that removes more than "cache" (old formula versions, and images
+    // not used by a running container).
+    const safeCategories = ['trash', 'browser-cache', 'temp-files'];
 
     for (const id of safeCategories) {
       expect(CATEGORIES[id as keyof typeof CATEGORIES].safetyLevel).toBe('safe');
+    }
+  });
+
+  // Invariant: a category that delegates cleanup to an external tool cannot be
+  // `safe`. The user does not pick item by item there — the command decides, and
+  // the effect is broader than the word "cache" suggests.
+  it('should never mark externally-cleaned categories as safe', () => {
+    const externallyCleaned = ['homebrew', 'docker'] as const;
+
+    for (const id of externallyCleaned) {
+      expect(CATEGORIES[id].safetyLevel).not.toBe('safe');
+      expect(CATEGORIES[id].safetyNote).toBeDefined();
     }
   });
 
