@@ -2,6 +2,7 @@ import { readFile, writeFile, access } from 'fs/promises';
 import { join, resolve } from 'path';
 import { homedir } from 'os';
 import type { CategoryId } from '../types.js';
+import { debugError, errorCode, formatError } from './errors.js';
 
 const CONFIG_PATHS = [
   join(homedir(), '.maccleanerrc'),
@@ -216,7 +217,12 @@ export async function loadConfig(configPath?: string): Promise<Config> {
     } catch (error) {
       if (error instanceof SyntaxError) {
         console.warn(`Invalid JSON in config file: ${path}`);
+      } else if (errorCode(error) !== 'ENOENT') {
+        // A config file that exists but cannot be read would otherwise be
+        // silently replaced by defaults
+        console.warn(`Could not read config file ${path}: ${formatError(error)}`);
       }
+      debugError(`loadConfig(${path})`, error);
       continue;
     }
   }
@@ -240,7 +246,8 @@ export async function configExists(): Promise<boolean> {
     try {
       await access(path);
       return true;
-    } catch {
+    } catch (error) {
+      debugError(`configExists(${path})`, error);
       continue;
     }
   }

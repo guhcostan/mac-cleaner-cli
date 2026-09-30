@@ -1,5 +1,7 @@
 import { spawn } from 'child_process';
 
+const SUDO = '/usr/bin/sudo';
+
 export interface MaintenanceResult {
   success: boolean;
   message: string;
@@ -46,7 +48,7 @@ function execCommand(command: string, args: string[]): Promise<string> {
  */
 async function canSudoWithoutPassword(): Promise<boolean> {
   try {
-    await execCommand('sudo', ['-n', 'true']);
+    await execCommand(SUDO, ['-n', '/usr/bin/true']);
     return true;
   } catch {
     return false;
@@ -86,8 +88,8 @@ export async function flushDnsCache(): Promise<MaintenanceResult> {
       await execCommand('/usr/bin/killall', ['-HUP', 'mDNSResponder']);
     } else {
       // Use sudo -n (non-interactive)
-      await execCommand('sudo', ['-n', '/usr/bin/dscacheutil', '-flushcache']);
-      await execCommand('sudo', ['-n', '/usr/bin/killall', '-HUP', 'mDNSResponder']);
+      await execCommand(SUDO, ['-n', '/usr/bin/dscacheutil', '-flushcache']);
+      await execCommand(SUDO, ['-n', '/usr/bin/killall', '-HUP', 'mDNSResponder']);
     }
 
     return {

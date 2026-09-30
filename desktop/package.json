@@ -1,7 +1,7 @@
 {
   "name": "mac-cleaner-desktop",
   "productName": "Mac Cleaner",
-  "version": "0.1.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "description": "Menu bar app that keeps your Mac clean automatically, powered by mac-cleaner-cli",

@@ -1,6 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { PATHS, exists, SIZE_THRESHOLDS } from '../utils/index.js';
+import { PATHS, exists, SIZE_THRESHOLDS, debugError } from '../utils/index.js';
 import { readdir, stat } from 'fs/promises';
 import { join } from 'path';
 
@@ -59,12 +59,13 @@ export class LargeFilesScanner extends BaseScanner {
             const subItems = await this.findLargeFiles(fullPath, minSize, maxDepth, currentDepth + 1);
             items.push(...subItems);
           }
-        } catch {
+        } catch (error) {
+          debugError(`large-files entry (${fullPath})`, error);
           continue;
         }
       }
-    } catch {
-      // Ignore errors
+    } catch (error) {
+      debugError(`large-files scan (${dirPath})`, error);
     }
 
     return items;

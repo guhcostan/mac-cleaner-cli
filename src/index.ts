@@ -3,7 +3,8 @@
 import { Command, InvalidArgumentError } from 'commander';
 import { ExitPromptError } from '@inquirer/core';
 import { cleanCommand, interactiveCommand, listCategories, maintenanceCommand, scanCommand, uninstallCommand } from './commands/index.js';
-import { initConfig, configExists, listBackups, cleanOldBackups, loadConfig, formatSize } from './utils/index.js';
+import { initConfig, configExists, listBackups, cleanOldBackups, restoreBackup, loadConfig, formatSize } from './utils/index.js';
+import { formatError, isDebugEnabled } from './utils/errors.js';
 import { CATEGORIES, type CategoryId } from './types.js';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -20,12 +21,44 @@ function parseCategoryIdList(value: string): CategoryId[] {
   return value.split(',').map((id) => parseCategoryId(id.trim()));
 }
 
-function handleCleanExit(error: unknown) {
+/**
+ * Terminates the CLI on an unrecoverable error: a cancelled prompt is a normal
+ * exit, anything else is reported with a non-zero status (full stack with
+ * MAC_CLEANER_DEBUG=1) instead of surfacing as an unhandled rejection.
+ */
+function handleFatalError(error: unknown): never {
   if (error instanceof ExitPromptError) {
-    console.log("\n");
+    console.log('\n');
     process.exit(0);
   }
-  throw error;
+
+  console.error(`\nError: ${formatError(error)}`);
+  if (isDebugEnabled() && error instanceof Error && error.stack) {
+    console.error(error.stack);
+  } else {
+    console.error('Run again with MAC_CLEANER_DEBUG=1 for the full stack trace.');
+  }
+  process.exit(1);
+}
+
+/**
+ * Wraps a command action so every failure goes through a single error path.
+ */
+function action<TArgs extends unknown[]>(
+  run: (...args: TArgs) => Promise<unknown>
+): (...args: TArgs) => Promise<void> {
+  return async (...args: TArgs) => {
+    try {
+      await run(...args);
+    } catch (error) {
+      handleFatalError(error);
+    }
+  };
+}
+
+function setupErrorHandlers(): void {
+  process.on('unhandledRejection', (reason) => handleFatalError(reason));
+  process.on('uncaughtException', (error) => handleFatalError(error));
 }
 
 function setupGracefulShutdown(): void {
@@ -39,6 +72,7 @@ function setupGracefulShutdown(): void {
   process.on('SIGQUIT', () => handleExit('SIGQUIT'));
 }
 
+setupErrorHandlers();
 setupGracefulShutdown();
 
 const program = new Command();
@@ -50,20 +84,18 @@ program
   .option('-r, --risky', 'Include risky categories (downloads, iOS backups, etc)')
   .option('-f, --file-picker', 'Force file picker for ALL categories')
   .option('-A, --absolute-paths', 'Show absolute paths instead of truncated notations')
+  .option('-d, --dry-run', 'Show what would be deleted without deleting anything')
   .option('--no-progress', 'Disable progress bar')
-  .action(async (options) => {
-    try {
-      const config = await loadConfig();
-      await interactiveCommand({
-        includeRisky: options.risky,
-        filePicker: options.filePicker ?? config.filePicker,
-        absolutePaths: options.absolutePaths,
-        noProgress: !options.progress,
-      });
-    } catch (error) {
-      handleCleanExit(error)
-    }
-  });
+  .action(action(async (options) => {
+    const config = await loadConfig();
+    await interactiveCommand({
+      includeRisky: options.risky,
+      filePicker: options.filePicker ?? config.filePicker,
+      absolutePaths: options.absolutePaths,
+      dryRun: options.dryRun,
+      noProgress: !options.progress,
+    });
+  }));
 
 program
   .command('scan')
@@ -72,18 +104,14 @@ program
   .option('-v, --verbose', 'Show the largest items in each category')
   .option('--json', 'Output results as JSON (for scripts and integrations)')
   .option('--no-progress', 'Disable progress bar')
-  .action(async (options) => {
-    try {
-      await scanCommand({
-        category: options.category,
-        verbose: options.verbose,
-        json: options.json,
-        noProgress: !options.progress,
-      });
-    } catch (error) {
-      handleCleanExit(error);
-    }
-  });
+  .action(action(async (options) => {
+    await scanCommand({
+      category: options.category,
+      verbose: options.verbose,
+      json: options.json,
+      noProgress: !options.progress,
+    });
+  }));
 
 program
   .command('clean')
@@ -94,20 +122,16 @@ program
   .option('-d, --dry-run', 'Show what would be cleaned without deleting')
   .option('--unsafe', 'Include risky categories (downloads, iOS backups, etc)')
   .option('--no-progress', 'Disable progress bar')
-  .action(async (options) => {
-    try {
-      await cleanCommand({
-        all: options.all,
-        categories: options.categories,
-        yes: options.yes,
-        dryRun: options.dryRun,
-        unsafe: options.unsafe,
-        noProgress: !options.progress,
-      });
-    } catch (error) {
-      handleCleanExit(error);
-    }
-  });
+  .action(action(async (options) => {
+    await cleanCommand({
+      all: options.all,
+      categories: options.categories,
+      yes: options.yes,
+      dryRun: options.dryRun,
+      unsafe: options.unsafe,
+      noProgress: !options.progress,
+    });
+  }));
 
 program
   .command('uninstall')
@@ -115,17 +139,13 @@ program
   .option('-y, --yes', 'Skip confirmation prompts')
   .option('-d, --dry-run', 'Show what would be uninstalled without actually uninstalling')
   .option('--no-progress', 'Disable progress bar')
-  .action(async (options) => {
-    try {
-      await uninstallCommand({
-        yes: options.yes,
-        dryRun: options.dryRun,
-        noProgress: !options.progress,
-      });
-    } catch (error) {
-      handleCleanExit(error)
-    }
-  });
+  .action(action(async (options) => {
+    await uninstallCommand({
+      yes: options.yes,
+      dryRun: options.dryRun,
+      noProgress: !options.progress,
+    });
+  }));
 
 program
   .command('maintenance')
@@ -133,13 +153,17 @@ program
   .option('--dns', 'Flush DNS cache')
   .option('--purgeable', 'Free purgeable space')
   .option('--timemachine', 'Delete Time Machine local snapshots')
-  .action(async (options) => {
+  .option('-y, --yes', 'Skip confirmation prompts')
+  .option('-d, --dry-run', 'Show what would be done without changing anything')
+  .action(action(async (options) => {
     await maintenanceCommand({
       dns: options.dns,
       purgeable: options.purgeable,
       timemachine: options.timemachine,
+      yes: options.yes,
+      dryRun: options.dryRun,
     });
-  });
+  }));
 
 program
   .command('categories')
@@ -153,7 +177,7 @@ program
   .description('Manage configuration')
   .option('--init', 'Create default configuration file')
   .option('--show', 'Show current configuration')
-  .action(async (options) => {
+  .action(action(async (options) => {
     if (options.init) {
       const exists = await configExists();
       if (exists) {
@@ -177,24 +201,39 @@ program
     }
 
     console.log('Use --init to create config or --show to display current config.');
-  });
+  }));
 
 program
   .command('backup')
   .description('Manage backups')
   .option('--list', 'List all backups')
-  .option('--clean', 'Clean old backups (older than 7 days)')
-  .action(async (options) => {
+  .option('--restore <dir>', 'Restore a backup back to its original locations')
+  .option('--clean', 'Delete old backups permanently (older than 7 days), reclaiming disk space')
+  .action(action(async (options) => {
     if (options.list) {
       const backups = await listBackups();
       if (backups.length === 0) {
-        console.log('No backups found.');
+        console.log('No backups found. Backups only happen when "backupEnabled": true is set in ~/.maccleanerrc');
         return;
       }
       console.log('\nBackups:');
       for (const backup of backups) {
         console.log(`  ${backup.date.toLocaleDateString()} - ${formatSize(backup.size)}`);
         console.log(`    ${backup.path}`);
+      }
+      console.log('\nRestore with: mac-cleaner-cli backup --restore <path>');
+      return;
+    }
+
+    if (options.restore) {
+      const result = await restoreBackup(options.restore);
+      console.log(`Restored ${result.success} items.`);
+      if (result.failed > 0) {
+        console.log(`Failed: ${result.failed}`);
+        for (const error of result.errors) {
+          console.log(`  ✗ ${error}`);
+        }
+        process.exitCode = 1;
       }
       return;
     }
@@ -205,7 +244,7 @@ program
       return;
     }
 
-    console.log('Use --list to show backups or --clean to remove old ones.');
-  });
+    console.log('Use --list to show backups, --restore <dir> to bring one back, or --clean to remove old ones.');
+  }));
 
-program.parse();
+program.parseAsync().catch(handleFatalError);

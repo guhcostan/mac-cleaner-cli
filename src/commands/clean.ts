@@ -4,7 +4,8 @@ import checkbox from '@inquirer/checkbox';
 import { spawn } from 'child_process';
 import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
 import { runAllScans, runScans, getScanner, getAllScanners } from '../scanners/index.js';
-import { formatSize, createScanProgress, createCleanProgress } from '../utils/index.js';
+import { formatSize, createScanProgress, createCleanProgress, sanitizeDisplayName, loadConfig, ensureBackupDir, getBackupDir } from '../utils/index.js';
+import { printScanErrors } from './scan.js';
 
 const DONATION_URL = 'https://ko-fi.com/guhcostan';
 
@@ -82,6 +83,8 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
 
   scanProgress?.finish();
 
+  printScanErrors(summary.results);
+
   if (summary.totalSize === 0) {
     console.log(chalk.green('\n✓ Your Mac is already clean!\n'));
     return null;
@@ -148,11 +151,45 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     return null;
   }
 
+  // The `clean` subcommand honours `backupEnabled` exactly like the interactive
+  // flow does. Backing up in one entry point and deleting permanently in the
+  // other would be worse than not backing up at all: the user's expectation
+  // would depend on which command they happened to type.
+  const config = await loadConfig();
+  const backupEnabled = config.backupEnabled === true;
+
+  if (backupEnabled) {
+    const withoutBackup = selectedItems
+      .map(({ categoryId }) => getScanner(categoryId))
+      .filter((scanner) => scanner?.supportsBackup === false)
+      .map((scanner) => scanner.category.name);
+
+    console.log();
+    console.log(chalk.cyan(`Backup is ON — items will be MOVED to ${getBackupDir()}`));
+    console.log(
+      chalk.yellow('⚠ Moving does NOT free disk space. Run "mac-cleaner-cli backup --clean" to reclaim it.')
+    );
+    if (withoutBackup.length > 0) {
+      console.log(
+        chalk.red(
+          `⚠ No backup possible for: ${withoutBackup.join(', ')} (external tool does the cleanup) — these WILL be deleted.`
+        )
+      );
+    }
+  }
+
+  const backupDir =
+    backupEnabled && selectedItems.some(({ categoryId }) => getScanner(categoryId)?.supportsBackup !== false)
+      ? await ensureBackupDir()
+      : undefined;
+
   const cleanProgress = showProgress ? createCleanProgress(selectedItems.length) : null;
 
   const cleanResults: CleanSummary = {
     results: [],
     totalFreedSpace: 0,
+    totalBackedUpSize: 0,
+    backupDir,
     totalCleanedItems: 0,
     totalErrors: 0,
   };
@@ -162,9 +199,11 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     const scanner = getScanner(categoryId);
     cleanProgress?.update(cleanedCount, `Cleaning ${scanner.category.name}...`);
 
-    const result = await scanner.clean(items, options.dryRun);
+    const scannerBackupDir = scanner.supportsBackup === false ? undefined : backupDir;
+    const result = await scanner.clean(items, options.dryRun, scannerBackupDir);
     cleanResults.results.push(result);
     cleanResults.totalFreedSpace += result.freedSpace;
+    cleanResults.totalBackedUpSize = (cleanResults.totalBackedUpSize ?? 0) + (result.backedUpSize ?? 0);
     cleanResults.totalCleanedItems += result.cleanedItems;
     cleanResults.totalErrors += result.errors.length;
     cleanedCount++;
@@ -173,6 +212,11 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
   cleanProgress?.finish();
 
   await printCleanResults(cleanResults);
+
+  // Failures during deletion must be visible to callers (CI, cron, scripts)
+  if (cleanResults.totalErrors > 0) {
+    process.exitCode = 1;
+  }
 
   return cleanResults;
 }
@@ -219,7 +263,7 @@ async function selectItemsInteractively(
       }
       
       const itemChoices = result.items.map((item) => ({
-        name: `${item.name.substring(0, 40).padEnd(40)} ${chalk.yellow(formatSize(item.size).padStart(10))}`,
+        name: `${sanitizeDisplayName(item.name).substring(0, 40).padEnd(40)} ${chalk.yellow(formatSize(item.size).padStart(10))}`,
         value: item.path,
         checked: false,
       }));

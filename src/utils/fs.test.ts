@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, writeFile, mkdir, rm, symlink, readFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir, homedir } from 'os';
+import { createServer, type Server } from 'net';
 import { 
   exists, 
   getSize, 
@@ -13,6 +14,14 @@ import {
   removeItem,
   removeItems
 } from './fs.js';
+
+function listenOnSocket(path: string): Promise<Server> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.on('error', reject);
+    server.listen(path, () => resolve(server));
+  });
+}
 
 describe('fs utils', () => {
   let testDir: string;
@@ -121,6 +130,54 @@ describe('fs utils', () => {
     it('should return empty array for non-existing directory', async () => {
       const items = await getDirectoryItems(join(testDir, 'nonexistent'));
       expect(items).toEqual([]);
+    });
+
+    it('should skip unix sockets', async () => {
+      await writeFile(join(testDir, 'file.txt'), 'content');
+      const server = await listenOnSocket(join(testDir, 'live.sock'));
+
+      try {
+        const items = await getDirectoryItems(testDir);
+        expect(items.map((i) => i.name)).toEqual(['file.txt']);
+      } finally {
+        server.close();
+      }
+    });
+
+    it('should skip a runtime directory holding a socket', async () => {
+      const runtimeDir = join(testDir, 'podman');
+      await mkdir(runtimeDir);
+      await writeFile(join(runtimeDir, 'gvproxy.log'), 'log output');
+      const server = await listenOnSocket(join(runtimeDir, 'api.sock'));
+
+      try {
+        const items = await getDirectoryItems(testDir);
+        expect(items).toHaveLength(0);
+      } finally {
+        server.close();
+      }
+    });
+
+    it('should skip a runtime directory holding a nested socket', async () => {
+      const nestedDir = join(testDir, 'app', 'run');
+      await mkdir(nestedDir, { recursive: true });
+      const server = await listenOnSocket(join(nestedDir, 'app.sock'));
+
+      try {
+        const items = await getDirectoryItems(testDir);
+        expect(items).toHaveLength(0);
+      } finally {
+        server.close();
+      }
+    });
+
+    it('should still list ordinary directories', async () => {
+      await mkdir(join(testDir, 'cache'));
+      await writeFile(join(testDir, 'cache', 'blob'), 'data');
+
+      const items = await getDirectoryItems(testDir);
+
+      expect(items.map((i) => i.name)).toEqual(['cache']);
     });
   });
 
@@ -339,15 +396,39 @@ describe('fs utils', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should report no failures on dry run', async () => {
+    // This test used to assert success/0 failures for '/System/Library' on a dry
+    // run. That expectation encoded the bug: the path is in PROTECTED_PATHS, so
+    // the real run refuses it. A dry run that promises to free space the real run
+    // will never free is worse than having no dry run at all.
+    it('should report protected paths as failures on dry run, like the real run does', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
       const result = await removeItems(
         [{ path: '/System/Library', size: 0, name: 'Library', isDirectory: true }],
+        true
+      );
+
+      expect(result.success).toBe(0);
+      expect(result.failed).toBe(1);
+      expect(result.failures[0].error).toBe('PROTECTED');
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should report no failures on dry run for a deletable path', async () => {
+      const filePath = join(testDir, 'dry-run-ok.txt');
+      await writeFile(filePath, 'content');
+
+      const result = await removeItems(
+        [{ path: filePath, size: 7, name: 'dry-run-ok.txt', isDirectory: false }],
         true
       );
 
       expect(result.success).toBe(1);
       expect(result.failed).toBe(0);
       expect(result.failures).toEqual([]);
+      // Still a dry run: the file must survive.
+      expect(await exists(filePath)).toBe(true);
     });
   });
 });

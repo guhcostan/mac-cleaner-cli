@@ -1,82 +1,139 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushDnsCache } from './dns-cache.js';
 
-// Mock child_process spawn
-const mockOn = vi.fn();
-const mockStdout = { on: vi.fn() };
-const mockStderr = { on: vi.fn() };
+interface FakeProcess {
+  stdout?: string;
+  stderr?: string;
+  code?: number;
+  error?: Error;
+}
+
+const spawnCalls: Array<{ command: string; args: string[] }> = [];
+let respond: (command: string, args: string[]) => FakeProcess;
 
 vi.mock('child_process', () => ({
-  spawn: vi.fn(() => {
+  spawn: (command: string, args: string[]) => {
+    spawnCalls.push({ command, args });
+    const result = respond(command, args);
+
     return {
-      stdout: mockStdout,
-      stderr: mockStderr,
-      on: (event: string, callback: (code: number) => void) => {
-        if (event === 'close') {
-          // Simulate successful execution by default
-          setTimeout(() => callback(0), 0);
+      stdout: {
+        on: (event: string, callback: (data: Buffer) => void) => {
+          if (event === 'data' && result.stdout) {
+            setTimeout(() => callback(Buffer.from(result.stdout as string)), 0);
+          }
+        },
+      },
+      stderr: {
+        on: (event: string, callback: (data: Buffer) => void) => {
+          if (event === 'data' && result.stderr) {
+            setTimeout(() => callback(Buffer.from(result.stderr as string)), 0);
+          }
+        },
+      },
+      on: (event: string, callback: (arg?: number | Error) => void) => {
+        if (event === 'error' && result.error) {
+          setTimeout(() => callback(result.error), 0);
         }
-        return mockOn(event, callback);
+        if (event === 'close' && !result.error) {
+          setTimeout(() => callback(result.code ?? 0), 0);
+        }
       },
     };
-  }),
+  },
 }));
 
-describe('dns-cache', () => {
+describe('flushDnsCache', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockStdout.on.mockReset();
-    mockStderr.on.mockReset();
-    mockOn.mockReset();
-    
-    // Setup default mock behavior
-    mockStdout.on.mockImplementation(() => {
-      // No output by default
-    });
-    mockStderr.on.mockImplementation(() => {
-      // No error output by default
-    });
+    spawnCalls.length = 0;
+    respond = () => ({ code: 0 });
+    vi.spyOn(process, 'getuid').mockReturnValue(501);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('flushDnsCache', () => {
-    it('should return a MaintenanceResult', async () => {
-      const result = await flushDnsCache();
+  it('should require sudo when not root and sudo needs a password', async () => {
+    respond = () => ({ code: 1, stderr: 'a password is required' });
 
-      expect(result).toHaveProperty('success');
-      expect(result).toHaveProperty('message');
-      expect(typeof result.success).toBe('boolean');
-      expect(typeof result.message).toBe('string');
+    const result = await flushDnsCache();
+
+    expect(result).toEqual({
+      success: false,
+      message: 'DNS cache flush requires administrator privileges',
+      error: 'Run with sudo: sudo mac-cleaner-cli maintenance --dns',
+      requiresSudo: true,
     });
+    expect(spawnCalls).toEqual([{ command: '/usr/bin/sudo', args: ['-n', '/usr/bin/true'] }]);
+  });
 
-    it('should have error property when fails', async () => {
-      // The function checks for sudo permissions first
-      // If not running as root and can't sudo, it should fail with requiresSudo
-      const result = await flushDnsCache();
+  it('should flush the cache directly when running as root', async () => {
+    vi.spyOn(process, 'getuid').mockReturnValue(0);
 
-      // Either it succeeds (if running with sudo) or it fails with proper error
-      expect(result).toHaveProperty('success');
-      expect(result).toHaveProperty('message');
-      
-      if (!result.success) {
-        expect(result.error || result.requiresSudo).toBeDefined();
-      }
-    });
+    const result = await flushDnsCache();
 
-    it('should have requiresSudo property when sudo is needed', async () => {
-      const result = await flushDnsCache();
-      
-      // The result should have proper structure
-      expect(result).toHaveProperty('success');
-      expect(result).toHaveProperty('message');
-      
-      // If it needs sudo, requiresSudo should be set
-      if (!result.success && result.message.includes('privileges')) {
-        expect(result.requiresSudo).toBe(true);
-      }
-    });
+    expect(result).toEqual({ success: true, message: 'DNS cache flushed successfully' });
+    expect(spawnCalls).toEqual([
+      { command: '/usr/bin/dscacheutil', args: ['-flushcache'] },
+      { command: '/usr/bin/killall', args: ['-HUP', 'mDNSResponder'] },
+    ]);
+  });
+
+  it('should flush the cache through sudo when passwordless sudo works', async () => {
+    const result = await flushDnsCache();
+
+    expect(result.success).toBe(true);
+    expect(spawnCalls).toEqual([
+      { command: '/usr/bin/sudo', args: ['-n', '/usr/bin/true'] },
+      { command: '/usr/bin/sudo', args: ['-n', '/usr/bin/dscacheutil', '-flushcache'] },
+      { command: '/usr/bin/sudo', args: ['-n', '/usr/bin/killall', '-HUP', 'mDNSResponder'] },
+    ]);
+  });
+
+  it('should report that sudo is required when the flush is not permitted', async () => {
+    vi.spyOn(process, 'getuid').mockReturnValue(0);
+    respond = () => ({ code: 1, stderr: 'dscacheutil: Operation not permitted' });
+
+    const result = await flushDnsCache();
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Failed to flush DNS cache');
+    expect(result.error).toBe('Run with sudo: sudo mac-cleaner-cli maintenance --dns');
+    expect(result.requiresSudo).toBe(true);
+  });
+
+  it('should surface other failures verbatim', async () => {
+    vi.spyOn(process, 'getuid').mockReturnValue(0);
+    respond = () => ({ code: 1, stderr: 'mDNSResponder: no matching processes' });
+
+    const result = await flushDnsCache();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('mDNSResponder: no matching processes');
+    expect(result.requiresSudo).toBe(false);
+  });
+
+  it('should surface spawn errors', async () => {
+    vi.spyOn(process, 'getuid').mockReturnValue(0);
+    respond = () => ({ error: new Error('spawn ENOENT') });
+
+    const result = await flushDnsCache();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('spawn ENOENT');
+  });
+
+  it('should fail when killall fails after a successful flush', async () => {
+    vi.spyOn(process, 'getuid').mockReturnValue(0);
+    respond = (command) => {
+      if (command === '/usr/bin/killall') return { code: 1, stderr: 'killall failed' };
+      return { code: 0 };
+    };
+
+    const result = await flushDnsCache();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('killall failed');
   });
 });

@@ -11,12 +11,13 @@ import {
   isEnterKey,
   useRef,
 } from "@inquirer/core";
-import type { ScanResult, CategoryId } from "../types.js";
+import type { ScanResult, CategoryId, SafetyLevel } from "../types.js";
 import { formatRelativeAge, formatSize } from "../utils/index.js";
 import { copyToClipboard } from "../utils/clipboard.js";
 import { truncateFileName } from "../utils/paths.js";
 import { groupFilesByDirectory } from "../utils/grouping.js";
 import type { CleanableItem } from "../types.js";
+import { autoSelectableFilePaths } from "./selection-rules.js";
 
 interface FilePickerConfig {
   message: string;
@@ -75,6 +76,15 @@ function renderSizeGraph(size: number, largestSize: number): string {
   return fullChar.repeat(fullBlocks) + (fullBlocks < GRAPH_MAX_WIDTH ? GRAPH_FRACTIONS[fractionIndex] : "");
 }
 
+// The safety level has existed in types.ts all along, but this screen — the only
+// one the user sees before choosing — showed no sign of it. Green/yellow/red is
+// the minimum for the choice to be an informed one.
+const SAFETY_ICONS: Record<SafetyLevel, string> = {
+  safe: chalk.green("●"),
+  moderate: chalk.yellow("●"),
+  risky: chalk.red("●"),
+};
+
 const DEFAULT_PICKER_STATE: FilePickerState = {
   visible: false,
   active: false,
@@ -130,6 +140,9 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
 
     const categoriesWithFileSelection =
       config.categoriesWithFileSelection || new Set<CategoryId>();
+
+    const autoSelected = (categoryId: CategoryId): Set<string> =>
+      new Set(autoSelectableFilePaths(results, categoryId));
 
     // Helper: Get picker state for a category (returns default if not exists)
     const getPickerState = (categoryId: CategoryId): FilePickerState => {
@@ -273,15 +286,10 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
             // Show files pane when selecting a category with file selection
             if (categoriesWithFileSelection.has(currentCategory)) {
               updatePickerState(currentCategory, { visible: true });
-              const categoryResult = results.find(
-                (r) => r.category.id === currentCategory,
+              newFileSelections.set(
+                currentCategory,
+                autoSelected(currentCategory),
               );
-              if (categoryResult) {
-                const allFilePaths = new Set(
-                  categoryResult.items.map((item) => item.path),
-                );
-                newFileSelections.set(currentCategory, allFilePaths);
-              }
             }
           }
 
@@ -305,10 +313,10 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
 
             for (const result of results) {
               if (categoriesWithFileSelection.has(result.category.id)) {
-                const allFilePaths = new Set(
-                  result.items.map((item) => item.path),
+                newFileSelections.set(
+                  result.category.id,
+                  autoSelected(result.category.id),
                 );
-                newFileSelections.set(result.category.id, allFilePaths);
                 // Show file picker for this category
                 updatePickerState(result.category.id, { visible: true });
               }
@@ -334,10 +342,10 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
 
               // If this category supports file selection, auto-select all files
               if (categoriesWithFileSelection.has(result.category.id)) {
-                const allFilePaths = new Set(
-                  result.items.map((item) => item.path),
+                newFileSelections.set(
+                  result.category.id,
+                  autoSelected(result.category.id),
                 );
-                newFileSelections.set(result.category.id, allFilePaths);
                 updatePickerState(result.category.id, { visible: true });
               }
             }
@@ -640,8 +648,17 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
       const graph = chalk.dim(renderSizeGraph(result.totalSize, largestSize));
 
       const caretIndicator = isCaret ? chalk.cyan("> ") : "  ";
-      const line = `${caretIndicator}${checkbox} ${name} ${chalk.dim(itemCount)} ${chalk.yellow(size)}  ${graph}`;
+      const safetyIcon = SAFETY_ICONS[result.category.safetyLevel];
+      const line = `${caretIndicator}${checkbox} ${safetyIcon} ${name} ${chalk.dim(itemCount)} ${chalk.yellow(size)}  ${graph}`;
       lines.push(line);
+
+      // The warning sits next to the category rather than on a separate screen:
+      // this is where the decision actually happens.
+      if (result.category.safetyLevel === "risky" && result.category.safetyNote) {
+        lines.push(
+          `${INDENT}${chalk.red.italic(`⚠ ${result.category.safetyNote}`)}`,
+        );
+      }
 
       // Show files inline when:
       // 1. Category is selected AND picker is visible (active categories always show files)
@@ -731,6 +748,11 @@ export default createPrompt<FilePickerResult, FilePickerConfig>(
       lines.push(
         chalk.dim(
           `space: toggle | a: all | i: invert${filesHint} | enter: confirm`,
+        ),
+      );
+      lines.push(
+        chalk.dim(
+          `risk: ${SAFETY_ICONS.safe} safe  ${SAFETY_ICONS.moderate} moderate  ${SAFETY_ICONS.risky} risky`,
         ),
       );
     } else {

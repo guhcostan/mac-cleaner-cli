@@ -3,14 +3,11 @@ import type { Settings, SettingsPatch } from '../shared/types.js';
 
 /**
  * Categories the daily automatic run cleans out of the box.
- * Only content that is regenerated on demand and never user data.
+ * Only content that is regenerated on demand and never user data. Homebrew is
+ * left out: its cleanup (`brew cleanup --prune=all`) also removes old formula
+ * versions, which an unattended run should not decide on its own.
  */
-export const DEFAULT_AUTO_CATEGORIES: CategoryId[] = [
-  'temp-files',
-  'browser-cache',
-  'homebrew',
-  'system-logs',
-];
+export const DEFAULT_AUTO_CATEGORIES: CategoryId[] = ['temp-files', 'browser-cache', 'system-logs'];
 
 /**
  * Categories a "deep clean" (hard delete) scans by default: everything that

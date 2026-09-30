@@ -2,6 +2,8 @@ import { lstat, readdir, rm, access, unlink } from 'fs/promises';
 import { join, resolve } from 'path';
 import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
+import { sanitizeDisplayName } from './display.js';
+import { debugError, errorCode, isExpectedFsError } from './errors.js';
 
 /**
  * System paths that should NEVER be deleted.
@@ -60,7 +62,7 @@ export function validatePathSafety(path: string): string | null {
   
   // Check for protected system paths
   if (isProtectedPath(resolved)) {
-    return `Refusing to delete protected system path: ${path}`;
+    return `Refusing to delete protected system path: ${sanitizeDisplayName(path)}`;
   }
   
   // Check for root directory
@@ -99,7 +101,8 @@ export async function getSize(path: string): Promise<number> {
       return await getDirectorySize(path);
     }
     return 0;
-  } catch {
+  } catch (error) {
+    debugError(`getSize(${path})`, error);
     return 0;
   }
 }
@@ -122,11 +125,13 @@ export async function getDirectorySize(dirPath: string): Promise<number> {
         } else if (entry.isDirectory()) {
           totalSize += await getDirectorySize(fullPath);
         }
-      } catch {
+      } catch (error) {
+        debugError(`getDirectorySize(${fullPath})`, error);
         continue;
       }
     }
-  } catch {
+  } catch (error) {
+    debugError(`getDirectorySize(${dirPath})`, error);
     return 0;
   }
 
@@ -184,17 +189,54 @@ export async function getItems(
           if (recursive && entry.isDirectory() && !stats.isSymbolicLink()) {
             await processDir(fullPath, depth + 1);
           }
-        } catch {
+        } catch (error) {
+          debugError(`getItems(${fullPath})`, error);
           continue;
         }
       }
-    } catch {
+    } catch (error) {
+      debugError(`getItems(${currentPath})`, error);
       return;
     }
   }
 
   await processDir(dirPath, 0);
   return items;
+}
+
+/**
+ * Depth to search for sockets below a candidate directory. Runtime directories
+ * keep their sockets at or near the top, so a shallow search is enough.
+ */
+const SOCKET_SEARCH_MAX_DEPTH = 2;
+
+/**
+ * Reports whether a directory holds a unix socket or FIFO, which marks it as the
+ * runtime directory of a running process (e.g. $TMPDIR/podman). Such a directory
+ * holds no reclaimable space, and deleting it severs the IPC the process needs.
+ */
+async function holdsLiveSocket(dirPath: string, depth = SOCKET_SEARCH_MAX_DEPTH): Promise<boolean> {
+  try {
+    const entries = await readdir(dirPath, { withFileTypes: true });
+
+    if (entries.some((entry) => entry.isSocket() || entry.isFIFO())) {
+      return true;
+    }
+
+    if (depth <= 0) {
+      return false;
+    }
+
+    for (const entry of entries) {
+      if (entry.isDirectory() && (await holdsLiveSocket(join(dirPath, entry.name), depth - 1))) {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
 }
 
 export async function getDirectoryItems(dirPath: string): Promise<CleanableItem[]> {
@@ -205,6 +247,13 @@ export async function getDirectoryItems(dirPath: string): Promise<CleanableItem[
 
     for (const entry of entries) {
       const fullPath = join(dirPath, entry.name);
+
+      if (entry.isSocket() || entry.isFIFO()) {
+        continue;
+      }
+      if (entry.isDirectory() && (await holdsLiveSocket(fullPath))) {
+        continue;
+      }
 
       try {
         const stats = await lstat(fullPath);
@@ -224,11 +273,13 @@ export async function getDirectoryItems(dirPath: string): Promise<CleanableItem[
           isDirectory: entry.isDirectory(),
           modifiedAt: stats.mtime,
         });
-      } catch {
+      } catch (error) {
+        debugError(`getDirectoryItems(${fullPath})`, error);
         continue;
       }
     }
-  } catch {
+  } catch (error) {
+    debugError(`getDirectoryItems(${dirPath})`, error);
     return [];
   }
 
@@ -252,15 +303,20 @@ export async function removeItem(path: string, dryRun = false): Promise<boolean>
  * 'EPERM', or a safety-check message) instead of a boolean. Returns null on success.
  */
 export async function removeItemWithError(path: string, dryRun = false): Promise<string | null> {
-  if (dryRun) {
-    return null;
-  }
-
-  // Security check: validate path is safe to delete
+  // The safety check deliberately runs BEFORE the dry-run early return.
+  // A dry run that reports success for a path the real execution would refuse
+  // is worse than no dry run at all: it promises free space that will never
+  // appear. Concrete case: the logs scanner offers items under /var/log, which
+  // is in PROTECTED_PATHS — the dry run claimed the full total while the real
+  // run returned a failure for every one of them.
   const safetyError = validatePathSafety(path);
   if (safetyError) {
     console.error(safetyError);
     return 'PROTECTED';
+  }
+
+  if (dryRun) {
+    return null;
   }
 
   try {
@@ -277,11 +333,12 @@ export async function removeItemWithError(path: string, dryRun = false): Promise
     return null;
   } catch (error) {
     // Log the error for debugging but don't expose details to potential attackers
-    const code = (error as NodeJS.ErrnoException).code;
-    if (code !== 'ENOENT' && code !== 'EACCES' && code !== 'EPERM') {
-      console.error(`Failed to remove ${path}: ${code || 'unknown error'}`);
+    if (isExpectedFsError(error)) {
+      debugError(`removeItem(${path})`, error);
+    } else {
+      console.error(`Failed to remove ${sanitizeDisplayName(path)}: ${errorCode(error)}`);
     }
-    return code || 'UNKNOWN';
+    return errorCode(error);
   }
 }
 

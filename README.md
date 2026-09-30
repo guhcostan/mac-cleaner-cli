@@ -108,8 +108,6 @@ Download the latest `.dmg` from [Releases](https://github.com/guhcostan/mac-clea
 | `trash` | Files in the Trash bin |
 | `temp-files` | Temporary files in /tmp and /var/folders |
 | `browser-cache` | Chrome, Safari, Firefox, Arc cache |
-| `homebrew` | Homebrew download cache |
-| `docker` | Unused Docker images, containers, volumes |
 
 ### 🟡 Moderate (generally safe)
 
@@ -119,6 +117,14 @@ Download the latest `.dmg` from [Releases](https://github.com/guhcostan/mac-clea
 | `system-logs` | System and application logs |
 | `dev-cache` | npm, yarn, pip, Xcode DerivedData, CocoaPods |
 | `node-modules` | Orphaned node_modules in old projects |
+| `homebrew` | Homebrew download cache **and old formula versions** (`brew cleanup --prune=all`) |
+| `docker` | Unused images, stopped containers, build cache — **only the types you select** |
+
+> `docker` and `homebrew` are **not** "safe": their cleanup is performed by the
+> external tool, and it removes more than downloaded files. Docker removes images
+> that aren't used by a *running* container (they must be pulled or rebuilt
+> again), and Homebrew removes old formula versions. Docker **volumes are never
+> touched** — that's your data, not cache.
 
 ### 🔴 Risky (use `--risky` flag)
 
@@ -129,7 +135,7 @@ Download the latest `.dmg` from [Releases](https://github.com/guhcostan/mac-clea
 | `mail-attachments` | Downloaded email attachments |
 | `duplicates` | Duplicate files (keeps newest) |
 | `large-files` | Files larger than 500MB |
-| `language-files` | Unused language localizations |
+| `language-files` | Unused language localizations — **breaks the app's code signature** |
 | `git-worktrees` | Stale or orphaned git worktrees (agents, feature checkouts) |
 
 ## 📖 Usage
@@ -142,6 +148,9 @@ npx mac-cleaner-cli
 
 # Include risky categories
 npx mac-cleaner-cli --risky
+
+# Preview what would be deleted, without deleting anything
+npx mac-cleaner-cli --dry-run
 
 # Enable file picker for all categories
 npx mac-cleaner-cli --risky -f
@@ -193,7 +202,18 @@ npx mac-cleaner-cli maintenance --dns
 
 # Free purgeable space
 npx mac-cleaner-cli maintenance --purgeable
+
+# Delete Time Machine local snapshots (requires sudo, asks for confirmation)
+sudo npx mac-cleaner-cli maintenance --timemachine
+
+# Preview it first, or skip the prompt
+npx mac-cleaner-cli maintenance --timemachine --dry-run
+sudo npx mac-cleaner-cli maintenance --timemachine --yes
 ```
+
+Local snapshots are taken automatically by Time Machine and can grow to hundreds of gigabytes.
+Deleting them is irreversible — they are your only local rollback point while the backup disk is
+disconnected — but macOS recreates them as needed once it is reconnected.
 
 ### Other Commands
 
@@ -207,8 +227,35 @@ npx mac-cleaner-cli config --show
 
 # Manage backups
 npx mac-cleaner-cli backup --list
+npx mac-cleaner-cli backup --restore <dir>
 npx mac-cleaner-cli backup --clean
 ```
+
+### Backups (opt-in)
+
+By default, cleaning is **permanent**: files are removed with `rm -rf` and do
+**not** go to the Trash.
+
+You can opt into backups by setting `backupEnabled` in `~/.maccleanerrc`:
+
+```json
+{ "backupEnabled": true }
+```
+
+With backups on, selected items are **moved** to `~/.mac-cleaner-cli/backup/<timestamp>/`
+instead of being deleted, and can be brought back with `backup --restore`.
+
+Two honest caveats:
+
+- **Moving does not free disk space.** The files still occupy the same volume.
+  Space is only reclaimed by `backup --clean`, which deletes backups older than
+  7 days permanently.
+- **Docker and Homebrew cannot be backed up.** Their cleanup is performed by the
+  external tool (`docker system prune`, `brew cleanup`), so there is no file for
+  us to move. The CLI warns you before proceeding when these are selected.
+
+If a backup fails, the item is **not** deleted — it stays where it is and the
+failure is reported.
 
 ### Flags
 
@@ -220,6 +267,19 @@ npx mac-cleaner-cli backup --clean
 -A, --absolute-paths   Show absolute paths
     --no-progress      Disable progress bars
 ```
+
+### Troubleshooting
+
+Scans tolerate unreadable paths (missing Full Disk Access, permission errors), so a
+category can come back empty without an obvious reason. Set `MAC_CLEANER_DEBUG=1` to
+print every skipped path and the underlying error:
+
+```bash
+MAC_CLEANER_DEBUG=1 npx mac-cleaner-cli scan
+```
+
+Exit codes: `0` on success, `1` when a category could not be scanned or an item could
+not be deleted. `scan --json` also reports failures in an `errors` array.
 
 ## 💻 Global Installation
 

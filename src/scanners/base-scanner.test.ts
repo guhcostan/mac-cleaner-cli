@@ -1,9 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, writeFile, rm } from 'fs/promises';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdtemp, writeFile, rm, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 import { join } from 'path';
-import { tmpdir } from 'os';
+import { tmpdir, homedir } from 'os';
 import { BaseScanner } from './base-scanner.js';
+import { CATEGORIES } from '../types.js';
 import type { Category, ScanResult, ScannerOptions, CleanableItem } from '../types.js';
+import { ensureBackupDir } from '../utils/backup.js';
 
 class TestScanner extends BaseScanner {
   category: Category = {
@@ -117,3 +120,82 @@ describe('BaseScanner', () => {
   });
 });
 
+
+describe('BaseScanner backup routing', () => {
+  class FakeScanner extends BaseScanner {
+    category = CATEGORIES['trash'];
+    async scan() {
+      return this.createResult([]);
+    }
+  }
+
+  let sourceDir: string;
+
+  beforeEach(async () => {
+    sourceDir = join(homedir(), '.mac-cleaner-cli-test-scanner');
+    await mkdir(sourceDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(sourceDir, { recursive: true, force: true });
+  });
+
+  it('deletes when no backupDir is given', async () => {
+    const file = join(sourceDir, 'delete-me.txt');
+    await writeFile(file, 'x');
+
+    const scanner = new FakeScanner();
+    const result = await scanner.clean(
+      [{ path: file, size: 1, name: 'delete-me.txt', isDirectory: false }]
+    );
+
+    expect(existsSync(file)).toBe(false);
+    expect(result.freedSpace).toBe(1);
+    expect(result.backedUpSize).toBeUndefined();
+  });
+
+  it('moves to backup and reports ZERO freed space when backupDir is given', async () => {
+    const file = join(sourceDir, 'keep-me.txt');
+    await writeFile(file, 'x');
+
+    const backupDir = await ensureBackupDir();
+    const scanner = new FakeScanner();
+    const result = await scanner.clean(
+      [{ path: file, size: 1, name: 'keep-me.txt', isDirectory: false }],
+      false,
+      backupDir
+    );
+
+    // The point of this test: moving does NOT free space. Reporting freedSpace
+    // here would trade the old facade for a new untruth.
+    expect(result.freedSpace).toBe(0);
+    expect(result.backedUpSize).toBe(1);
+    expect(result.backupDir).toBe(backupDir);
+    expect(existsSync(file)).toBe(false);
+
+    await rm(backupDir, { recursive: true, force: true });
+  });
+
+  it('reports an error and keeps the file when the backup fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const outsideDir = await mkdtemp(join(tmpdir(), 'scanner-outside-home-'));
+    const outside = join(outsideDir, 'scanner-outside-home.txt');
+    await writeFile(outside, 'x');
+
+    const backupDir = await ensureBackupDir();
+    const scanner = new FakeScanner();
+    const result = await scanner.clean(
+      [{ path: outside, size: 1, name: 'scanner-outside-home.txt', isDirectory: false }],
+      false,
+      backupDir
+    );
+
+    expect(result.cleanedItems).toBe(0);
+    expect(result.errors[0]).toContain('nothing was deleted');
+    expect(existsSync(outside)).toBe(true);
+
+    await rm(outsideDir, { recursive: true, force: true });
+    await rm(backupDir, { recursive: true, force: true });
+    consoleSpy.mockRestore();
+  });
+});

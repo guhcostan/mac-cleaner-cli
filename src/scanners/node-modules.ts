@@ -1,6 +1,6 @@
 import { BaseScanner } from './base-scanner.js';
 import { CATEGORIES, type ScanResult, type ScannerOptions, type CleanableItem } from '../types.js';
-import { exists, getSize } from '../utils/index.js';
+import { exists, getSize, debugError } from '../utils/index.js';
 import { readdir, stat, access } from 'fs/promises';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -75,8 +75,9 @@ export class NodeModulesScanner extends BaseScanner {
                 modifiedAt: stats.mtime,
               });
             }
-          } catch {
+          } catch (error) {
             // No package.json or orphaned node_modules
+            debugError(`node-modules package.json (${fullPath})`, error);
             const size = await getSize(fullPath);
             if (size > 0) {
               const stats = await stat(fullPath);
@@ -94,8 +95,9 @@ export class NodeModulesScanner extends BaseScanner {
           items.push(...subItems);
         }
       }
-    } catch {
-      // Ignore permission errors
+    } catch (error) {
+      // Permission errors are expected outside the user's own projects
+      debugError(`node-modules scan (${dir})`, error);
     }
 
     return items;

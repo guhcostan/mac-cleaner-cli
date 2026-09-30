@@ -6,14 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-30
+
 ### Added
 - **Desktop app (`desktop/`)** — a macOS menu bar app built with Electron on top of the CLI scanners: daily automatic clean of safe categories (runs on wake if the Mac was asleep), one-click Clean Now, Deep Clean with a reviewable preview and explicit confirmation before permanently deleting, run history, notifications, launch at login and Full Disk Access guidance. Packaged as `.dmg`/`.zip` for Apple Silicon and Intel by the new `Desktop App` workflow and attached to GitHub releases
 - **`scan` command** — scan without deleting; supports `--category`, `--verbose`, and `--json` for scripts and integrations
 - **`clean` command** — non-interactive cleaning for automation: `--all`, `--categories <ids>`, `--yes`, `--dry-run`, `--unsafe`
 - **Visual size bars** in the category picker to spot the biggest space savings at a glance (idea from #46 by @alibosworth)
 - **Full Disk Access detection** — interactive mode shows a one-time hint when the terminal lacks Full Disk Access, instead of failing later with permission errors (#61)
+- **`--dry-run` in the interactive mode**, safety icons and legend in the picker, and the risky categories' warnings shown right before confirming (#78)
+- **Real, opt-in backups** — with `"backupEnabled": true` in `~/.maccleanerrc`, items are moved to `~/.mac-cleaner-cli/backup/` instead of deleted, and `backup --restore <dir>` brings them back (#79)
+- **`maintenance --timemachine` asks before deleting snapshots**, with new `--dry-run` and `--yes` flags (#85)
+- **`MAC_CLEANER_DEBUG=1`** prints every path a scan skipped and why; categories that fail to scan are listed, reported in `scan --json`, and make the CLI exit with code 1 (#82)
+
+### Fixed
+- Never list live sockets or the runtime directories that hold them (e.g. `$TMPDIR/podman`) as reclaimable temp files (#71)
+- The interactive confirmation now defaults to **No**, so a distracted Enter never deletes files (#75)
+- Docker cleanup only prunes the resource types you selected (it used to run `docker system prune -af` regardless) and never touches volumes (#76)
+- Every risky category (iOS backups, mail attachments, duplicates, language files) now requires reviewing files one by one, and opens with nothing pre-selected (#77)
+- Dry runs report protected paths as failures instead of promising space the real run would never free (#78)
+- Commander pinned to `^14`, since v15 requires Node 22.12+ while the CLI supports Node 20 (#84)
+
+### Security
+- Sanitize control, ANSI and bidi characters in file names before printing them, use absolute paths for `sudo`, `pbcopy` and `du`, tighten the backup restore boundary, and run CI with a read-only token by default (#80)
 
 ### Changed
+- `homebrew` and `docker` are now labelled **moderate** instead of safe, with notes explaining what their cleanup really removes; the `language-files` warning now says it breaks the app's code signature (#76)
+- More test coverage for maintenance tasks, Docker, Homebrew and config, with coverage thresholds raised to 90% (#81)
 - Clean errors now include a breakdown by error code (e.g. `Failed to remove 40 items (32 EPERM, 8 EACCES)`) so permission issues are distinguishable from real failures
 - `--help` now shows the correct binary name (`mac-cleaner-cli` instead of `mac-cleaner`)
 - CI now also tests on Node 24, and npm releases are published with provenance attestation

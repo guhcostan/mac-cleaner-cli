@@ -18,7 +18,7 @@ describe("copyToClipboard", () => {
 
     await copyToClipboard(testText);
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: testText,
       encoding: "utf-8",
     });
@@ -35,13 +35,37 @@ describe("copyToClipboard", () => {
     );
   });
 
+  it("should throw a helpful error when pbcopy is missing", async () => {
+    const execSyncMock = vi.mocked(child_process.execSync);
+    execSyncMock.mockImplementationOnce(() => {
+      const error: NodeJS.ErrnoException = new Error("spawnSync pbcopy ENOENT");
+      error.code = "ENOENT";
+      throw error;
+    });
+
+    await expect(copyToClipboard("/test/path")).rejects.toThrow(
+      "Failed to copy: `pbcopy` was not found at /usr/bin/pbcopy.",
+    );
+  });
+
+  it("should throw a generic error for non-Error failures", async () => {
+    const execSyncMock = vi.mocked(child_process.execSync);
+    execSyncMock.mockImplementationOnce(() => {
+      throw "boom";
+    });
+
+    await expect(copyToClipboard("/test/path")).rejects.toThrow(
+      "Failed to copy to clipboard",
+    );
+  });
+
   it("should handle empty string", async () => {
     const execSyncMock = vi.mocked(child_process.execSync);
     execSyncMock.mockReturnValueOnce(Buffer.from(""));
 
     await copyToClipboard("");
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: "",
       encoding: "utf-8",
     });
@@ -54,7 +78,7 @@ describe("copyToClipboard", () => {
 
     await copyToClipboard(testText);
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: testText,
       encoding: "utf-8",
     });
@@ -67,7 +91,7 @@ describe("copyToClipboard", () => {
 
     await copyToClipboard(testText);
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: testText,
       encoding: "utf-8",
     });
@@ -81,7 +105,7 @@ describe("copyToClipboard", () => {
 
     await copyToClipboard(testText);
 
-    expect(execSyncMock).toHaveBeenCalledWith("pbcopy", {
+    expect(execSyncMock).toHaveBeenCalledWith("/usr/bin/pbcopy", {
       input: testText,
       encoding: "utf-8",
     });

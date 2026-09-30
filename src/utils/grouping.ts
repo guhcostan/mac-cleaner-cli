@@ -2,6 +2,7 @@ import path from "node:path";
 import type { CleanableItem } from "../types.js";
 import type { GroupedFileDisplay } from "./checkbox.js";
 import { truncateDirectoryPath } from "./paths.js";
+import { sanitizeDisplayName } from "./display.js";
 
 /**
  * Represents a group of files within the same directory.
@@ -131,7 +132,9 @@ export function formatAsDisplayItems(
   const result: GroupedFileDisplay[] = [];
 
   for (const { group, visibleCount, hasMore } of limitedGroups) {
-    const truncatedDirPath = truncateDirectoryPath(group.path, absolutePaths);
+    const truncatedDirPath = sanitizeDisplayName(
+      truncateDirectoryPath(group.path, absolutePaths),
+    );
     const directoryKey = group.path;
 
     // Add directory header
@@ -153,7 +156,7 @@ export function formatAsDisplayItems(
         path: file.path,
         size: file.size,
         name: fileName,
-        displayName: fileName,
+        displayName: sanitizeDisplayName(fileName),
         directoryKey,
         item: file,
         selectable: true,

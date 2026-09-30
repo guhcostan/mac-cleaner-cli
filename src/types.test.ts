@@ -59,11 +59,46 @@ describe('CATEGORIES', () => {
   });
 
   it('should mark safe categories correctly', () => {
-    const safeCategories = ['trash', 'browser-cache', 'temp-files', 'homebrew', 'docker'];
+    // homebrew and docker left this list: both delegate cleanup to an external
+    // command that removes more than "cache" (old formula versions, and images
+    // not used by a running container).
+    const safeCategories = ['trash', 'browser-cache', 'temp-files'];
 
     for (const id of safeCategories) {
       expect(CATEGORIES[id as keyof typeof CATEGORIES].safetyLevel).toBe('safe');
     }
+  });
+
+  // Invariant: a category that delegates cleanup to an external tool cannot be
+  // `safe`. The user does not pick item by item there — the command decides, and
+  // the effect is broader than the word "cache" suggests.
+  it('should never mark externally-cleaned categories as safe', () => {
+    const externallyCleaned = ['homebrew', 'docker'] as const;
+
+    for (const id of externallyCleaned) {
+      expect(CATEGORIES[id].safetyLevel).not.toBe('safe');
+      expect(CATEGORIES[id].safetyNote).toBeDefined();
+    }
+  });
+
+  // A rule, not a fixed list: any future `risky` category is born requiring
+  // per-file review. Without it, checking the category sent 100% of its items
+  // to deletion in one keystroke — which is how iOS Backups, Mail Attachments,
+  // Duplicates and Language Files ended up with no review at all.
+  it('should require per-file selection on EVERY risky category', () => {
+    const riskyWithoutFileSelection = Object.values(CATEGORIES)
+      .filter((c) => c.safetyLevel === 'risky' && !c.supportsFileSelection)
+      .map((c) => c.id);
+
+    expect(riskyWithoutFileSelection).toEqual([]);
+  });
+
+  it('should have a safetyNote on EVERY risky category', () => {
+    const riskyWithoutNote = Object.values(CATEGORIES)
+      .filter((c) => c.safetyLevel === 'risky' && !c.safetyNote)
+      .map((c) => c.id);
+
+    expect(riskyWithoutNote).toEqual([]);
   });
 
   it('should have valid groups', () => {
