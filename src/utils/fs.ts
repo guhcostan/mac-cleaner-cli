@@ -295,15 +295,20 @@ export async function removeItem(path: string, dryRun = false): Promise<boolean>
  * 'EPERM', or a safety-check message) instead of a boolean. Returns null on success.
  */
 export async function removeItemWithError(path: string, dryRun = false): Promise<string | null> {
-  if (dryRun) {
-    return null;
-  }
-
-  // Security check: validate path is safe to delete
+  // The safety check deliberately runs BEFORE the dry-run early return.
+  // A dry run that reports success for a path the real execution would refuse
+  // is worse than no dry run at all: it promises free space that will never
+  // appear. Concrete case: the logs scanner offers items under /var/log, which
+  // is in PROTECTED_PATHS — the dry run claimed the full total while the real
+  // run returned a failure for every one of them.
   const safetyError = validatePathSafety(path);
   if (safetyError) {
     console.error(safetyError);
     return 'PROTECTED';
+  }
+
+  if (dryRun) {
+    return null;
   }
 
   try {

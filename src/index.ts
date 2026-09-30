@@ -50,6 +50,7 @@ program
   .option('-r, --risky', 'Include risky categories (downloads, iOS backups, etc)')
   .option('-f, --file-picker', 'Force file picker for ALL categories')
   .option('-A, --absolute-paths', 'Show absolute paths instead of truncated notations')
+  .option('-d, --dry-run', 'Show what would be deleted without deleting anything')
   .option('--no-progress', 'Disable progress bar')
   .action(async (options) => {
     try {
@@ -58,6 +59,7 @@ program
         includeRisky: options.risky,
         filePicker: options.filePicker ?? config.filePicker,
         absolutePaths: options.absolutePaths,
+        dryRun: options.dryRun,
         noProgress: !options.progress,
       });
     } catch (error) {

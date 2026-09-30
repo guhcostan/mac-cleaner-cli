@@ -396,15 +396,39 @@ describe('fs utils', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should report no failures on dry run', async () => {
+    // This test used to assert success/0 failures for '/System/Library' on a dry
+    // run. That expectation encoded the bug: the path is in PROTECTED_PATHS, so
+    // the real run refuses it. A dry run that promises to free space the real run
+    // will never free is worse than having no dry run at all.
+    it('should report protected paths as failures on dry run, like the real run does', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
       const result = await removeItems(
         [{ path: '/System/Library', size: 0, name: 'Library', isDirectory: true }],
+        true
+      );
+
+      expect(result.success).toBe(0);
+      expect(result.failed).toBe(1);
+      expect(result.failures[0].error).toBe('PROTECTED');
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should report no failures on dry run for a deletable path', async () => {
+      const filePath = join(testDir, 'dry-run-ok.txt');
+      await writeFile(filePath, 'content');
+
+      const result = await removeItems(
+        [{ path: filePath, size: 7, name: 'dry-run-ok.txt', isDirectory: false }],
         true
       );
 
       expect(result.success).toBe(1);
       expect(result.failed).toBe(0);
       expect(result.failures).toEqual([]);
+      // Still a dry run: the file must survive.
+      expect(await exists(filePath)).toBe(true);
     });
   });
 });
