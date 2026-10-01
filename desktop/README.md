@@ -30,18 +30,52 @@ category, safety rule and protected-path check of the CLI applies here too.
 
 ## Install
 
-Download `Mac-Cleaner-<version>-arm64.dmg` (Apple Silicon) or `-x64.dmg` (Intel) from
-[Releases](https://github.com/guhcostan/mac-cleaner-cli/releases), open it and drag
-**Mac Cleaner** to Applications.
+**Recommended**, one command that also updates an existing install:
+
+```bash
+npx mac-cleaner-cli app install
+# or, without Node.js:
+curl -fsSL https://guhcostan.github.io/mac-cleaner-cli/install.sh | bash
+```
+
+Both pick the build for your Mac (Apple Silicon or Intel), download it from the latest
+GitHub release, check it against the SHA-256 digest GitHub publishes, and install it into
+`/Applications` (or `~/Applications` if your account can't write there). Options:
+`--no-open` and `--dir <folder>` for the CLI; `MAC_CLEANER_NO_OPEN=1` and
+`MAC_CLEANER_INSTALL_DIR=<folder>` for the script.
 
 Then grant **Full Disk Access** (System Settings → Privacy & Security → Full Disk Access →
 add Mac Cleaner). Without it macOS hides some caches from the app; the popover shows a
 banner with a shortcut when access is missing.
 
-> **Unsigned builds:** until the project has an Apple Developer ID, release builds are
-> ad-hoc signed. macOS will say the app "cannot be opened because the developer cannot be
-> verified". Right click the app → **Open** → **Open** once, or run
-> `xattr -dr com.apple.quarantine "/Applications/Mac Cleaner.app"`.
+### Why no Gatekeeper warning?
+
+The app isn't signed with an Apple Developer ID yet (it is ad-hoc signed). macOS only runs
+the Gatekeeper check on files tagged with the `com.apple.quarantine` attribute, which
+browsers, Mail and AirDrop add to downloads. `curl` and Node's `fetch` don't, so the
+installers above produce an app that opens normally. Nothing is bypassed on your Mac: it is
+the same as building the app yourself.
+
+### Installing from the .dmg
+
+`Mac-Cleaner-<version>-arm64.dmg` (Apple Silicon) and `-x64.dmg` (Intel) are on
+[Releases](https://github.com/guhcostan/mac-cleaner-cli/releases). Because they are
+downloaded with a browser, macOS says *"Apple could not verify 'Mac Cleaner' is free of
+malware"* the first time. Either:
+
+- open **System Settings → Privacy & Security** and click **Open Anyway** (on older macOS:
+  right click the app → **Open** → **Open**), or
+- run `xattr -dr com.apple.quarantine "/Applications/Mac Cleaner.app"`.
+
+### Limits of unsigned builds
+
+- macOS ties the Full Disk Access permission to the app's signature, and ad-hoc signatures
+  change on every build, so you may need to grant it again after updating.
+- There is no in-app auto-update (it requires a signed app on macOS): run the install
+  command again to update.
+
+Signing and notarizing with a Developer ID removes all of the above; see
+[Releasing](#releasing).
 
 ## Develop
 
