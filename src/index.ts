@@ -2,7 +2,7 @@
 
 import { Command, InvalidArgumentError } from 'commander';
 import { ExitPromptError } from '@inquirer/core';
-import { cleanCommand, interactiveCommand, listCategories, maintenanceCommand, scanCommand, uninstallCommand } from './commands/index.js';
+import { appInstallCommand, cleanCommand, interactiveCommand, listCategories, maintenanceCommand, scanCommand, uninstallCommand } from './commands/index.js';
 import { initConfig, configExists, listBackups, cleanOldBackups, restoreBackup, loadConfig, formatSize } from './utils/index.js';
 import { formatError, isDebugEnabled } from './utils/errors.js';
 import { CATEGORIES, type CategoryId } from './types.js';
@@ -163,6 +163,20 @@ program
       yes: options.yes,
       dryRun: options.dryRun,
     });
+  }));
+
+const app = program
+  .command('app')
+  .description('Install or update the Mac Cleaner menu bar app');
+
+app
+  .command('install')
+  .alias('update')
+  .description('Download the latest Mac Cleaner app from GitHub, verify it and install it into /Applications')
+  .option('--no-open', 'Do not open the app after installing')
+  .option('--dir <path>', 'Install into this folder instead of /Applications')
+  .action(action(async (options) => {
+    await appInstallCommand({ open: options.open, dir: options.dir });
   }));
 
 program

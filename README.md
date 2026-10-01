@@ -59,12 +59,20 @@ That's it. No installation needed. The CLI will:
 
 Prefer not to open a terminal? **Mac Cleaner** is a menu bar app built on the same scanners as the CLI:
 
-- 🧹 **Cleans automatically every day** (temp files, browser cache, Homebrew cache, logs — you choose)
+- 🧹 **Cleans automatically every day** (temp files, browser cache, logs — you choose)
 - ⚡ **Clean Now** from the menu bar whenever you want
 - 🔥 **Deep Clean** — scan more places, review what was found and permanently delete it
 - 📊 Shows how much space every run freed, with a full history
 
-Download the latest `.dmg` from [Releases](https://github.com/guhcostan/mac-cleaner-cli/releases). See [`desktop/`](desktop/README.md) for details and how to build it yourself.
+Install or update it with one command:
+
+```bash
+npx mac-cleaner-cli app install
+# or, without Node.js:
+curl -fsSL https://guhcostan.github.io/mac-cleaner-cli/install.sh | bash
+```
+
+Both download the latest release, verify its SHA-256 checksum and install it into `/Applications`. The `.dmg` files are also on [Releases](https://github.com/guhcostan/mac-cleaner-cli/releases), but the app isn't signed with an Apple Developer ID yet, so a `.dmg` downloaded with a browser shows a Gatekeeper warning first ([how to open it](desktop/README.md#install)). See [`desktop/`](desktop/README.md) for details and how to build it yourself.
 
 ## 🎬 See It In Action
 

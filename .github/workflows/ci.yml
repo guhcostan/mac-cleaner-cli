@@ -59,6 +59,30 @@ jobs:
           node dist/index.mjs categories
           node dist/index.mjs scan --help
           node dist/index.mjs clean --help
+          node dist/index.mjs app install --help
+
+      # Installs the menu bar app from the latest release with both installers, on a real
+      # Mac, and checks it ends up intact, validly signed (ad-hoc) and without quarantine.
+      - name: Test app installers
+        if: matrix.node-version == 22
+        env:
+          MAC_CLEANER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          check_app() {
+            app="$1/Mac Cleaner.app"
+            test -x "$app/Contents/MacOS/Mac Cleaner"
+            codesign --verify --deep --strict "$app"
+            if xattr -p com.apple.quarantine "$app" 2>/dev/null; then
+              echo "quarantine attribute is set on $app"; exit 1
+            fi
+            echo "OK: $app"
+          }
+
+          node dist/index.mjs app install --no-open --dir "$RUNNER_TEMP/cli-apps"
+          check_app "$RUNNER_TEMP/cli-apps"
+
+          MAC_CLEANER_NO_OPEN=1 MAC_CLEANER_INSTALL_DIR="$RUNNER_TEMP/script-apps" bash docs/install.sh
+          check_app "$RUNNER_TEMP/script-apps"
 
   publish:
     needs: test

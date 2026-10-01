@@ -4,3 +4,4 @@ export { maintenanceCommand } from './maintenance.js';
 export { uninstallCommand } from './uninstall.js';
 export { interactiveCommand } from './interactive.js';
 
+export { appInstallCommand } from './app.js';
