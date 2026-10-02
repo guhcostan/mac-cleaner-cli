@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **`mac-cleaner-cli app install`** (alias `app update`) installs or updates the menu bar app: it downloads the build for your Mac from the latest GitHub release, verifies its SHA-256 digest and installs it into `/Applications` (or `~/Applications`), with `--no-open` and `--dir`. Because the download doesn't carry the quarantine attribute, the unsigned app opens without the Gatekeeper prompt
 - **`install.sh`** for installing the app without Node.js: `curl -fsSL https://guhcostan.github.io/mac-cleaner-cli/install.sh | bash`
 - CI installs the app with both installers on macOS and checks the bundle, its signature and that it isn't quarantined
+- README screenshots of the menu bar app (light and dark), generated from the real UI with sample data by `bun run screenshots` in `desktop/`
 
 ## [1.4.0] - 2026-09-30
 

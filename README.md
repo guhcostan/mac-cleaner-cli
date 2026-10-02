@@ -57,12 +57,27 @@ That's it. No installation needed. The CLI will:
 
 ## 🖥️ Desktop App (menu bar) — new
 
-Prefer not to open a terminal? **Mac Cleaner** is a menu bar app built on the same scanners as the CLI:
+Prefer not to open a terminal? **Mac Cleaner** is a menu bar app built on the same scanners as the CLI.
 
-- 🧹 **Cleans automatically every day** (temp files, browser cache, logs — you choose)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/app-dark.png">
+    <img src="assets/screenshots/app-light.png" alt="Mac Cleaner menu bar app: space freed, disk usage, last run and next automatic clean" width="620">
+  </picture>
+</p>
+
+- 🧹 **Cleans automatically every day** at the time you pick (temp files, browser cache, logs — you choose). If your Mac was asleep, it catches up when it wakes.
 - ⚡ **Clean Now** from the menu bar whenever you want
-- 🔥 **Deep Clean** — scan more places, review what was found and permanently delete it
-- 📊 Shows how much space every run freed, with a full history
+- 🔥 **Deep Clean (hard delete)** — scan many more places, review the biggest items per category and permanently delete only what you tick, after a confirmation
+- 📊 **History** of every run with the space freed per category, plus a notification after each automatic clean
+- 🛡️ Risky categories are never cleaned unattended, and recently used temp files are left alone
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/app-tour-dark.png">
+    <img src="assets/screenshots/app-tour-light.png" alt="Deep Clean asking to confirm a hard delete, the History of runs, and the Settings with the daily schedule" width="100%">
+  </picture>
+</p>
 
 Install or update it with one command:
 
@@ -72,9 +87,11 @@ npx mac-cleaner-cli app install
 curl -fsSL https://guhcostan.github.io/mac-cleaner-cli/install.sh | bash
 ```
 
-Both download the latest release, verify its SHA-256 checksum and install it into `/Applications`. The `.dmg` files are also on [Releases](https://github.com/guhcostan/mac-cleaner-cli/releases), but the app isn't signed with an Apple Developer ID yet, so a `.dmg` downloaded with a browser shows a Gatekeeper warning first ([how to open it](desktop/README.md#install)). See [`desktop/`](desktop/README.md) for details and how to build it yourself.
+Both pick the build for your Mac (Apple Silicon or Intel), download the latest release, verify its SHA-256 checksum and install it into `/Applications`. Then give it **Full Disk Access** (System Settings → Privacy & Security) so it can see every cache.
 
-## 🎬 See It In Action
+The `.dmg` files are also on [Releases](https://github.com/guhcostan/mac-cleaner-cli/releases), but the app isn't signed with an Apple Developer ID yet, so a `.dmg` downloaded with a browser shows a Gatekeeper warning first ([why, and how to open it](desktop/README.md#install)). See [`desktop/`](desktop/README.md) for details and how to build it yourself.
+
+## 🎬 The CLI In Action
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/guhcostan/mac-cleaner-cli/main/assets/demo.gif" alt="mac-cleaner-cli demo" width="100%">
@@ -88,6 +105,10 @@ Both download the latest release, verify its SHA-256 checksum and install it int
 | 🎯 **Interactive** | Select exactly what you want to clean with checkboxes |
 | 📁 **File Explorer** | Drill down (`→`) into categories to select specific folders/files |
 | 🛡️ **Safe by Default** | Risky items hidden unless you use `--risky` |
+| 👀 **Dry Run** | Preview exactly what would be deleted with `--dry-run` |
+| ♻️ **Optional Backups** | Move items to a backup folder instead of deleting, restore later |
+| 🤖 **Scriptable** | `scan --json` and `clean --categories … --yes` for cron and CI |
+| 🖥️ **Menu Bar App** | Daily automatic cleaning, Deep Clean and history — `npx mac-cleaner-cli app install` |
 | 🔍 **Smart Scanning** | Finds caches, logs, dev files, browser data, and more |
 | 📱 **App Uninstaller** | Remove apps completely with all associated files |
 | 🔧 **Maintenance** | Flush DNS cache, free purgeable space |
@@ -102,6 +123,8 @@ Both download the latest release, verify its SHA-256 checksum and install it int
 | **Open Source** | ✅ | ❌ | ❌ |
 | **Telemetry / Analytics** | ❌ None | ⚠️ Yes | ⚠️ Yes |
 | **Works via terminal** | ✅ | ❌ | ❌ |
+| **Menu bar app** | ✅ | ✅ | ❌ |
+| **Automatic daily cleaning** | ✅ | ✅ | ❌ |
 | **CI/CD friendly** | ✅ | ❌ | ❌ |
 | **Customizable** | ✅ Fork it | ❌ | ❌ |
 | **App Uninstaller** | ✅ | ✅ | ❌ |
@@ -237,6 +260,9 @@ npx mac-cleaner-cli config --show
 npx mac-cleaner-cli backup --list
 npx mac-cleaner-cli backup --restore <dir>
 npx mac-cleaner-cli backup --clean
+
+# Install or update the menu bar app (--no-open, --dir <folder>)
+npx mac-cleaner-cli app install
 ```
 
 ### Backups (opt-in)
@@ -271,6 +297,7 @@ failure is reported.
 -V, --version          Show version number
 -h, --help             Show help
 -r, --risky            Include risky categories
+-d, --dry-run          Show what would be deleted, delete nothing
 -f, --file-picker      Force file picker for ALL categories
 -A, --absolute-paths   Show absolute paths
     --no-progress      Disable progress bars
@@ -303,7 +330,7 @@ mac-cleaner-cli
 | | |
 |---|---|
 | ✅ **Open Source** | All code publicly available for audit |
-| ✅ **No Network** | Operates 100% offline |
+| ✅ **No Network** | Operates 100% offline (only `app install` talks to GitHub, to download the app) |
 | ✅ **No Root Required** | All operations run as current user |
 | ✅ **Minimal Deps** | Only 5 runtime dependencies |
 | ✅ **CI/CD** | Every release tested with TypeScript, ESLint, and automated tests |
@@ -331,6 +358,7 @@ bun install
 bun run start    # Build and launch the menu bar app
 bun run test     # Run desktop tests
 bun run dist     # Package .dmg/.zip into desktop/release (macOS only)
+bun run screenshots  # Regenerate the README screenshots with sample data (needs Playwright)
 ```
 
 ## 🤝 Contributing
