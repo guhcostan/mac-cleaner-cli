@@ -14,13 +14,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "icons": "python3 scripts/make-icons.py",
-    "dist": "node scripts/build.mjs && electron-builder --mac --config electron-builder.config.cjs --publish never"
+    "dist": "node scripts/build.mjs && electron-builder --mac --config electron-builder.config.cjs --publish never",
+    "screenshots": "node scripts/screenshots/screenshots.mjs"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "electron": "^44.5.1",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
+    "playwright": "1.56.1",
     "typescript": "^6.0.3",
     "vitest": "^4.0.15"
   }

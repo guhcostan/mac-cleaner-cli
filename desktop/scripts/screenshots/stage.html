@@ -1,0 +1,135 @@
+<!doctype html>
+<!--
+  A mock macOS desktop used only to take README screenshots: wallpaper, menu bar with the
+  app's tray icon, and one or more popovers that load the real renderer (../../dist/renderer).
+  Driven by screenshots.mjs, which fills window.cleaner with sample data.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mac Cleaner screenshot stage</title>
+    <style>
+      :root {
+        --wall-a: #9fc4ff;
+        --wall-b: #c7b6ff;
+        --wall-c: #ffd6e7;
+        --bar-bg: rgba(255, 255, 255, 0.45);
+        --bar-fg: #1d1d1f;
+        --pill: rgba(0, 0, 0, 0.12);
+        --pop-bg: rgba(246, 246, 248, 0.55);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --wall-a: #0f1d3d;
+          --wall-b: #2a1850;
+          --wall-c: #3d1636;
+          --bar-bg: rgba(20, 20, 24, 0.5);
+          --bar-fg: #f5f5f7;
+          --pill: rgba(255, 255, 255, 0.2);
+          --pop-bg: rgba(36, 36, 40, 0.55);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; overflow: hidden; }
+      body {
+        font: 13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+        color: var(--bar-fg);
+        background:
+          radial-gradient(1200px 800px at 15% 10%, var(--wall-a), transparent 60%),
+          radial-gradient(1000px 700px at 85% 30%, var(--wall-b), transparent 60%),
+          radial-gradient(900px 700px at 50% 100%, var(--wall-c), transparent 60%),
+          linear-gradient(135deg, var(--wall-a), var(--wall-b));
+      }
+      .menubar {
+        position: absolute; inset: 0 0 auto 0; height: 30px;
+        display: flex; align-items: center; justify-content: flex-end; gap: 18px;
+        padding: 0 16px;
+        background: var(--bar-bg);
+        backdrop-filter: blur(24px) saturate(160%);
+        font-weight: 500;
+      }
+      .menubar .left { margin-right: auto; display: flex; gap: 20px; font-weight: 600; }
+      .menubar .left span:not(:first-child) { font-weight: 400; }
+      .status { display: flex; align-items: center; justify-content: center; height: 22px; }
+      .status svg { display: block; }
+      .tray {
+        width: 34px; border-radius: 6px; background: var(--pill);
+      }
+      .tray img { width: 18px; height: 18px; }
+      @media (prefers-color-scheme: dark) { .tray img { filter: invert(1); } }
+      .popover {
+        position: absolute; top: 36px; width: 380px; height: 580px;
+        border-radius: 12px; overflow: hidden;
+        background: var(--pop-bg);
+        backdrop-filter: blur(40px) saturate(180%);
+        box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.25), 0 24px 60px rgba(0, 0, 0, 0.35);
+      }
+      .popover iframe { width: 100%; height: 100%; border: 0; background: transparent; display: block; }
+      .caption {
+        position: absolute; bottom: 22px; width: 380px; text-align: center;
+        font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="menubar">
+      <div class="left"><span>Finder</span><span>File</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span></div>
+      <div class="status tray" id="tray"><img src="../../assets/trayTemplate@2x.png" alt="" /></div>
+      <div class="status">
+        <!-- wifi -->
+        <svg width="17" height="13" viewBox="0 0 17 13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+          <path d="M1.5 4.5a10 10 0 0 1 14 0" /><path d="M4 7.3a6.3 6.3 0 0 1 9 0" /><circle cx="8.5" cy="10.6" r="1.1" fill="currentColor" stroke="none" />
+        </svg>
+      </div>
+      <div class="status">
+        <!-- battery -->
+        <svg width="26" height="12" viewBox="0 0 26 12" fill="none">
+          <rect x="0.75" y="0.75" width="21.5" height="10.5" rx="3" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.2" />
+          <rect x="2.5" y="2.5" width="15" height="7" rx="1.6" fill="currentColor" />
+          <path d="M24 4.2v3.6a1.8 1.8 0 0 0 0-3.6z" fill="currentColor" fill-opacity="0.5" />
+        </svg>
+      </div>
+      <div class="status" id="clock">Thu Oct 2&nbsp;&nbsp;10:24 AM</div>
+    </div>
+    <div id="popovers"></div>
+    <script>
+      // ?views=home or ?views=deep,history,settings&captions=1
+      const params = new URLSearchParams(location.search);
+      const views = (params.get('views') || 'home').split(',');
+      const captions = {
+        home: 'Cleans itself every day',
+        deep: 'Review, then hard delete',
+        history: 'See what was removed',
+        settings: 'Your schedule, your rules',
+      };
+      const host = document.getElementById('popovers');
+      const tray = document.getElementById('tray').getBoundingClientRect();
+      const gap = 40;
+      const total = views.length * 380 + (views.length - 1) * gap;
+      // A single popover hangs under the tray icon; several are laid out side by side.
+      let left = views.length === 1
+        ? Math.round(tray.left + tray.width / 2 - 190)
+        : Math.round((innerWidth - total) / 2);
+      for (const view of views) {
+        const pop = document.createElement('div');
+        pop.className = 'popover';
+        pop.style.left = left + 'px';
+        if (views.length > 1) pop.style.top = '70px';
+        const frame = document.createElement('iframe');
+        frame.src = '../../dist/renderer/index.html#' + view;
+        frame.name = view;
+        pop.appendChild(frame);
+        host.appendChild(pop);
+        if (params.get('captions')) {
+          const cap = document.createElement('div');
+          cap.className = 'caption';
+          cap.style.left = left + 'px';
+          cap.textContent = captions[view] || '';
+          host.appendChild(cap);
+        }
+        left += 380 + gap;
+      }
+    </script>
+  </body>
+</html>

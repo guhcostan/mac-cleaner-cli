@@ -6,6 +6,13 @@ category, safety rule and protected-path check of the CLI applies here too.
 
 <p align="center"><img src="build/icon.png" width="96" alt="Mac Cleaner icon"></p>
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/screenshots/app-tour-dark.png">
+    <img src="../assets/screenshots/app-tour-light.png" alt="Deep Clean, History and Settings of the Mac Cleaner menu bar app" width="100%">
+  </picture>
+</p>
+
 ## What it does
 
 | | |
@@ -90,7 +97,13 @@ bun run start            # build (with sourcemaps) and launch Electron
 bun run test             # unit tests for the scheduler, settings, store and clean engine
 bun run typecheck
 bun run dist             # package .dmg + .zip for arm64 and x64 into desktop/release (macOS only)
+bun run screenshots      # regenerate ../assets/screenshots from the built renderer with sample data
 ```
+
+`bun run screenshots` renders the real popover UI (from `dist/renderer`, so run
+`bun run build` first) inside a mock macOS desktop (`scripts/screenshots/stage.html`), in
+light and dark mode, with Playwright and Chromium. Set `CHROMIUM_PATH` to use a Chromium you
+already have.
 
 State (settings + history) is stored in `~/Library/Application Support/Mac Cleaner/state.json`.
 
@@ -110,7 +123,7 @@ desktop/
 ├── src/shared/        types shared by main, preload and renderer
 ├── assets/            menu bar template icons
 ├── build/             app icon + entitlements for packaging
-└── scripts/           esbuild bundler and icon generator
+└── scripts/           esbuild bundler, icon generator and README screenshots
 ```
 
 ### Why Electron
