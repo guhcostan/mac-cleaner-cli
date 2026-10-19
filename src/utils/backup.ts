@@ -2,7 +2,7 @@ import { mkdir, rename, readdir, stat, rm, cp } from 'fs/promises';
 import { join, dirname, resolve, relative } from 'path';
 import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
-import { validatePathSafety } from './fs.js';
+import { preflightItem } from './fs.js';
 import { debugError } from './errors.js';
 
 const BACKUP_DIR = join(homedir(), '.mac-cleaner-cli', 'backup');
@@ -96,8 +96,8 @@ export function backupPathFor(originalPath: string, backupDir: string): string |
  * Safety contract: if the backup fails, the item is NOT deleted. Callers count
  * that as a failure, never as a silent success.
  */
-export async function backupItem(item: CleanableItem, backupDir: string): Promise<boolean> {
-  const safetyError = validatePathSafety(item.path);
+export async function backupItem(item: CleanableItem, backupDir: string, beforeMutation?: () => Promise<void>): Promise<boolean> {
+  const safetyError = await preflightItem(item);
   if (safetyError) {
     console.error(safetyError);
     return false;
@@ -111,6 +111,7 @@ export async function backupItem(item: CleanableItem, backupDir: string): Promis
 
   try {
     await mkdir(dirname(backupPath), { recursive: true });
+    await beforeMutation?.();
     await rename(item.path, backupPath);
     return true;
   } catch (error) {
@@ -129,6 +130,7 @@ export async function backupItem(item: CleanableItem, backupDir: string): Promis
       errorOnExist: false,
       force: true,
     });
+    await beforeMutation?.();
     await rm(item.path, { recursive: true, force: true });
     return true;
   } catch (error) {
@@ -160,7 +162,7 @@ export async function backupItems(
     onProgress?.(i + 1, items.length, item);
 
     const backed = dryRun
-      ? backupPathFor(item.path, backupDir) !== null
+      ? (await preflightItem(item)) === null && backupPathFor(item.path, backupDir) !== null
       : await backupItem(item, backupDir);
 
     if (backed) {

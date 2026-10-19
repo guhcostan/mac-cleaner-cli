@@ -1,8 +1,12 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { ALL_SCANNERS, getScanner, getAllScanners, runScans } from "./index.js";
 import type { CategoryId } from "../types.js";
 
 describe("scanners index", () => {
+  beforeEach(() => {
+    for (const id of ['trash', 'temp-files'] as const) vi.spyOn(getScanner(id), 'scan').mockResolvedValue({ category: getScanner(id).category, items: [], totalSize: 0 });
+  });
+  afterEach(() => vi.restoreAllMocks());
   it("should export all scanners", () => {
     const expectedIds: CategoryId[] = [
       "system-cache",
@@ -19,6 +23,9 @@ describe("scanners index", () => {
       "language-files",
       "large-files",
       "node-modules",
+      "rust-artifacts",
+      "go-artifacts",
+      "node-build-artifacts",
       "git-worktrees",
       "duplicates",
       "launch-agents",
@@ -37,7 +44,7 @@ describe("scanners index", () => {
   it("should get all scanners", () => {
     const scanners = getAllScanners();
 
-    expect(scanners).toHaveLength(17);
+    expect(scanners).toHaveLength(20);
     for (const scanner of scanners) {
       expect(scanner.category).toBeDefined();
       expect(scanner.scan).toBeDefined();

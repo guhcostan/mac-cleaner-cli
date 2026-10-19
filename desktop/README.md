@@ -25,7 +25,7 @@ category, safety rule and protected-path check of the CLI applies here too.
 
 ### Safety
 
-- Unattended runs (daily and Clean Now) can only use categories that are **not** marked risky. This is enforced in the main process, not just in the UI.
+- Unattended runs (daily and Clean Now) can only use categories that are **not** marked risky, with the new repository artifact categories additionally excluded. This is enforced in the main process, not just in the UI.
 - Automatic runs skip temp files touched in the last 24 hours (configurable) because running apps may still be using them.
 - Deep Clean only deletes exactly what a scan preview showed and you confirmed. If the preview is older than 15 minutes, it refuses and asks you to scan again instead of rescanning on its own.
 - All deletions go through the CLI's `removeItem`, which refuses system paths, `/` and your home folder, and never follows symlinks.
@@ -33,7 +33,7 @@ category, safety rule and protected-path check of the CLI applies here too.
 
 ### Default automatic categories
 
-`temp-files`, `browser-cache`, `system-logs`. You can add any other non-risky category (Homebrew, User Cache, Trash, Development Cache, Docker…) in **Settings**.
+`temp-files`, `browser-cache`, `system-logs`. You can add other allowed non-risky categories (Homebrew, User Cache, Trash, Development Cache, Docker…) in **Settings**.
 
 ## Install
 
@@ -153,3 +153,12 @@ Without them the build is ad-hoc signed (see the note in [Install](#install)).
 
 Bump `version` in `desktop/package.json` before a release: it is the version shown in the
 app and in the file names.
+
+
+### Repository artifact cleanup
+
+Deep scans share the CLI repository engine and configured roots/keep rules. `rust-artifacts` joins moderate deep defaults; `node-build-artifacts` is risky and `go-artifacts` requires explicit deep-category selection. None of these three new categories can enter scheduled or quick cleanup, even through stale settings or a direct controller request.
+
+The controller retains immutable per-scan repository policy and identity evidence. Cleaning revalidates only the selected preview items, refreshes Git protection and rejects changed/excluded candidates; it never introduces newly discovered items. Independently selectable parent/child scan rows remain, with selected filesystem overlap removed after validation. Preview metadata preserves name/path/size and adds optional ID, regular-file count and newest-entry mtime.
+
+Desktop deep cleanup remains permanent deletion and does not inherit CLI `backupEnabled`. Markers/ignore rules do not prove every untracked file disposable. There remains a filesystem/Git race window after final checks, and reported sizes are logical estimates. See the root README for rules, exclusions, root precedence and the API contract.

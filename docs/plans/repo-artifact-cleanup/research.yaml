@@ -1,0 +1,239 @@
+---
+version: '1.1'
+feature: repo-artifact-cleanup
+canonical_contract: repo_artifact_cleanup_prd.yaml
+items:
+- id: R1
+  title: Node category boundary
+  state: complete
+  priority: P0
+  complexity: medium
+  depends_on: []
+  next_action: Implement category metadata and picker/default-policy cases.
+  evidence:
+  - E11
+  - E12
+  decision: Separate risky node-build-artifacts; retain node-modules.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R2
+  title: Tracked-content and ignore policy
+  state: complete
+  priority: P0
+  complexity: medium
+  depends_on: []
+  next_action: Implement worktree-scoped Git snapshots and negative cases.
+  evidence:
+  - E20
+  - E21
+  - E22
+  - E23
+  decision: Batched index/HEAD veto plus batched positive ignore signal for generic
+    names; Git uncertainty fails closed.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R3
+  title: Nested repos, gitlinks and worktrees
+  state: complete
+  priority: P1
+  complexity: low
+  depends_on:
+  - R2
+  next_action: Implement boundary/metadata fixtures.
+  evidence:
+  - E10
+  - E16
+  - E23
+  decision: Treat nested working trees as independent contexts; any .git metadata
+    or gitlink inside a candidate vetoes deleting its ancestor.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R4
+  title: Root precedence and override
+  state: complete
+  priority: P1
+  complexity: low
+  depends_on: []
+  next_action: Implement roots and external-backup rejection cases.
+  evidence:
+  - E1
+  - E4
+  - E14
+  decision: Defaults plus extraPaths additions; explicit repeatable --root replaces
+    repo roots; canonical validation and keep-rule union across overlapping roots.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R5
+  title: Node age policy
+  state: complete
+  priority: P1
+  complexity: low
+  depends_on: []
+  next_action: Implement freshness boundary/recent-child cases.
+  evidence:
+  - E1
+  - E18
+  decision: Retain 30-day default and tighten freshness with candidate newest entry
+    mtime; new output categories use category/Git rules without an additional age
+    threshold.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R6
+  title: Exclusion grammar and ancestor protection
+  state: complete
+  priority: P0
+  complexity: medium
+  depends_on:
+  - R4
+  next_action: Implement descendant and malformed-config cases.
+  evidence:
+  - E2
+  - E13
+  decision: Limited grammar, fail-closed malformed policy, matched descendants veto
+    ancestor cleanup, and exclusions cannot be bypassed through another root.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R7
+  title: Clean JSON and metadata contract
+  state: complete
+  priority: P1
+  complexity: low
+  depends_on: []
+  next_action: Implement metadata/serialization and external-tool compatibility cases.
+  evidence:
+  - E5
+  - E6
+  - E18
+  - E24
+  - E25
+  decision: One JSON document with per-item outcomes, optional stable IDs, logical
+    byte metrics, newest entry time, and distinct actual/planned counters.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R8
+  title: Streaming/live UI scope
+  state: complete
+  priority: P1
+  complexity: low
+  depends_on: []
+  next_action: Implement events/view state after core policy is integrated.
+  evidence:
+  - E12
+  - E18
+  decision: Retain full requested scope as later I6 slice; optional events and cancellation
+    plus safe live review, sort/search/page and confirmation.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R9
+  title: Dry-run and backup limits
+  state: complete
+  priority: P0
+  complexity: medium
+  depends_on: []
+  next_action: Implement CLI/interactive/backup parity cases.
+  evidence:
+  - E3
+  - E13
+  - E14
+  - E15
+  decision: Shared filesystem/backup preflight for dry-run; no session mkdir; outside-HOME
+    backup fails with no permanent-delete fallback.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R10
+  title: Clean policy/context propagation
+  state: complete
+  priority: P0
+  complexity: medium
+  depends_on:
+  - R2
+  - R4
+  next_action: Update root and desktop scan/clean callers.
+  evidence:
+  - E2
+  - E7
+  - E16
+  decision: Optional context in clean API, immutable scan result policy/evidence,
+    refreshed current vetoes, and no mutable singleton state.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R11
+  title: Cross-category dedupe
+  state: complete
+  priority: P1
+  complexity: low
+  depends_on:
+  - R10
+  next_action: Implement unselected/rejected-parent and overlap cases.
+  evidence:
+  - E1
+  - E7
+  - E16
+  decision: Keep scan selections independent; normalize selected valid filesystem
+    ancestors and report covered descendants.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R12
+  title: Hidden traversal and depth bounds
+  state: complete
+  priority: P1
+  complexity: low
+  depends_on: []
+  next_action: Implement hidden/depth/empty/nested fixtures.
+  evidence:
+  - E1
+  - E10
+  decision: Recognize hidden artifact names first; traverse known worktree containers;
+    default four parent levels; inspect candidate contents fully.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R13
+  title: Scope and evaluation mapping
+  state: complete
+  priority: P1
+  complexity: low
+  depends_on:
+  - R1
+  - R2
+  - R3
+  - R4
+  - R5
+  - R6
+  - R7
+  - R8
+  - R9
+  - R10
+  - R11
+  - R12
+  next_action: Execute the planning validator and retain only consistent artifact
+    revisions.
+  evidence:
+  - E19
+  - E26
+  decision: Seven implementation slices cover the report; shared validation checks
+    all IDs, acceptance coverage, dependencies and readiness.
+  resolution_kind: audit recommendation based on code/docs; not user approval
+- id: R15
+  title: Global repository options before a subcommand
+  state: complete
+  priority: P1
+  complexity: low
+  depends_on:
+  - R4
+  - R10
+  next_action: Retain subprocess regression checks in integrated validation.
+  evidence:
+  - E27
+  decision: Merge global and subcommand root/include/exclude options and retain a global dry-run flag; dropping them could broaden a scan or accidentally turn simulation into mutation.
+  resolution_kind: Implementation investigation and isolated subprocess evidence; no contract change.
+
+deferred_measurements:
+- id: R14
+  title: Measure scan and Git-query cost
+  state: complete
+  priority: P2
+  complexity: medium
+  depends_on:
+  - R13
+  next_action: Use recorded measurements before proposing future optimization; no new discovery backend or cross-run cache selected.
+  evidence:
+  - E29
+  decision: Measurements confirm candidate trees are inspected once with overlapping roots and Git processes scale with worktree batches. Selected validation costs are separately measured; timings are single-sample fixtures, not general throughput guarantees.
+
+readiness:
+  status: ready
+  blocking_ids: []
+  rationale: Critical decisions have evidence-backed recommendations and concrete
+    contracts; coding is cheaper than additional design research.
+  not_claimed:
+  - Audit readiness alone authorizes implementation; subsequent user authorization is recorded in execution.yaml.
+  - The planning validator executes product tests or benchmarks; implementation results are recorded in execution.yaml and performance.json.
+  - Fixture benchmark timings generalize to production repository throughput.

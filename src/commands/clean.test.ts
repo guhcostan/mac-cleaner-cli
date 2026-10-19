@@ -1,3 +1,5 @@
+const { commandHome } = vi.hoisted(() => ({ commandHome: `/private/tmp/mac-cleaner-command-${process.pid}` }));
+vi.mock('os', async (original) => ({ ...await original<typeof import('os')>(), homedir: () => commandHome }));
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanCommand } from './clean.js';
 import * as scanners from '../scanners/index.js';
@@ -176,7 +178,9 @@ describe('clean command', () => {
 
     const result = await cleanCommand({ all: true, yes: true, dryRun: true });
 
-    expect(result).toBeNull();
+    expect(result?.totalCleanedItems).toBe(0);
+    expect(result?.wouldCleanItems).toBe(1);
+    expect(mockScanner.clean).toHaveBeenCalledWith(expect.anything(), true, undefined, undefined);
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('DRY RUN'));
 
     consoleSpy.mockRestore();
@@ -610,7 +614,7 @@ describe('clean command backup handling', () => {
 
     await cleanCommand({ all: true, yes: true });
 
-    expect(scanner.clean).toHaveBeenCalledWith(expect.anything(), undefined, undefined);
+    expect(scanner.clean).toHaveBeenCalledWith(expect.anything(), undefined, undefined, undefined);
 
     consoleSpy.mockRestore();
   });
@@ -657,7 +661,7 @@ describe('clean command backup handling', () => {
     const output = consoleSpy.mock.calls.flat().join('\n');
     expect(output).toContain('No backup possible');
     // An external-tool scanner must never receive a backup directory.
-    expect(scanner.clean).toHaveBeenCalledWith(expect.anything(), undefined, undefined);
+    expect(scanner.clean).toHaveBeenCalledWith(expect.anything(), undefined, undefined, undefined);
 
     consoleSpy.mockRestore();
   });

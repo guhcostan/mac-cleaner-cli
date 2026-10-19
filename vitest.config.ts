@@ -13,9 +13,11 @@ export default defineConfig({
         'node_modules/**',
         'dist/**',
         '**/*.test.ts',
-        '**/index.ts',
+        'src/index.ts',
+        'src/commands/index.ts',
+        'src/utils/index.ts',
+        'src/maintenance/index.ts',
         'src/scanners/duplicates.ts',
-        'src/scanners/node-modules.ts',
         // src/utils/backup.ts left this list: it is no longer dead code and now
         // runs on the deletion path. A module that can lose a user's file does
         // not sit outside the coverage count.

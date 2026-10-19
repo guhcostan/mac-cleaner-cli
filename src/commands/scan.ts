@@ -1,5 +1,6 @@
+import { liveReviewPrompt } from '../pickers/live-review.js';
 import chalk from 'chalk';
-import type { CategoryId, CategoryGroup, ScanSummary, ScanResult, SafetyLevel } from '../types.js';
+import type { CategoryId, CategoryGroup, ScanSummary, ScanResult, SafetyLevel, RepoRequestOptions } from '../types.js';
 import { CATEGORIES } from '../types.js';
 import { runAllScans, runScans, getAllScanners } from '../scanners/index.js';
 import { formatRelativeAge, formatSize, createScanProgress, sanitizeDisplayName } from '../utils/index.js';
@@ -10,7 +11,8 @@ const SAFETY_ICONS: Record<SafetyLevel, string> = {
   risky: chalk.red('●'),
 };
 
-interface ScanCommandOptions {
+interface ScanCommandOptions extends RepoRequestOptions {
+  live?: boolean;
   category?: CategoryId;
   verbose?: boolean;
   noProgress?: boolean;
@@ -18,9 +20,11 @@ interface ScanCommandOptions {
 }
 
 export async function scanCommand(options: ScanCommandOptions): Promise<ScanSummary> {
+  if (options.live && options.json) throw new Error('--live and --json cannot be combined');
+  if (options.live && !process.stdin.isTTY) throw new Error('--live requires an interactive terminal');
   const scanners = options.category ? [options.category] : getAllScanners().map((s) => s.category.id);
   const total = scanners.length;
-  const showProgress = !options.noProgress && !options.json && process.stdout.isTTY;
+  const showProgress = !options.noProgress && !options.json && !options.live && process.stdout.isTTY;
 
   const progress = showProgress ? createScanProgress(total) : null;
 
@@ -28,18 +32,20 @@ export async function scanCommand(options: ScanCommandOptions): Promise<ScanSumm
 
   const scanOptions = {
     verbose: options.verbose,
-    parallel: true,
-    concurrency: 4,
+    roots: options.roots,
+    includeEcosystems: options.includeEcosystems,
+    excludePaths: options.excludePaths,
     onProgress: (completed: number, _total: number, scanner: { category: { name: string } }) => {
       progress?.update(completed, `Scanning ${scanner.category.name}...`);
     },
   };
 
-  if (options.category) {
-    summary = await runScans([options.category], scanOptions);
-  } else {
-    summary = await runAllScans(scanOptions);
-  }
+  if (options.live) {
+    const review = await liveReviewPrompt({ readOnly: true, scan: (events) => options.category ? runScans([options.category], { ...scanOptions, ...events }) : runAllScans({ ...scanOptions, ...events }) });
+    summary = review.summary;
+    if (review.cancelled) return { ...summary, cancelled: true };
+  } else if (options.category) summary = await runScans([options.category], scanOptions);
+  else summary = await runAllScans(scanOptions);
 
   progress?.finish();
 
@@ -67,6 +73,9 @@ function toJsonSummary(summary: ScanSummary, verbose = false) {
   const failed = summary.results.filter((r) => r.error);
 
   return {
+    version: 1,
+    warnings: summary.results.flatMap((r) => (r.warnings ?? []).map((w) => ({ category: r.category.id, ...w }))),
+    skippedCategories: summary.results.filter((r) => r.skipped).map((r) => ({ category: r.category.id, reason: r.skipped })),
     totalSize: summary.totalSize,
     totalItems: summary.totalItems,
     ...(failed.length > 0 && {
@@ -82,7 +91,7 @@ function toJsonSummary(summary: ScanSummary, verbose = false) {
         totalSize: r.totalSize,
         itemCount: r.items.length,
         ...(verbose && {
-          items: r.items.map((i) => ({ path: i.path, size: i.size })),
+          items: r.items.map((i) => ({ path: i.path, size: i.size, ...(i.id && { id: i.id }), ...(i.fileCount !== undefined && { fileCount: i.fileCount }), ...(i.newestEntryModifiedAt && { newestEntryModifiedAt: i.newestEntryModifiedAt }), ...(i.artifact && { artifact: i.artifact }) })),
         }),
       })),
   };

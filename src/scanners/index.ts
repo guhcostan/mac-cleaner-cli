@@ -1,4 +1,10 @@
+import { randomUUID } from 'crypto';
 import type { Scanner, CategoryId, ScanResult, ScannerOptions, ScanSummary } from '../types.js';
+import { loadConfig } from '../utils/config.js';
+import { scanTotals } from '../utils/cleanup.js';
+import { isRepoCategory } from '../repo-artifacts/rules.js';
+import { scanRepoArtifacts, emitEvent } from '../repo-artifacts/walker.js';
+import { BaseScanner } from './base-scanner.js';
 import { debugError, formatError } from '../utils/errors.js';
 import { SystemCacheScanner } from './system-cache.js';
 import { SystemLogsScanner } from './system-logs.js';
@@ -13,6 +19,9 @@ import { IosBackupsScanner } from './ios-backups.js';
 import { MailAttachmentsScanner } from './mail-attachments.js';
 import { LanguageFilesScanner } from './language-files.js';
 import { LargeFilesScanner } from './large-files.js';
+import { GoArtifactsScanner } from './go-artifacts.js';
+import { RustArtifactsScanner } from './rust-artifacts.js';
+import { NodeBuildArtifactsScanner } from './node-build-artifacts.js';
 import { NodeModulesScanner } from './node-modules.js';
 import { GitWorktreesScanner } from './git-worktrees.js';
 import { DuplicatesScanner } from './duplicates.js';
@@ -33,6 +42,9 @@ export const ALL_SCANNERS: Record<CategoryId, Scanner> = {
   'language-files': new LanguageFilesScanner(),
   'large-files': new LargeFilesScanner(),
   'node-modules': new NodeModulesScanner(),
+  'rust-artifacts': new RustArtifactsScanner(),
+  'go-artifacts': new GoArtifactsScanner(),
+  'node-build-artifacts': new NodeBuildArtifactsScanner(),
   'git-worktrees': new GitWorktreesScanner(),
   'duplicates': new DuplicatesScanner(),
   'launch-agents': new LaunchAgentsScanner(),
@@ -97,49 +109,68 @@ export async function runAllScans(
   options?: ParallelScanOptions,
   onProgress?: (scanner: Scanner, result: ScanResult) => void
 ): Promise<ScanSummary> {
-  return runScans(getAllScanners().map((s) => s.category.id), options, onProgress);
+  const config = await loadConfig();
+  const includeGo = [...(config.includeEcosystems ?? []), ...(options?.includeEcosystems ?? [])].includes('go');
+  const ids = config.defaultCategories ?? getAllScanners().map((s) => s.category.id).filter((id) => String(id) !== 'go-artifacts' || includeGo);
+  return runScans(ids, options, onProgress);
 }
 
 export async function runScans(
   categoryIds: CategoryId[],
   options?: ParallelScanOptions,
-  onProgress?: (scanner: Scanner, result: ScanResult) => void
+  onProgress?: (scanner: Scanner, result: ScanResult) => void,
+  registry: Partial<Record<CategoryId, Scanner>> = ALL_SCANNERS,
 ): Promise<ScanSummary> {
-  const scanners = categoryIds.map((id) => getScanner(id));
-  const parallel = options?.parallel ?? true;
-  const concurrency = options?.concurrency ?? 4;
-
-  let completed = 0;
-  const total = scanners.length;
-  let results: ScanResult[];
-
-  const runScanner = async (scanner: Scanner): Promise<ScanResult> => {
-    const result = await safeScan(scanner, options);
-    completed++;
-    options?.onProgress?.(completed, total, scanner, result);
-    onProgress?.(scanner, result);
-    return result;
-  };
-
-  if (parallel) {
-    const tasks = scanners.map((scanner) => ({
-      label: scanner.category.id,
-      fn: () => runScanner(scanner),
-    }));
-
-    results = await runWithConcurrency(tasks, concurrency);
-  } else {
-    results = [];
-
-    for (const scanner of scanners) {
-      results.push(await runScanner(scanner));
-    }
+  const runId = options?.runId ?? randomUUID();
+  let candidateCount = 0;
+  let warningCount = 0;
+  const request: ParallelScanOptions = { ...options, runId, onEvent: (event) => {
+    if (event.type === 'candidate') candidateCount++;
+    if (event.type === 'warning') warningCount++;
+    emitEvent(options ?? {}, event);
+  } };
+  emitEvent(request, { type: 'start', runId, categories: categoryIds });
+  let ended = false;
+  try {
+    const config = await loadConfig();
+    const scanners = [...new Set(categoryIds)].map((id) => {
+      const scanner = registry[id];
+      if (!scanner) throw new Error(`Unknown scanner category: ${id}`);
+      return scanner;
+    });
+    const parallel = options?.parallel ?? config.parallelScans ?? true;
+    const concurrency = options?.concurrency ?? config.concurrency ?? 4;
+    let completed = 0;
+    const report = (scanner: Scanner, result: ScanResult) => {
+      options?.onProgress?.(++completed, scanners.length, scanner, result);
+      emitEvent(request, { type: 'progress', runId, category: scanner.category.id, completed });
+      onProgress?.(scanner, result);
+      return result;
+    };
+    const enabled = scanners.filter((s) => !config.excludeCategories?.includes(s.category.id));
+    const repo = enabled.filter((s) => isRepoCategory(s.category.id) && s instanceof BaseScanner);
+    const tasks = enabled.filter((s) => !repo.includes(s)).map((scanner) => ({ label: scanner.category.id, fn: async () => {
+      const result = options?.signal?.aborted ? { category: scanner.category, items: [], totalSize: 0, error: 'CANCELLED' } : await safeScan(scanner, request);
+      for (const item of result.items) emitEvent(request, { type: 'candidate', runId, category: scanner.category.id, item });
+      if (result.error) emitEvent(request, { type: 'warning', runId, category: scanner.category.id, reason: result.error });
+      return [report(scanner, result)];
+    } }));
+    if (repo.length) tasks.push({ label: 'repositories' as CategoryId, fn: async () => {
+      const results = await scanRepoArtifacts(repo.map((s) => s.category), request, undefined, false);
+      return results.map((r) => report(registry[r.category.id]!, r));
+    } });
+    const skipped = scanners.filter((s) => !enabled.includes(s)).map((s) => report(s, { category: s.category, items: [], totalSize: 0, skipped: 'CATEGORY_EXCLUDED' }));
+    const batches = parallel ? await runWithConcurrency(tasks, concurrency) : [];
+    if (!parallel) for (const task of tasks) batches.push(await task.fn());
+    const results = [...batches.flat(), ...skipped].sort((a, b) => categoryIds.indexOf(a.category.id) - categoryIds.indexOf(b.category.id));
+    const cancelled = options?.signal?.aborted ?? false;
+    if (cancelled) for (const result of results) { result.items = []; result.totalSize = 0; result.error = 'CANCELLED'; if (result.context) result.context = Object.freeze({ ...result.context, complete: false, evidence: Object.freeze({}) }); }
+    ended = true;
+    emitEvent(request, { type: 'done', runId, cancelled, candidates: cancelled ? 0 : candidateCount, warnings: warningCount });
+    return { results, ...scanTotals(results), ...(cancelled && { cancelled }) };
+  } finally {
+    if (!ended) emitEvent(request, { type: 'done', runId, cancelled: !!options?.signal?.aborted, candidates: 0, warnings: warningCount });
   }
-
-  const totalSize = results.reduce((sum, r) => sum + r.totalSize, 0);
-  const totalItems = results.reduce((sum, r) => sum + r.items.length, 0);
-
-  return { results, totalSize, totalItems };
 }
 
 /**
@@ -175,6 +206,9 @@ export {
   LanguageFilesScanner,
   LargeFilesScanner,
   NodeModulesScanner,
+  RustArtifactsScanner,
+  GoArtifactsScanner,
+  NodeBuildArtifactsScanner,
   GitWorktreesScanner,
   DuplicatesScanner,
   LaunchAgentsScanner,

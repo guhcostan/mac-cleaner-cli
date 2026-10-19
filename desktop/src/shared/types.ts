@@ -52,6 +52,9 @@ export interface CategoryInfo {
 }
 
 export interface ScanPreviewItem {
+  id?: string;
+  fileCount?: number;
+  newestEntryModifiedAt?: string;
   name: string;
   path: string;
   size: number;

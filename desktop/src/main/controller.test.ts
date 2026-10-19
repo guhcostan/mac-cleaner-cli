@@ -53,7 +53,7 @@ describe('CleanerController', () => {
     const record = await controller.tick();
     expect(record?.mode).toBe('auto');
     // Fresh temp files are left alone by unattended runs.
-    expect(registry['temp-files'].clean).toHaveBeenCalledWith([expect.objectContaining({ name: 'stale' })], false);
+    expect(registry['temp-files'].clean).toHaveBeenCalledWith([expect.objectContaining({ name: 'stale' })], false, undefined, undefined);
     expect(record?.freedSpace).toBe(110);
     expect(onRunFinished).toHaveBeenCalledWith(record);
     expect(store.lastAutoRunAt).toEqual(new Date(2026, 8, 30, 10, 5));

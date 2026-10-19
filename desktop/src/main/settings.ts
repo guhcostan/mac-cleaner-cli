@@ -19,7 +19,7 @@ export const DEFAULT_DEEP_CATEGORIES: CategoryId[] = (Object.keys(CATEGORIES) as
 
 /** Risky categories are never allowed in unattended runs. */
 export function isAllowedInAutoClean(id: CategoryId): boolean {
-  return id in CATEGORIES && CATEGORIES[id].safetyLevel !== 'risky';
+  return id in CATEGORIES && CATEGORIES[id].safetyLevel !== 'risky' && !['rust-artifacts', 'node-build-artifacts', 'go-artifacts'].includes(id);
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -53,7 +53,7 @@ export function mergeSettings(current: Settings, patch: SettingsPatch | unknown)
   const p = (patch && typeof patch === 'object' ? patch : {}) as SettingsPatch;
   const auto = (p.autoClean && typeof p.autoClean === 'object' ? p.autoClean : {}) as Partial<Settings['autoClean']>;
 
-  let categories = current.autoClean.categories;
+  let categories = current.autoClean.categories.filter(isAllowedInAutoClean);
   if (Array.isArray(auto.categories)) {
     categories = [...new Set(auto.categories)].filter(
       (id): id is CategoryId => typeof id === 'string' && isAllowedInAutoClean(id as CategoryId)

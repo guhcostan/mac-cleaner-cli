@@ -1,7 +1,7 @@
 import { readFile, writeFile, access } from 'fs/promises';
 import { join, resolve } from 'path';
 import { homedir } from 'os';
-import type { CategoryId } from '../types.js';
+import { CATEGORIES, type CategoryId, type Ecosystem } from '../types.js';
 import { debugError, errorCode, formatError } from './errors.js';
 
 const CONFIG_PATHS = [
@@ -10,14 +10,15 @@ const CONFIG_PATHS = [
 ];
 
 // Valid category IDs for validation
-const VALID_CATEGORIES: CategoryId[] = [
-  'system-cache', 'system-logs', 'browser-cache', 'dev-cache',
-  'node-modules', 'git-worktrees', 'downloads', 'trash', 'temp-files',
-  'ios-backups', 'mail-attachments', 'large-files', 'duplicates',
-  'docker', 'homebrew', 'language-files', 'launch-agents',
-];
+const VALID_CATEGORIES = Object.keys(CATEGORIES) as CategoryId[];
 
 export interface Config {
+  /** A bad user config may not silently broaden repository cleanup. */
+  repoPolicyError?: string;
+  excludePaths?: string[];
+  includeEcosystems?: Ecosystem[];
+  nodeModulesDaysOld?: number;
+  projectScanMaxDepth?: number;
   defaultCategories?: CategoryId[];
   excludeCategories?: CategoryId[];
   downloadsDaysOld?: number;
@@ -51,6 +52,23 @@ const CONFIG_CONSTRAINTS = {
 function validateConfig(config: Partial<Config>): Config {
   const validated: Config = {};
   const home = homedir();
+  if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('INVALID_CONFIG');
+  for (const [key, max] of [['nodeModulesDaysOld', 365], ['projectScanMaxDepth', 16]] as const) {
+    const value = config[key];
+    if (value !== undefined) {
+      if (!Number.isInteger(value) || value < 0 || value > max) throw new Error(`INVALID_CONFIG: ${key}`);
+      validated[key] = value;
+    }
+  }
+  if (config.excludePaths !== undefined) {
+    // The full grammar is also validated by the repository policy normalizer.
+    if (!Array.isArray(config.excludePaths) || config.excludePaths.some((p) => typeof p !== 'string')) throw new Error('INVALID_EXCLUSIONS');
+    validated.excludePaths = [...config.excludePaths];
+  }
+  if (config.includeEcosystems !== undefined) {
+    if (!Array.isArray(config.includeEcosystems) || config.includeEcosystems.some((e) => !['node', 'rust', 'go'].includes(e))) throw new Error('INVALID_ECOSYSTEM');
+    validated.includeEcosystems = [...config.includeEcosystems];
+  }
 
   // Validate numeric fields with constraints
   if (config.downloadsDaysOld !== undefined) {
@@ -104,6 +122,7 @@ function validateConfig(config: Partial<Config>): Config {
 
   // Validate category arrays
   if (config.defaultCategories !== undefined) {
+    if (!Array.isArray(config.defaultCategories) || config.defaultCategories.some((cat) => !VALID_CATEGORIES.includes(cat))) throw new Error('INVALID_DEFAULT_CATEGORIES');
     if (Array.isArray(config.defaultCategories)) {
       validated.defaultCategories = config.defaultCategories.filter(
         (cat): cat is CategoryId => VALID_CATEGORIES.includes(cat as CategoryId)
@@ -112,6 +131,7 @@ function validateConfig(config: Partial<Config>): Config {
   }
 
   if (config.excludeCategories !== undefined) {
+    if (!Array.isArray(config.excludeCategories) || config.excludeCategories.some((cat) => !VALID_CATEGORIES.includes(cat))) throw new Error('INVALID_EXCLUDE_CATEGORIES');
     if (Array.isArray(config.excludeCategories)) {
       validated.excludeCategories = config.excludeCategories.filter(
         (cat): cat is CategoryId => VALID_CATEGORIES.includes(cat as CategoryId)
@@ -119,47 +139,18 @@ function validateConfig(config: Partial<Config>): Config {
     }
   }
 
-  // Validate extraPaths with security checks
-  if (config.extraPaths !== undefined && typeof config.extraPaths === 'object') {
+  if (config.extraPaths !== undefined) {
+    if (!config.extraPaths || typeof config.extraPaths !== 'object' || Array.isArray(config.extraPaths)) throw new Error('INVALID_ROOTS');
     validated.extraPaths = {};
-
-    const validatePaths = (paths: unknown): string[] => {
-      if (!Array.isArray(paths)) return [];
-      
-      return paths
-        .filter((p): p is string => typeof p === 'string')
-        .slice(0, CONFIG_CONSTRAINTS.maxExtraPaths) // Limit number of paths
-        .map(p => {
-          // Expand ~ to home directory
-          if (p.startsWith('~/')) {
-            return join(home, p.slice(2));
-          }
-          return p;
-        })
-        .filter(p => {
-          // Security: ensure paths are within home directory or common dev locations
-          const resolved = resolve(p);
-          const allowedPrefixes = [
-            home,
-            '/Users',
-            '/Volumes',
-          ];
-          const isAllowed = allowedPrefixes.some(prefix => 
-            resolved.startsWith(prefix + '/') || resolved === prefix
-          );
-          if (!isAllowed) {
-            console.warn(`Skipping path outside allowed directories: ${p}`);
-          }
-          return isAllowed;
-        });
-    };
-
-    if (config.extraPaths.nodeModules) {
-      validated.extraPaths.nodeModules = validatePaths(config.extraPaths.nodeModules);
-    }
-
-    if (config.extraPaths.projects) {
-      validated.extraPaths.projects = validatePaths(config.extraPaths.projects);
+    for (const key of ['nodeModules', 'projects'] as const) {
+      const paths = config.extraPaths[key];
+      if (paths === undefined) continue;
+      if (!Array.isArray(paths) || paths.length > CONFIG_CONSTRAINTS.maxExtraPaths || paths.some((p) => typeof p !== 'string' || !p || p.includes('\0'))) throw new Error('INVALID_ROOTS');
+      validated.extraPaths[key] = paths.map((p) => {
+        const expanded = resolve(p.startsWith('~/') ? join(home, p.slice(2)) : p);
+        if (![home, '/Users', '/Volumes'].some((base) => expanded.startsWith(base + '/')) || [home, '/Users', '/Volumes'].includes(expanded)) throw new Error('INVALID_ROOT');
+        return expanded;
+      });
     }
   }
 
@@ -167,6 +158,10 @@ function validateConfig(config: Partial<Config>): Config {
 }
 
 const DEFAULT_CONFIG: Config = {
+  nodeModulesDaysOld: 30,
+  projectScanMaxDepth: 4,
+  excludePaths: [],
+  includeEcosystems: [],
   downloadsDaysOld: 30,
   largeFilesMinSize: 500 * 1024 * 1024,
   backupEnabled: false,
@@ -177,8 +172,8 @@ const DEFAULT_CONFIG: Config = {
 
 let cachedConfig: Config | null = null;
 
-export async function loadConfig(configPath?: string): Promise<Config> {
-  if (cachedConfig && !configPath) {
+export async function loadConfig(configPath?: string, refresh = false): Promise<Config> {
+  if (cachedConfig && !configPath && !refresh) {
     return cachedConfig;
   }
 
@@ -190,7 +185,7 @@ export async function loadConfig(configPath?: string): Promise<Config> {
     
     if (!allowedDirs.some(dir => resolved.startsWith(dir + '/') || resolved === dir)) {
       console.warn('Config path must be within home directory, using defaults');
-      cachedConfig = DEFAULT_CONFIG;
+      cachedConfig = { ...DEFAULT_CONFIG, repoPolicyError: 'INVALID_CONFIG_PATH' };
       return cachedConfig;
     }
   }
@@ -203,8 +198,7 @@ export async function loadConfig(configPath?: string): Promise<Config> {
       
       // Limit config file size to prevent DoS
       if (content.length > 100 * 1024) { // 100KB max
-        console.warn('Config file too large, using defaults');
-        continue;
+        throw new Error('CONFIG_TOO_LARGE');
       }
       
       const parsed = JSON.parse(content) as Partial<Config>;
@@ -223,6 +217,10 @@ export async function loadConfig(configPath?: string): Promise<Config> {
         console.warn(`Could not read config file ${path}: ${formatError(error)}`);
       }
       debugError(`loadConfig(${path})`, error);
+      if (errorCode(error) !== 'ENOENT') {
+        cachedConfig = { ...DEFAULT_CONFIG, repoPolicyError: `INVALID_CONFIG: ${formatError(error)}` };
+        return cachedConfig;
+      }
       continue;
     }
   }
@@ -261,7 +259,11 @@ export function clearConfigCache(): void {
 export async function initConfig(): Promise<string> {
   const configPath = CONFIG_PATHS[0];
   const defaultConfig: Config = {
-    downloadsDaysOld: 30,
+    nodeModulesDaysOld: 30,
+  projectScanMaxDepth: 4,
+  excludePaths: [],
+  includeEcosystems: [],
+  downloadsDaysOld: 30,
     largeFilesMinSize: 500 * 1024 * 1024,
     backupEnabled: false,
     backupRetentionDays: 7,
