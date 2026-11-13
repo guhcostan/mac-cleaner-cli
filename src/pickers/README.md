@@ -147,3 +147,22 @@ State is preserved when switching between categories.
 - Pagination boundary conditions
 - Clipboard integration (`c` key handler)
 - Directory grouping edge cases (empty dirs, deeply nested paths)
+
+
+## Live review
+
+`live-review.ts` uses the same supported `@inquirer/core` prompt API as the file picker. `live-review-state.ts` keeps category/path selections separate from sorting, search, paging and incoming rows. All selections start empty. Size and newest-entry-mtime sorts descend; ties use canonical path, then category.
+
+| Key | Live action |
+| --- | --- |
+| `↑` / `↓` | Move within the current page |
+| `space` | Toggle one row (disabled in read-only scan) |
+| `s` / `m` / `p` | Sort by size / newest mtime / path |
+| `/` | Edit search; Enter finishes search |
+| `n` / `b`, `→` / `←` | Next / previous page |
+| `q` / Escape | Cancel discovery/review without cleanup |
+| Enter | Finish review only after scanning completes |
+
+The prompt owns a request-local AbortController. It only returns explicit selections; the command shows a final confirmation and passes the original scan context through selected-path validation. `--json` remains one document and cannot run live review. Risky Node build and Go categories have no automatic file selections.
+
+`live-review.test.ts` covers state behavior. `live-review-prompt.test.ts` drives the real Inquirer keypress/render cycle through streams, including Enter while scanning, cancellation, risky visibility, read-only behavior and selection retention. I6 also received a real PTY smoke check recorded in the execution tracker.

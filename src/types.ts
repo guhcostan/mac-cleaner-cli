@@ -13,6 +13,9 @@ export type CategoryId =
   | 'language-files'
   | 'large-files'
   | 'node-modules'
+  | 'rust-artifacts'
+  | 'go-artifacts'
+  | 'node-build-artifacts'
   | 'git-worktrees'
   | 'duplicates'
   | 'launch-agents';
@@ -31,6 +34,37 @@ export interface Category {
   supportsFileSelection?: boolean;
 }
 
+export type Ecosystem = 'node' | 'rust' | 'go';
+export type RepoCategoryId = 'node-modules' | 'node-build-artifacts' | 'rust-artifacts' | 'go-artifacts';
+export interface RepoRoot { readonly input: string; readonly path: string; readonly nodeOnly: boolean; readonly dev: number; readonly ino: number }
+export interface RepoPolicy {
+  readonly roots: readonly RepoRoot[];
+  readonly categories: readonly RepoCategoryId[];
+  readonly excludePaths: readonly string[];
+  readonly daysOld: number;
+  readonly configDaysOld: number;
+  readonly maxDepth: number;
+  readonly explicitRoots: boolean;
+}
+export interface ArtifactEvidence {
+  readonly category: RepoCategoryId;
+  readonly marker: string;
+  readonly markerDev: number;
+  readonly markerIno: number;
+  readonly dev: number;
+  readonly ino: number;
+}
+export interface CleanContext {
+  readonly repoPolicy: RepoPolicy;
+  readonly evidence: Readonly<Record<string, ArtifactEvidence>>;
+  readonly complete: boolean;
+}
+export interface RepoRequestOptions {
+  roots?: string[];
+  includeEcosystems?: Ecosystem[];
+  excludePaths?: string[];
+}
+
 export interface CleanableItem {
   path: string;
   size: number;
@@ -38,6 +72,10 @@ export interface CleanableItem {
   isDirectory: boolean;
   modifiedAt?: Date;
   detail?: string;
+  id?: string;
+  fileCount?: number;
+  newestEntryModifiedAt?: Date;
+  artifact?: ArtifactEvidence;
 }
 
 export interface ScanResult {
@@ -45,18 +83,39 @@ export interface ScanResult {
   items: CleanableItem[];
   totalSize: number;
   error?: string;
+  skipped?: string;
+  warnings?: { path: string; reason: string }[];
+  context?: CleanContext;
 }
 
 export interface ScanSummary {
   results: ScanResult[];
   totalSize: number;
   totalItems: number;
+  cancelled?: boolean;
 }
 
+export interface CleanupOutcome {
+  category: CategoryId;
+  path?: string;
+  scope: 'item' | 'action';
+  status: 'deleted' | 'backed-up' | 'would-delete' | 'would-back-up' | 'rejected' | 'skipped';
+  reason?: string;
+  size: number;
+}
+export interface PreparedCleanup {
+  item: CleanableItem;
+  reason?: string;
+  execute(dryRun: boolean): Promise<CleanResult>;
+}
 export interface CleanResult {
   category: Category;
   cleanedItems: number;
-  /** Space actually returned to the disk. Zero when items went to the backup. */
+  outcomes?: CleanupOutcome[];
+  wouldFreeSpace?: number;
+  wouldBackUpSize?: number;
+  wouldCleanItems?: number;
+  /** Estimated logical bytes removed. Zero when items went to the backup. */
   freedSpace: number;
   /** Size moved into the backup. Still occupying disk until `backup --clean`. */
   backedUpSize?: number;
@@ -71,9 +130,23 @@ export interface CleanSummary {
   backupDir?: string;
   totalCleanedItems: number;
   totalErrors: number;
+  wouldFreeSpace?: number;
+  wouldBackUpSize?: number;
+  wouldCleanItems?: number;
 }
 
-export interface ScannerOptions {
+export type ScanEvent =
+  | { type: 'start'; runId: string; categories: CategoryId[] }
+  | { type: 'progress'; runId: string; category?: CategoryId; path?: string; completed: number }
+  | { type: 'candidate'; runId: string; category: CategoryId; item: CleanableItem }
+  | { type: 'warning'; runId: string; category?: CategoryId; path?: string; reason: string }
+  | { type: 'done'; runId: string; cancelled: boolean; candidates: number; warnings: number };
+
+export interface ScannerOptions extends RepoRequestOptions {
+  onEvent?: (event: ScanEvent) => void;
+  signal?: AbortSignal;
+  /** Assigned by the registry; standalone callers may omit it. */
+  runId?: string;
   verbose?: boolean;
   daysOld?: number;
   minSize?: number;
@@ -84,7 +157,8 @@ export interface Scanner {
   /** false when cleanup is delegated to an external tool and cannot be backed up. */
   readonly supportsBackup?: boolean;
   scan(options?: ScannerOptions): Promise<ScanResult>;
-  clean(items: CleanableItem[], dryRun?: boolean, backupDir?: string): Promise<CleanResult>;
+  prepareClean?(items: CleanableItem[], backupDir?: string, context?: CleanContext): Promise<PreparedCleanup[]>;
+  clean(items: CleanableItem[], dryRun?: boolean, backupDir?: string, context?: CleanContext): Promise<CleanResult>;
 }
 
 export const CATEGORIES: Record<CategoryId, Category> = {
@@ -209,9 +283,24 @@ export const CATEGORIES: Record<CategoryId, Category> = {
     id: 'node-modules',
     name: 'Node Modules',
     group: 'Development',
-    description: 'Orphaned node_modules in old projects',
+    description: 'Stale dependencies beside package.json',
     safetyLevel: 'moderate',
     safetyNote: 'Projects will need npm install to restore',
+  },
+  'go-artifacts': {
+    id: 'go-artifacts', name: 'Go Artifacts', group: 'Development',
+    description: 'Opt-in ignored bin/dist beside go.mod', safetyLevel: 'risky',
+    safetyNote: 'May contain untracked files you want to keep. Explicit Go opt-in and review are required.', supportsFileSelection: true,
+  },
+  'rust-artifacts': {
+    id: 'rust-artifacts', name: 'Rust Artifacts', group: 'Development',
+    description: 'target directories beside Cargo.toml', safetyLevel: 'moderate',
+    safetyNote: 'Rust projects will need to rebuild', supportsFileSelection: true,
+  },
+  'node-build-artifacts': {
+    id: 'node-build-artifacts', name: 'Node Build Artifacts', group: 'Development',
+    description: 'Build output beside package.json', safetyLevel: 'risky',
+    safetyNote: 'May contain untracked files you want to keep. Review every output directory.', supportsFileSelection: true,
   },
   'git-worktrees': {
     id: 'git-worktrees',

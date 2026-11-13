@@ -1,5 +1,5 @@
-import { lstat, readdir, rm, access, unlink } from 'fs/promises';
-import { join, resolve } from 'path';
+import { lstat, readdir, rm, access, unlink, realpath } from 'fs/promises';
+import { dirname, join, resolve } from 'path';
 import { homedir } from 'os';
 import type { CleanableItem } from '../types.js';
 import { sanitizeDisplayName } from './display.js';
@@ -302,42 +302,32 @@ export async function removeItem(path: string, dryRun = false): Promise<boolean>
  * Same as removeItem, but returns the failure reason (an errno code like
  * 'EPERM', or a safety-check message) instead of a boolean. Returns null on success.
  */
-export async function removeItemWithError(path: string, dryRun = false): Promise<string | null> {
-  // The safety check deliberately runs BEFORE the dry-run early return.
-  // A dry run that reports success for a path the real execution would refuse
-  // is worse than no dry run at all: it promises free space that will never
-  // appear. Concrete case: the logs scanner offers items under /var/log, which
-  // is in PROTECTED_PATHS — the dry run claimed the full total while the real
-  // run returned a failure for every one of them.
-  const safetyError = validatePathSafety(path);
-  if (safetyError) {
-    console.error(safetyError);
-    return 'PROTECTED';
-  }
-
-  if (dryRun) {
-    return null;
-  }
-
+export async function preflightItem(item: Pick<CleanableItem, 'path'> & Partial<Pick<CleanableItem, 'isDirectory'>>): Promise<string | null> {
+  if (validatePathSafety(item.path)) return 'PROTECTED';
   try {
-    // Re-check file type immediately before deletion to prevent TOCTOU attacks
-    // An attacker could replace a file with a symlink between scan and delete
-    const stats = await lstat(path);
+    const stats = await lstat(item.path);
+    // System aliases above the parent (e.g. /tmp) are allowed; a protected
+    // canonical parent never becomes safe through an alternate spelling.
+    const canonicalParent = await realpath(dirname(item.path));
+    if (validatePathSafety(join(canonicalParent, item.path.split('/').pop()!))) return 'PROTECTED';
+    if (item.isDirectory !== undefined && !stats.isSymbolicLink() && stats.isDirectory() !== item.isDirectory) return 'TYPE_CHANGED';
+    return null;
+  } catch (error) { return errorCode(error); }
+}
 
-    if (stats.isSymbolicLink()) {
-      // For symlinks, only remove the symlink itself, never follow it
-      await unlink(path);
-    } else {
-      await rm(path, { recursive: true, force: true });
-    }
+export async function removeItemWithError(path: string, dryRun = false, beforeMutation?: () => Promise<void>): Promise<string | null> {
+  const failure = await preflightItem({ path });
+  if (failure) return failure;
+  if (dryRun) return null;
+  try {
+    const stats = await lstat(path);
+    await beforeMutation?.();
+    if (stats.isSymbolicLink()) await unlink(path);
+    else await rm(path, { recursive: true, force: true });
     return null;
   } catch (error) {
-    // Log the error for debugging but don't expose details to potential attackers
-    if (isExpectedFsError(error)) {
-      debugError(`removeItem(${path})`, error);
-    } else {
-      console.error(`Failed to remove ${sanitizeDisplayName(path)}: ${errorCode(error)}`);
-    }
+    if (isExpectedFsError(error)) debugError(`removeItem(${path})`, error);
+    else console.error(`Failed to remove ${sanitizeDisplayName(path)}: ${errorCode(error)}`);
     return errorCode(error);
   }
 }

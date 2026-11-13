@@ -1,0 +1,116 @@
+version: 1
+status: complete
+completed_at: '2026-10-14'
+contract: repo_artifact_cleanup_prd.yaml
+authorization: User requested implementation of audited decisions and all I1-I7 on 2026-10-13.
+initial_tree: Only untracked docs/plans/ existed; preserved.
+instructions: No applicable AGENTS.md found.
+retention_rule: Keep each slice after focused behavior tests, typecheck, lint and diff review; revise failures before advancing.
+planning_validation: Passed (32 requirements, 14 criteria, 26 cases; ready).
+slices:
+  I1: {status: complete, decision: keep, validation: "21 focused tests; root typecheck/lint; diff review passed"}
+  I2: {status: complete, decision: keep, validation: "118 focused root tests plus 39 fs tests; 17 desktop tests; both typechecks and lint passed"}
+  I3: {status: complete, decision: keep, validation: "60 focused root tests; 24 desktop tests; both typechecks and lint passed"}
+  I4: {status: complete, decision: keep, validation: "42 focused root tests; 8 desktop settings tests; both typechecks and lint passed"}
+  I5: {status: complete, decision: keep, validation: "70 focused tests; root typecheck/lint passed after test type fix"}
+  I6: {status: complete, decision: keep, validation: "49 focused tests; typecheck/lint; real PTY Enter guard, selection, search, sorting and paging passed"}
+  I7: {status: complete, decision: keep, validation: "539 root tests with coverage; 46 desktop tests; both typechecks/builds; root lint covers src and desktop/src; plan validation and diff review passed"}
+
+final_checks:
+  root:
+    - {command: 'bun run test:coverage', result: "56 files, 539 tests passed; thresholds unchanged at statements/functions/lines 90%, branches 80%"}
+    - {command: bun run typecheck, result: passed}
+    - {command: bun run lint, result: "passed for src and desktop/src; desktop has no separate lint script"}
+    - {command: bun run build, result: "passed; built CLI scan/clean help inspected"}
+  desktop:
+    - {command: bun run test, result: "6 files, 46 tests passed"}
+    - {command: bun run typecheck, result: passed}
+    - {command: bun run build, result: "main/preload/renderer builds passed"}
+  coverage_percent: {statements: 90.87, branches: 83.88, functions: 92.48, lines: 92.53}
+  repository_core_line_coverage_percent: 98.47
+  live_prompt_line_coverage_percent: 100
+  terminal: Real PTY exercised Enter during discovery, explicit selection, sort/search/page changes and completed submission; no filesystem mutation.
+  plan: ruby docs/plans/repo-artifact-cleanup/validate_plan.rb
+  whitespace: git diff --check
+
+evidence_suites:
+  repo: src/repo-artifacts/repo-artifacts.test.ts
+  rules_events: src/repo-artifacts/categories.test.ts
+  git: src/repo-artifacts/git-safety.test.ts and git-transport.test.ts
+  backup: src/utils/backup-fallback.test.ts and backup.test.ts
+  cli: src/commands/repo-cli.test.ts and clean-json.test.ts
+  live: src/pickers/live-review.test.ts, live-review-prompt.test.ts and src/commands/interactive-live.test.ts
+  desktop: desktop/src/main/repo-cleanup.test.ts, engine.test.ts, controller.test.ts and settings.test.ts
+  regression: Existing root command/scanner/config/fs suites and complete desktop suite.
+acceptance_evidence:
+  AC1: [repo, rules_events, git]
+  AC2: [rules_events]
+  AC3: [rules_events, cli, desktop]
+  AC4: [repo, rules_events, cli]
+  AC5: [repo, rules_events, git]
+  AC6: [repo, git, backup, desktop]
+  AC7: [repo, backup, cli, desktop]
+  AC8: [repo, desktop, regression]
+  AC9: [repo, git, cli]
+  AC10: [cli, regression]
+  AC11: [repo, cli, live, desktop, regression]
+  AC12: [rules_events, live]
+  AC13: [repo, rules_events, git, backup, cli, live, desktop, regression]
+  AC14: [execution.yaml, performance.json, contract_audit.yaml]
+eval_evidence:
+  method: Named behavior tests implement the scenarios; the planning JSON is not itself an executable product test runner.
+  EV1: [repo]
+  EV2: [rules_events]
+  EV3: [rules_events, desktop]
+  EV4: [repo, rules_events, cli]
+  EV5: [repo]
+  EV6: [repo, rules_events]
+  EV7: [repo, git, rules_events]
+  EV8: [repo, git]
+  EV9: [rules_events]
+  EV10: [repo, git]
+  EV11: [repo, git]
+  EV12: [repo]
+  EV13: [repo, backup]
+  EV14: [repo, backup]
+  EV15: [repo]
+  EV16: [repo, git]
+  EV17: [cli]
+  EV18: [cli, repo]
+  EV19: [cli, regression]
+  EV20: [repo, desktop]
+  EV21: [repo, rules_events, cli, live, desktop]
+  EV22: [rules_events]
+  EV23: [rules_events, git]
+  EV24: [live]
+  EV25: [final_checks]
+  EV26: [performance.json]
+
+performance:
+  command: bun run benchmark:repo
+  evidence: performance.json
+  runtime: Bun 1.4.3 on darwin arm64
+  candidates: [30, 300, 1500]
+  nonoverlap_scan_ms: [63.7, 549.4, 3628.8]
+  overlap_scan_ms: [66.7, 515.9, 3644.4]
+  nonoverlap_selected_validation_ms: [79.8, 578.7, 4039.7]
+  worktrees: [1, 5, 25]
+  scan_git_processes: [6, 30, 150]
+  selected_validation_git_processes: [11, 55, 275]
+  interpretation: Each candidate tree is inspected once per scan, including overlapping roots. Selected validation separately refreshes two category batches; Git queries scale per worktree/batch, not per candidate.
+  limits: Single ordered sample per variant; fixture setup excluded; 128-byte files; sampled process RSS includes baseline and excludes Git child RSS; warm-cache/order effects remain. These are measurements, not production throughput claims.
+  optimization_decision: No additional discovery backend or cross-run cache; retain measured shared walk and request-local Git batching.
+
+observations:
+  - Existing filesystem socket tests require sandbox escalation; passed with temporary fixtures.
+  - Existing controller freshness timeout is 15 minutes (audit text said five); preserved actual contract.
+  - Integrated review found newly configured roots could rebase keep patterns and depth checks; three regression cases first failed, then passed after applying current root provenance without broadening original identity authority.
+  - Live command tests separately verify final confirmation and exact selected context; desktop fixture tests exercise preview-to-validation and permanent deletion despite CLI backupEnabled.
+  - All destructive product tests used temporary fixtures; external-tool cleanup was mocked. No user repository or home cleanup was performed.
+  - Historical planning/audit findings are preserved; this tracker records the subsequently authorized implementation and validation.
+remaining_limitations:
+  - Filesystem/Git validation is not atomic with mutation; there is no active-build detection.
+  - Size and freed-space values are logical estimates, not measured physical disk blocks.
+  - Ambiguous generic outputs in non-Git projects remain intentionally ineligible.
+  - Git queries fail closed at the documented 10-second timeout or 16-MiB combined output limit.
+incomplete_acceptance_criteria: []

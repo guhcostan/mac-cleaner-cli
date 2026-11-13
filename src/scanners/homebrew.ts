@@ -132,8 +132,10 @@ export class HomebrewScanner extends BaseScanner {
     if (dryRun) {
       return {
         category: this.category,
-        cleanedItems: items.length,
-        freedSpace: items.reduce((sum, item) => sum + item.size, 0),
+        cleanedItems: 0,
+        freedSpace: 0,
+        wouldCleanItems: items.length,
+        wouldFreeSpace: items.reduce((sum, item) => sum + item.size, 0),
         errors: [],
       };
     }

@@ -1,0 +1,204 @@
+---
+version: '1.1'
+feature: repo-artifact-cleanup
+status_note: Confirmed recommendations agree with the provided report and source evidence.
+  Recommended choices were selected by this audit; no entry records user approval.
+evidence_registry: contract_audit.yaml:evidence_sources
+decisions:
+- id: D1
+  title: Go remains explicitly opt-in
+  status: confirmed
+  context: Go names are generic and default category inventories can activate new
+    scanners.
+  statement: Explicit include/config/category selection enables Go; --all and risk
+    flags do not.
+  based_on_evidence:
+  - E8
+  - E11
+  implements:
+  - FR5
+  - FR12
+  - SR8
+  consequences:
+  - Explicit include/config/category selection enables Go; --all and risk flags do
+    not.
+- id: D2
+  title: Immediate-parent marker scope
+  status: confirmed
+  context: Reference root/ancestor markers can authorize unrelated descendants.
+  statement: Require readable regular non-symlink marker in candidate's immediate
+    parent.
+  based_on_evidence:
+  - E1
+  - E17
+  implements:
+  - FR4
+  - SR1
+  consequences:
+  - Require readable regular non-symlink marker in candidate's immediate parent.
+- id: D3
+  title: Preserve path selection and optional IDs
+  status: confirmed
+  context: Host picker uses paths; desktop uses scan item arrays.
+  statement: Preserve path fields; optional ID is sha256(category + NUL + canonical
+    path) and never authorizes cleanup.
+  based_on_evidence:
+  - E5
+  - E25
+  implements:
+  - FR14
+  - FR15
+  consequences:
+  - Preserve path fields; optional ID is sha256(category + NUL + canonical path) and
+    never authorizes cleanup.
+- id: D4
+  title: Three core repo modules
+  status: confirmed
+  context: Registry/BaseScanner adapters already exist.
+  statement: Use rules, walker and eligibility modules; adapt existing config/commands/types.
+  based_on_evidence:
+  - E2
+  - E5
+  implements:
+  - OR1
+  - FR6
+  consequences:
+  - Use rules, walker and eligibility modules; adapt existing config/commands/types.
+- id: D5
+  title: Retain host cleanup/backup UX
+  status: confirmed
+  context: Host provides explicit selection/confirmation and backup/restore; Go live
+    clean bypasses full revalidation.
+  statement: Keep host execution paths and apply shared preflight; do not port unchecked
+    live clean or local trash.
+  based_on_evidence:
+  - E2
+  - E9
+  - E14
+  implements:
+  - FR11
+  - OR2
+  consequences:
+  - Keep host execution paths and apply shared preflight; do not port unchecked live
+    clean or local trash.
+- id: D6
+  title: Separate risky Node build category
+  status: recommended
+  context: One moderate combined category would enter --all/default deep cleanup and
+    affect existing category expectations.
+  statement: Use node-build-artifacts marked risky with per-item CLI review; Rust
+    target is moderate; new repo categories are barred from unattended desktop cleanup.
+  based_on_evidence:
+  - E11
+  - E12
+  implements:
+  - FR3
+  - SR8
+  consequences:
+  - Use node-build-artifacts marked risky with per-item CLI review; Rust target is
+    moderate; new repo categories are barred from unattended desktop cleanup.
+- id: D7
+  title: Retain Git tracked-content protection
+  status: recommended
+  context: The previous limitation recommendation assumed per-candidate processes
+    were necessary and conflated ignore matches with tracked protection.
+  statement: Query index and HEAD per worktree; reject tracked/gitlink overlaps, refresh
+    on clean, and require ignore evidence for generic names.
+  based_on_evidence:
+  - E20
+  - E21
+  - E22
+  - E23
+  implements:
+  - SR2
+  - SR3
+  - SR4
+  consequences:
+  - Query index and HEAD per worktree; reject tracked/gitlink overlaps, refresh on
+    clean, and require ignore evidence for generic names.
+- id: D8
+  title: Keep exclusions protect descendants
+  status: recommended
+  context: Excluding a file cannot be respected by deleting its ancestor.
+  statement: Any excluded child vetoes whole artifact cleanup; malformed policy cannot
+    fall back to unrestricted scanning.
+  based_on_evidence:
+  - E2
+  - E13
+  implements:
+  - FR8
+  - SR10
+  consequences:
+  - Any excluded child vetoes whole artifact cleanup; malformed policy cannot fall
+    back to unrestricted scanning.
+- id: D9
+  title: Additive config roots and explicit overrides
+  status: recommended
+  context: extraPaths naming/init imply additions; replacement could silently lose
+    ~/dev coverage.
+  statement: Append config roots, retain Node-only legacy roots and add repeatable
+    --root override. Validate canonical locations and external backup limits.
+  based_on_evidence:
+  - E1
+  - E4
+  - E14
+  implements:
+  - FR7
+  - FR11
+  consequences:
+  - Append config roots, retain Node-only legacy roots and add repeatable --root override.
+    Validate canonical locations and external backup limits.
+- id: D10
+  title: Dry-run preflight parity
+  status: recommended
+  context: Parity gaps exist below command dispatch and backup dry-run creates session
+    directories.
+  statement: Share path/type/protection/backup checks and make planned counters explicit;
+    create backup sessions only during mutation.
+  based_on_evidence:
+  - E3
+  - E13
+  - E14
+  - E15
+  implements:
+  - SR6
+  - FR13
+  consequences:
+  - Share path/type/protection/backup checks and make planned counters explicit; create
+    backup sessions only during mutation.
+- id: D11
+  title: Freshness and metadata include directories
+  status: recommended
+  context: Parent mtime misses changes to existing files; Go live metadata considers
+    directories.
+  statement: node_modules freshness uses newest entry plus parent time; metadata reports
+    newest entry, regular count and logical bytes.
+  based_on_evidence:
+  - E1
+  - E18
+  - E24
+  implements:
+  - SR7
+  - FR14
+  consequences:
+  - node_modules freshness uses newest entry plus parent time; metadata reports newest
+    entry, regular count and logical bytes.
+- id: D12
+  title: Complete scope and selected-only validation
+  status: recommended
+  context: Earlier plan deferred required roots/UI and left context unspecified.
+  statement: Keep explicit roots and safe live-review slice in scope; revalidate selected
+    paths with immutable per-run context and dev/ino evidence.
+  based_on_evidence:
+  - E7
+  - E16
+  - E18
+  implements:
+  - FR7
+  - FR10
+  - FR16
+  - FR17
+  - SR5
+  consequences:
+  - Keep explicit roots and safe live-review slice in scope; revalidate selected paths
+    with immutable per-run context and dev/ino evidence.

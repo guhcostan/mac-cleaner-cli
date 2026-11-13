@@ -1,0 +1,46 @@
+{
+  "observed_at": "2026-10-13",
+  "kind": "isolated synthetic Git semantics probe; not an implementation test or performance measurement",
+  "git_version": "git version 2.55.0",
+  "fixture_root": "/private/tmp/mac-cleaner-git-audit-i20qkg_3",
+  "directory_ignore_exit": 1,
+  "directory_ignore_paths": [],
+  "tracked_paths_under_ignored_directory": [
+    "dist/keep.txt",
+    "dist/line\nbreak.txt"
+  ],
+  "staged_deletion_still_on_disk": true,
+  "staged_deletion_in_index": false,
+  "staged_deletion_in_head": true,
+  "worktree_git_is_file": true,
+  "worktree_index_contains_tracked_file": true,
+  "conclusion": "An ignore rule can cover a directory containing force-tracked files. check-ignore suppresses tracked queries by default; --no-index reports ignore matching even for tracked files. Use explicit index/HEAD inventory for tracked-content protection; worktree .git files are supported by git -C.",
+  "check_ignore_variants": [
+    {
+      "args": [
+        "check-ignore",
+        "--stdin",
+        "-z"
+      ],
+      "exit_code": 0,
+      "matched_paths": [
+        "dist/generated.js"
+      ]
+    },
+    {
+      "args": [
+        "check-ignore",
+        "--no-index",
+        "--stdin",
+        "-z"
+      ],
+      "exit_code": 0,
+      "matched_paths": [
+        "dist",
+        "dist/",
+        "dist/generated.js",
+        "dist/keep.txt"
+      ]
+    }
+  ]
+}

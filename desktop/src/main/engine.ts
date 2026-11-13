@@ -1,3 +1,5 @@
+import { runScans } from '../../../src/scanners/index.js';
+import { cleanSelectedResults, scanTotals } from '../../../src/utils/cleanup.js';
 import { randomUUID } from 'crypto';
 import { CATEGORIES, type CategoryId, type CleanableItem, type ScanResult, type Scanner } from '../../../src/types.js';
 import type {
@@ -41,25 +43,9 @@ export async function scanCategories(
   onProgress?: (event: ProgressEvent) => void
 ): Promise<ScanResult[]> {
   const ids = categoryIds.filter((id) => registry[id]);
-  const results: ScanResult[] = [];
-
-  for (let i = 0; i < ids.length; i++) {
-    const scanner = registry[ids[i]]!;
-    onProgress?.({ phase: 'scanning', completed: i, total: ids.length, current: scanner.category.name });
-    try {
-      results.push(await scanner.scan());
-    } catch (error) {
-      results.push({
-        category: scanner.category,
-        items: [],
-        totalSize: 0,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  onProgress?.({ phase: 'scanning', completed: ids.length, total: ids.length, current: '' });
-  return results;
+  onProgress?.({ phase: 'scanning', completed: 0, total: ids.length, current: '' });
+  const summary = await runScans(ids, { onProgress: (completed, total, scanner) => onProgress?.({ phase: 'scanning', completed, total, current: scanner.category.name }) }, undefined, registry);
+  return summary.results;
 }
 
 export async function cleanScanResults(
@@ -77,37 +63,15 @@ export async function cleanScanResults(
   const categories: CategoryRunResult[] = [];
   const errors: string[] = [];
 
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i];
-    const scanner = registry[result.category.id];
-    options.onProgress?.({ phase: 'cleaning', completed: i, total: results.length, current: result.category.name });
-
-    if (result.error) {
-      errors.push(`${result.category.name}: ${result.error}`);
-    }
-
-    const items = options.itemFilter ? options.itemFilter(result) : result.items;
-    if (!scanner || items.length === 0) continue;
-
-    try {
-      const cleaned = await scanner.clean(items, false);
-      categories.push({
-        id: result.category.id,
-        name: result.category.name,
-        freedSpace: cleaned.freedSpace,
-        cleanedItems: cleaned.cleanedItems,
-        errors: cleaned.errors,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      categories.push({
-        id: result.category.id,
-        name: result.category.name,
-        freedSpace: 0,
-        cleanedItems: 0,
-        errors: [message],
-      });
-    }
+  for (const result of results) if (result.error) errors.push(`${result.category.name}: ${result.error}`);
+  const selected = results.filter((r) => registry[r.category.id]).map((r) => ({ ...r, items: options.itemFilter ? options.itemFilter(r) : r.items }));
+  const cleaned = await cleanSelectedResults(selected, (id) => registry[id]!, {
+    dryRun: false,
+    onProgress: (completed, result) => options.onProgress?.({ phase: 'cleaning', completed, total: results.length, current: result.category.name }),
+  });
+  for (const result of cleaned.results) {
+    if (!selected.find((r) => r.category.id === result.category.id)?.items.length) continue;
+    categories.push({ id: result.category.id, name: result.category.name, freedSpace: result.freedSpace, cleanedItems: result.cleanedItems, errors: result.errors });
   }
 
   options.onProgress?.({ phase: 'cleaning', completed: results.length, total: results.length, current: '' });
@@ -138,7 +102,7 @@ export function toScanPreview(results: ScanResult[], scannedAt: Date, topN = 5):
         topItems: [...result.items]
           .sort((a, b) => b.size - a.size)
           .slice(0, topN)
-          .map((item) => ({ name: item.name, path: item.path, size: item.size })),
+          .map((item) => ({ name: item.name, path: item.path, size: item.size, id: item.id, fileCount: item.fileCount, newestEntryModifiedAt: item.newestEntryModifiedAt?.toISOString() })),
         error: result.error,
       };
     })
@@ -146,7 +110,7 @@ export function toScanPreview(results: ScanResult[], scannedAt: Date, topN = 5):
 
   return {
     scannedAt: scannedAt.toISOString(),
-    totalSize: categories.reduce((sum, c) => sum + c.totalSize, 0),
+    totalSize: scanTotals(results).totalSize,
     categories,
   };
 }

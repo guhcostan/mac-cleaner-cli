@@ -1,7 +1,7 @@
 {
   "name": "mac-cleaner-cli",
   "version": "1.4.0",
-  "description": "macOS CLI tool to free up disk space — removes caches, logs, Homebrew leftovers, Xcode DerivedData, and junk files",
+  "description": "macOS CLI tool to free up disk space \u2014 removes caches, logs, Homebrew leftovers, Xcode DerivedData, and junk files",
   "type": "module",
   "bin": {
     "mac-cleaner-cli": "./dist/index.mjs"
@@ -21,7 +21,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "benchmark:repo": "bun scripts/benchmark-repo-artifacts.ts"
   },
   "keywords": [
     "mac",
@@ -65,6 +66,7 @@
   "dependencies": {
     "@inquirer/checkbox": "^5.0.2",
     "@inquirer/confirm": "^6.0.2",
+    "@inquirer/core": "^11.0.2",
     "chalk": "^5.3.0",
     "commander": "^14.0.3",
     "ora": "^9.0.0"

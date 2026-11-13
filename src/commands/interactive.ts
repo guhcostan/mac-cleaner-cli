@@ -1,6 +1,9 @@
+import { liveReviewPrompt } from '../pickers/live-review.js';
+import type { LiveReviewResult } from '../pickers/live-review.js';
 import chalk from 'chalk';
+import { cleanSelectedResults } from '../utils/cleanup.js';
 import confirm from '@inquirer/confirm';
-import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
+import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel, RepoRequestOptions } from '../types.js';
 import { runAllScans, getScanner, getAllScanners } from '../scanners/index.js';
 import { formatSize, createScanProgress, createCleanProgress, hasFullDiskAccess, FULL_DISK_ACCESS_HINT, loadConfig, ensureBackupDir, getBackupDir } from '../utils/index.js';
 import filePickerPrompt from '../pickers/file-picker.js';
@@ -12,7 +15,8 @@ const SAFETY_ICONS: Record<SafetyLevel, string> = {
   risky: chalk.red('●'),
 };
 
-interface InteractiveOptions {
+interface InteractiveOptions extends RepoRequestOptions {
+  live?: boolean;
   includeRisky?: boolean;
   noProgress?: boolean;
   absolutePaths?: boolean;
@@ -21,6 +25,7 @@ interface InteractiveOptions {
 }
 
 export async function interactiveCommand(options: InteractiveOptions = {}): Promise<CleanSummary | null> {
+  if (options.live && !process.stdin.isTTY) throw new Error('--live requires an interactive terminal');
   console.log();
   console.log(chalk.bold.cyan('🧹 Mac Cleaner CLI'));
   console.log(chalk.dim('─'.repeat(50)));
@@ -33,25 +38,25 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   }
 
   // Step 1: Scan
-  const showProgress = !options.noProgress && process.stdout.isTTY;
+  const showProgress = !options.noProgress && !options.live && process.stdout.isTTY;
   const scanners = getAllScanners();
   const scanProgress = showProgress ? createScanProgress(scanners.length) : null;
 
   console.log(chalk.cyan('Scanning your Mac for cleanable files...\n'));
 
-  const summary = await runAllScans({
-    parallel: true,
-    concurrency: 4,
-    onProgress: (completed, _total, scanner) => {
-      scanProgress?.update(completed, `Scanning ${scanner.category.name}...`);
-    },
-  });
+  let live: LiveReviewResult | undefined;
+  const request = { roots: options.roots, includeEcosystems: options.includeEcosystems, excludePaths: options.excludePaths };
+  if (options.live) live = await liveReviewPrompt({ includeRisky: options.includeRisky, scan: (events) => runAllScans({ ...request, ...events }) });
+  if (live?.cancelled) return null;
+  const summary = live?.summary ?? await runAllScans({ ...request, onProgress: (completed, _total, scanner) => scanProgress?.update(completed, `Scanning ${scanner.category.name}...`) });
 
   scanProgress?.finish();
 
   printScanErrors(summary.results);
 
-  if (summary.totalSize === 0) {
+  if (summary.results.some((r) => r.error)) process.exitCode = 1;
+  if (summary.totalItems === 0) {
+    if (summary.results.some((r) => r.error)) return null;
     console.log(chalk.green('✓ Your Mac is already clean! Nothing to remove.\n'));
     return null;
   }
@@ -85,7 +90,7 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   console.log();
 
   // Step 4: Let user select categories
-  const selectedItems = await selectItemsInteractively(resultsWithItems, options.absolutePaths, options.filePicker);
+  const selectedItems = live ? resultsWithItems.map((r) => ({ categoryId: r.category.id, items: r.items.filter((i) => live!.selected.get(r.category.id)?.has(i.path)) })).filter((r) => r.items.length > 0) : await selectItemsInteractively(resultsWithItems, options.absolutePaths, options.filePicker);
 
   if (selectedItems.length === 0) {
     console.log(chalk.yellow('\nNo items selected. Nothing to clean.\n'));
@@ -191,41 +196,17 @@ export async function interactiveCommand(options: InteractiveOptions = {}): Prom
   // folders behind.
   const backupDir =
     backupEnabled && selectedItems.some(({ categoryId }) => getScanner(categoryId)?.supportsBackup !== false)
-      ? await ensureBackupDir()
+      ? (options.dryRun ? `${getBackupDir()}/dry-run` : await ensureBackupDir())
       : undefined;
 
   const cleanProgress = showProgress ? createCleanProgress(selectedItems.length) : null;
 
-  const cleanResults: CleanSummary = {
-    results: [],
-    totalFreedSpace: 0,
-    totalBackedUpSize: 0,
-    backupDir,
-    totalCleanedItems: 0,
-    totalErrors: 0,
-  };
-
-  let cleanedCount = 0;
-  for (const { categoryId, items } of selectedItems) {
-    const scanner = getScanner(categoryId);
-    cleanProgress?.update(
-      cleanedCount,
-      `${options.dryRun ? 'Simulating' : 'Cleaning'} ${scanner.category.name}...`
-    );
-
-    // dryRun is passed down to the scanner rather than simulated here on
-    // purpose: Docker and Homebrew override `clean()` with external commands and
-    // have their own dry-run early return. Simulating from the outside would
-    // produce a report that does not match what the real command would do.
-    const scannerBackupDir = scanner.supportsBackup === false ? undefined : backupDir;
-    const result = await scanner.clean(items, options.dryRun, scannerBackupDir);
-    cleanResults.results.push(result);
-    cleanResults.totalFreedSpace += result.freedSpace;
-    cleanResults.totalBackedUpSize = (cleanResults.totalBackedUpSize ?? 0) + (result.backedUpSize ?? 0);
-    cleanResults.totalCleanedItems += result.cleanedItems;
-    cleanResults.totalErrors += result.errors.length;
-    cleanedCount++;
-  }
+  const cleanResults = await cleanSelectedResults(selectedItems.map(({ categoryId, items }) => ({
+    ...summary.results.find((r) => r.category.id === categoryId)!, items,
+  })), getScanner, {
+    dryRun: options.dryRun, backupDir,
+    onProgress: (completed, result) => cleanProgress?.update(completed, `Cleaning ${result.category.name}...`),
+  });
 
   cleanProgress?.finish();
 
@@ -295,12 +276,12 @@ function printCleanResults(summary: CleanSummary, dryRun = false): void {
   console.log(chalk.dim('─'.repeat(50)));
 
   for (const result of summary.results) {
-    if (result.cleanedItems > 0) {
-      const backedUp = (result.backedUpSize ?? 0) > 0;
+    if ((dryRun ? result.wouldCleanItems ?? 0 : result.cleanedItems) > 0) {
+      const backedUp = (dryRun ? result.wouldBackUpSize ?? 0 : result.backedUpSize ?? 0) > 0;
       console.log(
         backedUp
-          ? `  ${result.category.name.padEnd(30)} ${chalk.cyan('↦')} ${formatSize(result.backedUpSize ?? 0)} ${dryRun ? 'would be moved' : 'moved'} to backup`
-          : `  ${result.category.name.padEnd(30)} ${chalk.green('✓')} ${formatSize(result.freedSpace)} ${dryRun ? 'would be freed' : 'freed'}`
+          ? `  ${result.category.name.padEnd(30)} ${chalk.cyan('↦')} ${formatSize(dryRun ? result.wouldBackUpSize ?? 0 : result.backedUpSize ?? 0)} ${dryRun ? 'would be moved' : 'moved'} to backup`
+          : `  ${result.category.name.padEnd(30)} ${chalk.green('✓')} ${formatSize(dryRun ? result.wouldFreeSpace ?? 0 : result.freedSpace)} ${dryRun ? 'would be freed' : 'freed'}`
       );
     }
     for (const error of result.errors) {
@@ -312,10 +293,10 @@ function printCleanResults(summary: CleanSummary, dryRun = false): void {
   console.log(chalk.dim('─'.repeat(50)));
   console.log(
     dryRun
-      ? chalk.bold.cyan(`[DRY RUN] Would free ${formatSize(summary.totalFreedSpace)} of disk space`)
+      ? chalk.bold.cyan(`[DRY RUN] Would free ${formatSize(summary.wouldFreeSpace ?? 0)} of disk space`)
       : chalk.bold(`🎉 Freed ${chalk.green(formatSize(summary.totalFreedSpace))} of disk space!`)
   );
-  console.log(chalk.dim(`   ${dryRun ? 'Would clean' : 'Cleaned'} ${summary.totalCleanedItems} items`));
+  console.log(chalk.dim(`   ${dryRun ? 'Would clean' : 'Cleaned'} ${dryRun ? summary.wouldCleanItems ?? 0 : summary.totalCleanedItems} items`));
 
   if ((summary.totalBackedUpSize ?? 0) > 0) {
     console.log();

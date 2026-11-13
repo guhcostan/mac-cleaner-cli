@@ -1,3 +1,6 @@
+// All backup/restore fixtures are isolated from the real home directory.
+const { fixtureHome } = vi.hoisted(() => ({ fixtureHome: `/private/tmp/mac-cleaner-backup-${process.pid}` }));
+vi.mock('os', async (original) => ({ ...await original<typeof import('os')>(), homedir: () => fixtureHome }));
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdir, mkdtemp, rm, writeFile, readFile } from 'fs/promises';
 import { existsSync } from 'fs';

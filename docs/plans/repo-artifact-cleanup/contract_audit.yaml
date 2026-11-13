@@ -1,0 +1,598 @@
+---
+version: '1.1'
+artifact: contract audit
+metadata:
+  title: Audit of repository-artifact recommendations and current architecture
+  status: complete
+  updated_at: '2026-10-13'
+  audited_target:
+    host: 725f5e7a1b7fcfda226df65555b4a53a2451afa2
+    reference: 2a1a7c67925ba0474f1d10a88e4f777f2f2c8ce1
+    planning_revision: 1.0 -> 1.1
+  method: Source inspection, official Git docs, isolated Git semantics probe and planning
+    consistency checks. Product code/tests and performance have not been evaluated.
+acceptance_criteria:
+  source: repo_artifact_cleanup_prd.yaml
+  ids:
+  - AC1
+  - AC2
+  - AC3
+  - AC4
+  - AC5
+  - AC6
+  - AC7
+  - AC8
+  - AC9
+  - AC10
+  - AC11
+  - AC12
+  - AC13
+  - AC14
+evidence_sources:
+- id: E1
+  source: src/scanners/node-modules.ts:10
+  observed_at: '2026-10-13'
+  observation: Hardcoded six roots; depth-4 parent traversal skips hidden dirs, follows
+    marker access/stat, uses parent mtime; broad catch labels marker/stat/size errors
+    orphaned and has no age check.
+  confidence: high
+- id: E2
+  source: src/scanners/base-scanner.ts:18
+  observed_at: '2026-10-13'
+  observation: Base clean accepts caller-supplied items and routes to removeItems/backupItems
+    without category eligibility/context or per-item outcomes.
+  confidence: high
+- id: E3
+  source: src/commands/clean.ts:143
+  observed_at: '2026-10-13'
+  observation: CLI dry-run returns before scanner.clean; scan options hardcode concurrency
+    4 and real cleanup loads config only after selection.
+  confidence: high
+- id: E4
+  source: src/utils/config.ts:30
+  observed_at: '2026-10-13'
+  observation: extraPaths.projects/nodeModules, excludeCategories/concurrency are
+    validated but unused in repo policy. Config permits HOME,/Users,/Volumes based
+    on lexical paths and creates extraPaths presets.
+  confidence: high
+- id: E5
+  source: src/types.ts:1
+  observed_at: '2026-10-13'
+  observation: Typed category union and CATEGORIES drive registry/selection; CleanableItem
+    already has name/type/modifiedAt/detail, but verbose scan JSON only serializes
+    path/size.
+  confidence: high
+- id: E6
+  source: src/commands/scan.ts:66
+  observed_at: '2026-10-13'
+  observation: scan JSON summary is single-document with optional verbose item paths;
+    clean CLI currently lacks JSON output.
+  confidence: high
+- id: E7
+  source: desktop/src/main/engine.ts:38
+  observed_at: '2026-10-13'
+  observation: Desktop calls scanner.scan with no options and scanner.clean(items,false),
+    returns category aggregates and name/path/size previews; it does not use stable
+    per-item IDs.
+  confidence: high
+- id: E8
+  source: "/Users/amoselmaliah/dev/projects/repo-cleaner-go/internal/core/rules.go:17"
+  observed_at: '2026-10-13'
+  observation: Node/Rust/Go rule names, default node+rust and Go opt-in. Include normalization
+    is replacement-style and unsupported values are silently omitted; do not copy
+    semantics without defining host policy.
+  confidence: high
+- id: E9
+  source: "/Users/amoselmaliah/dev/projects/repo-cleaner-go/internal/core/clean.go:45"
+  observed_at: '2026-10-13'
+  observation: CleanArtifacts rescans eligible paths. CleanArtifactsKnownStream explicitly
+    skips eligibility rescan and is used by the live CLI.
+  confidence: high
+- id: E10
+  source: "/Users/amoselmaliah/dev/projects/repo-cleaner-go/internal/core/scan.go:285"
+  observed_at: '2026-10-13'
+  observation: Internal walker prunes .git and candidate names and dedupes descendants.
+    The fd backend uses -u without .git subtree pruning; backend behavior differs.
+  confidence: high
+- id: E11
+  source: desktop/src/main/settings.ts:16
+  observed_at: '2026-10-13'
+  observation: Default deep categories include every non-risky category; isAllowedInAutoClean
+    also admits every non-risky category.
+  confidence: high
+- id: E12
+  source: src/pickers/selection-rules.ts:23
+  observed_at: '2026-10-13'
+  observation: Risky categories start with no item preselection; non-risky category
+    selection selects all its paths. CLI clean respects supportsFileSelection for
+    manual item review.
+  confidence: high
+- id: E13
+  source: src/utils/fs.ts:305
+  observed_at: '2026-10-13'
+  observation: removeItemWithError checks protected paths before dry-run, but dry-run
+    returns before lstat/existence. Safety checks use lexical resolve; an ancestor
+    symlink is not checked.
+  confidence: high
+- id: E14
+  source: src/utils/backup.ts:73
+  observed_at: '2026-10-13'
+  observation: backupPathFor only represents paths under HOME. backupItems dry-run
+    tests only backupPathFor and skips backupItem's validatePathSafety; real backup
+    rejects unsupported paths.
+  confidence: high
+- id: E15
+  source: src/commands/interactive.ts:197
+  observed_at: '2026-10-13'
+  observation: Interactive dry-run still calls ensureBackupDir when backup is enabled,
+    so it can create a backup session during simulation.
+  confidence: high
+- id: E16
+  source: desktop/src/main/controller.ts:126
+  observed_at: '2026-10-13'
+  observation: Deep clean uses only previewed selected items and refuses a preview
+    older than five minutes. A validation rescan must never add fresh items; desktop
+    deep cleanup intentionally uses permanent deletion.
+  confidence: high
+- id: E17
+  source: "/Users/amoselmaliah/dev/projects/repo-cleaner-go/internal/core/workspace.go:80"
+  observed_at: '2026-10-13'
+  observation: Workspace marker lookup walks up ancestors; a top-level marker can
+    justify unrelated generic descendants.
+  confidence: high
+- id: E18
+  source: "/Users/amoselmaliah/dev/projects/repo-cleaner-go/internal/core/types.go:3"
+  observed_at: '2026-10-13'
+  observation: Core Artifact scan JSON has only path/type/bytes. File-count/newest-mtime
+    metadata is present in live UI/clean helpers and includes directory mtimes, not
+    all core scan results.
+  confidence: high
+- id: E19
+  source: vitest.config.ts:24
+  observed_at: '2026-10-13'
+  observation: Root test/typecheck scripts exclude desktop tests/types; NodeModulesScanner
+    is excluded from coverage and its existing scanner tests do not inspect discovery
+    behavior.
+  confidence: high
+- id: E20
+  source: https://git-scm.com/docs/git-ls-files
+  observed_at: '2026-10-13'
+  observation: Official docs specify --cached index contents and --stage/-z output.
+    One worktree inventory can check all its candidates.
+  confidence: high
+- id: E21
+  source: https://git-scm.com/docs/git-check-ignore
+  observed_at: '2026-10-13'
+  observation: Official docs describe ignore matching, tracked-query suppression by
+    default, NUL-separated stdin and --no-index. Ignore matching is not an inventory
+    of tracked children.
+  confidence: high
+- id: E22
+  source: https://git-scm.com/docs/git-ls-tree
+  observed_at: '2026-10-13'
+  observation: Official docs describe recursive HEAD tree listing and NUL output;
+    complements current index when tracked paths are staged for removal.
+  confidence: high
+- id: E23
+  source: git_probe_evidence.json
+  observed_at: '2026-10-13'
+  observation: 'Isolated Git 2.55.0 probe: ignored dist contains force-tracked files;
+    default check-ignore suppresses tracked paths, --no-index matches them. Index/HEAD
+    differ after staged removal; git -C reads an index from a worktree with .git file.'
+  confidence: high
+- id: E24
+  source: src/utils/fs.ts:109
+  observed_at: '2026-10-13'
+  observation: Current size helper counts regular-file and link lstat bytes without
+    traversing link targets. Logical byte totals are estimates, not physical block
+    reclamation.
+  confidence: high
+- id: E25
+  source: src/commands/interactive.ts:268
+  observed_at: '2026-10-13'
+  observation: CLI picker selections use item.path. Desktop uses previewed item arrays
+    and category IDs; the prior claim that desktop engine keys item state by path
+    overstated its implementation.
+  confidence: high
+- id: E26
+  source: docs/plans/repo-artifact-cleanup/research.yaml (prior revision)
+  observed_at: '2026-10-13'
+  observation: The previous tracker contained duplicate readiness keys and completed
+    items with unresolved dependencies; YAML parsing alone did not detect these consistency
+    errors.
+  confidence: high
+- id: E27
+  source: src/commands/repo-cli.test.ts
+  observed_at: '2026-10-14'
+  observation: Isolated subprocess fixtures verify global roots and dry-run before subcommands, JSON output, malformed policy, actual fixture-only cleanup and backup simulation.
+  confidence: high
+- id: E28
+  source: docs/plans/repo-artifact-cleanup/execution.yaml
+  observed_at: '2026-10-14'
+  observation: Implementation progress and executed safety, UI, root and desktop checks are recorded separately from the historical audit findings.
+  confidence: high
+- id: E29
+  source: docs/plans/repo-artifact-cleanup/performance.json
+  observed_at: '2026-10-14'
+  observation: Isolated small/medium/large scan and selected-validation measurements include wall time, sampled process RSS, Git process count and candidate inspection work, with overlap comparisons and measurement limits.
+  confidence: high
+
+findings:
+- criterion_id: AC1
+  status: mismatch
+  current_behavior: Node marker errors enter orphan handling; Rust/Go/Node build categories
+    absent.
+  gap: Immediate-parent readable marker checks and orphan fix.
+  evidence:
+  - E1
+  - E8
+  - E17
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC2
+  status: mismatch
+  current_behavior: Only node_modules repo output is scanned; hidden artifact names
+    are skipped by the current walker.
+  gap: Add complete rules and deterministic collision/hidden handling.
+  evidence:
+  - E1
+  - E8
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC3
+  status: mismatch
+  current_behavior: Registry has no ecosystem opt-in and desktop selection derives
+    from safety level.
+  gap: Introduce default-enabled selection distinct from available scanner inventory.
+  evidence:
+  - E5
+  - E7
+  - E11
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC4
+  status: mismatch
+  current_behavior: extraPaths validated without use; current docs originally proposed
+    replacement semantics and deferred CLI roots.
+  gap: Append configured extras; add explicit overrides and shared scan/clean policy.
+  evidence:
+  - E1
+  - E4
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC5
+  status: mismatch
+  current_behavior: Neither repository provides tracked-content protection; the previous
+    plan applied exclusions at directory roots only.
+  gap: Index/HEAD and content keep-path vetoes with Git uncertainty handling.
+  evidence:
+  - E8
+  - E10
+  - E17
+  - E20
+  - E21
+  - E22
+  - E23
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC6
+  status: mismatch
+  current_behavior: Clean forwards supplied paths without repo-policy context; final
+    filesystem helpers do not detect replaced directories or symlink ancestors.
+  gap: Immutable scan evidence, selected-path revalidation and immediate checks.
+  evidence:
+  - E2
+  - E13
+  - E16
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC7
+  status: mismatch
+  current_behavior: CLI dry-run bypasses scanners; interactive dry-run can create
+    backups; backup dry-run omits protected paths.
+  gap: Shared preflight for simulation/mutation and explicit outside-HOME rejection.
+  evidence:
+  - E3
+  - E13
+  - E14
+  - E15
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC8
+  status: partial
+  current_behavior: Node implicitly prunes node_modules; there is no selected-plan
+    dedupe across categories.
+  gap: Keep independent scan choices and normalize only the selected eligible filesystem
+    plan.
+  evidence:
+  - E1
+  - E2
+  - E7
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC9
+  status: partial
+  current_behavior: size/type/directory mtime exist; regular counts and newest entry
+    time are not host item fields.
+  gap: One measurement pass including directory/link mtimes without following targets.
+  evidence:
+  - E5
+  - E18
+  - E24
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC10
+  status: mismatch
+  current_behavior: Scan JSON exists; clean has human output and early null returns
+    without structured item outcomes.
+  gap: Explicit serialization, failure reporting and planned/actual accounting.
+  evidence:
+  - E3
+  - E6
+  - E2
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC11
+  status: partial
+  current_behavior: Optional scanner arguments and category registry give adapters;
+    desktop receives no per-scan policy.
+  gap: Add optional context and update CLI/desktop callers without mutable scanner
+    authorization.
+  evidence:
+  - E2
+  - E5
+  - E7
+  - E16
+  - E25
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC12
+  status: mismatch
+  current_behavior: Host has paging/selection but no stream/search/sort interface;
+    original PRD deferred the scope.
+  gap: Plan events/cancellation and opt-in live review as a concrete later slice.
+  evidence:
+  - E12
+  - E18
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC13
+  status: partial
+  current_behavior: Relevant tests exist, but discovery has minimal coverage and root
+    commands exclude desktop.
+  gap: Require focused safety fixtures and separate desktop checks.
+  evidence:
+  - E19
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+- criterion_id: AC14
+  status: mismatch
+  current_behavior: Earlier PRD deferred roots and streaming, used incomplete evaluation
+    mapping and unmeasured performance claims.
+  gap: Restore full requested scope and make validation/performance boundaries explicit.
+  evidence:
+  - E1
+  - E4
+  - E18
+  - E19
+  - E26
+  next_action: Implement the PRD slice(s) mapped to this criterion and execute its
+    eval cases.
+recommendation_review:
+- id: A1
+  severity: P0
+  topic: Tracked contents
+  previous: Recommend accepting tracked-file deletion as a documented limitation.
+  recommendation: Keep tracked-content protection using batched index plus HEAD inventory;
+    ignore matching is a separate signal for generic names.
+  reason: Per-candidate git check-ignore cost is not the only design available; staged
+    removals need HEAD protection.
+  evidence:
+  - E20
+  - E21
+  - E22
+  - E23
+  requirements:
+  - SR2
+  - SR3
+  - SR4
+- id: A2
+  severity: P0
+  topic: Category/risk defaults
+  previous: Separate category was an unresolved choice; new safety levels/default
+    behavior unspecified.
+  recommendation: Separate risky node-build-artifacts, opt-in risky go-artifacts and
+    moderate rust-artifacts; prevent new categories entering unattended desktop cleaning.
+  reason: Adding a moderate category changes default deep selection and allowed automatic
+    categories.
+  evidence:
+  - E11
+  - E12
+  requirements:
+  - FR3
+  - FR5
+  - SR8
+- id: A3
+  severity: P0
+  topic: Excluded descendants
+  previous: Exclude matched candidate directories and prune traversal.
+  recommendation: Veto an ancestor artifact if any descendant is excluded.
+  reason: Deleting dist would otherwise delete an excluded dist/keep.txt.
+  evidence:
+  - E2
+  - E13
+  requirements:
+  - FR8
+  - SR10
+- id: A4
+  severity: P0
+  topic: Dry-run parity
+  previous: Call scanner.clean in dry-run and assume equivalent validation.
+  recommendation: Also run existence/type and protected-path checks in filesystem/backup
+    preflight; avoid ensureBackupDir in dry-run.
+  reason: Lower-level backup and remove paths have additional parity gaps.
+  evidence:
+  - E3
+  - E13
+  - E14
+  - E15
+  requirements:
+  - SR6
+  - FR11
+- id: A5
+  severity: P0
+  topic: Replacement and symlink ancestry
+  previous: Re-scan and reject replaced paths, without a mechanism to distinguish
+    a new directory at the same path.
+  recommendation: Record dev/ino identity and root binding; lstat candidate before
+    realpath and check ancestors.
+  reason: Canonical path plus category hash cannot prove directory identity or prevent
+    ancestor redirection.
+  evidence:
+  - E2
+  - E13
+  requirements:
+  - SR5
+  - SR9
+  - FR10
+- id: A6
+  severity: P1
+  topic: Root config and external backup
+  previous: extraPaths.projects replaces defaults; one-off CLI root is deferred.
+  recommendation: Preserve additive extraPaths semantics, add repeatable --root override,
+    and reject external backup paths in both dry/real execution.
+  reason: Config key/init use extras; backup format only restores HOME-relative paths.
+  evidence:
+  - E1
+  - E4
+  - E14
+  requirements:
+  - FR7
+  - FR11
+- id: A7
+  severity: P1
+  topic: Age and timestamps
+  previous: Preserve parent-only project age; newest regular-file mtime only.
+  recommendation: Tighten node_modules age using newest entry mtime and include root/descendant
+    directory mtimes in metadata.
+  reason: Editing existing files does not reliably update parent-directory mtime;
+    Go metadata includes directories.
+  evidence:
+  - E1
+  - E18
+  - E24
+  requirements:
+  - SR7
+  - FR14
+- id: A8
+  severity: P1
+  topic: Execution context
+  previous: Wire validator into BaseScanner.clean without specifying how roots/opt-in
+    options survive to clean.
+  recommendation: Add optional clean context, preserve immutable selected scan policy,
+    and refresh current safety facts.
+  reason: Singleton scanners and desktop no-options calls make hidden last-scan state
+    unsafe.
+  evidence:
+  - E2
+  - E7
+  - E16
+  requirements:
+  - FR10
+  - FR12
+  - FR18
+- id: A9
+  severity: P1
+  topic: Dedupe timing
+  previous: Drop descendants across candidates without category-selection semantics.
+  recommendation: Keep independently selectable cross-category scan rows; dedupe selected
+    eligible paths at execution.
+  reason: An unselected worktree parent must not hide selected node_modules contents.
+  evidence:
+  - E1
+  - E7
+  - E16
+  requirements:
+  - FR9
+- id: A10
+  severity: P1
+  topic: Scope completeness
+  previous: Streaming/live review and positional/explicit roots were deferred outside
+    the core plan.
+  recommendation: Include explicit root flags and a bounded streaming/live-review
+    implementation slice.
+  reason: The user requested the complete implementation plan for the reported functionality.
+  evidence:
+  - E4
+  - E18
+  requirements:
+  - FR7
+  - FR16
+  - FR17
+- id: A11
+  severity: P2
+  topic: Metadata and identity accuracy
+  previous: Go scan results described as generally exposing file count/newest mtime;
+    desktop described as using path keys.
+  recommendation: Distinguish Go core JSON from live helpers and retain host path
+    selection without claiming desktop has an item-key scheme.
+  reason: Those details were broader than observed source evidence.
+  evidence:
+  - E18
+  - E25
+  requirements:
+  - FR14
+  - FR15
+- id: A12
+  severity: P1
+  topic: Planning artifact validity
+  previous: YAML/JSON parsing treated as sufficient validation; duplicate readiness
+    and unresolved completed dependencies remained.
+  recommendation: Add duplicate-key detection, reference/coverage checks and a consistent
+    readiness gate.
+  reason: Syntactically valid artifacts can still discard state or contradict their
+    tracker.
+  evidence:
+  - E26
+  requirements:
+  - OR4
+confirmed_recommendations:
+- Keep the existing node_modules scanner instead of adding a duplicate.
+- Immediate-parent ecosystem markers for repo artifacts.
+- Go opt-in separate from risky enablement.
+- Shared rules/walker/eligibility modules with existing config authority.
+- Revalidate selected candidates for every clean entrypoint.
+- Retain backup/restore and explicit confirmation; do not port unchecked Go TUI cleanup.
+- Retain optional path-derived IDs and measure before native discovery optimization.
+implementation_readiness:
+  status: ready
+  blocking_items: []
+  notes: Ready for the audit-recommended design; proposals are explicit and evidence-backed.
+    This audit does not count as user approval or implementation verification.
+residual_risks:
+- Concurrent changes after final checks remain possible; no atomic deletion claim.
+- Ignore rules and familiar marker/name combinations are practical signals, not proof
+  every untracked file is disposable.
+- Non-Git generic names are deliberately omitted.
+- Git/query and full candidate-inspection costs need measurement during implementation;
+  no speed claims are made.
+- Desktop per-item deletion is not redesigned; risky-category confirmation and explicit
+  category choice remain the desktop controls.
+validation_results:
+  planning_command: ruby docs/plans/repo-artifact-cleanup/validate_plan.rb
+  result: passed
+  coverage:
+    requirements: 32
+    acceptance_criteria: 14
+    planned_evaluation_cases: 26
+    implementation_slices: 7
+  negative_controls:
+  - scenario: Duplicate readiness YAML key
+    result: rejected
+  - scenario: Missing streaming evaluation/FR16 coverage
+    result: rejected
+  - scenario: Unknown evidence reference E999
+    result: rejected
+  product_tests: Not run; this task updates planning recommendations only.
+  git_probe: Isolated synthetic repositories only; verified index/HEAD, ignore matching
+    and .git-file worktree semantics. Not a scan benchmark.

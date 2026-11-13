@@ -96,7 +96,7 @@ describe('config utilities', () => {
       expect(loaded.downloadsDaysOld).toBe(30);
     });
 
-    it('should ignore a config file larger than 100KB', async () => {
+    it('should block repository policy for a config file larger than 100KB', async () => {
       const configPath = join(testConfigDir, 'huge.json');
       await writeFile(configPath, JSON.stringify({ concurrency: 8, padding: 'x'.repeat(200 * 1024) }));
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -104,7 +104,7 @@ describe('config utilities', () => {
       const loaded = await config.loadConfig(configPath);
 
       expect(loaded.concurrency).toBe(4);
-      expect(warn).toHaveBeenCalledWith('Config file too large, using defaults');
+      expect(loaded.repoPolicyError).toContain('CONFIG_TOO_LARGE');
       warn.mockRestore();
     });
 
@@ -162,7 +162,7 @@ describe('config utilities', () => {
       expect(loaded.filePicker).toBe(true);
     });
 
-    it('should filter invalid category IDs', async () => {
+    it('should reject malformed excluded categories', async () => {
       const configPath = join(testConfigDir, 'invalid-categories.json');
       await writeFile(configPath, JSON.stringify({
         defaultCategories: ['trash', 'invalid-category', 'system-cache'],
@@ -170,8 +170,7 @@ describe('config utilities', () => {
       }));
 
       const loaded = await config.loadConfig(configPath);
-      expect(loaded.defaultCategories).toEqual(['trash', 'system-cache']);
-      expect(loaded.excludeCategories).toEqual([]);
+      expect(loaded.repoPolicyError).toMatch(/INVALID_.*CATEGORIES/);
     });
 
     it('should ignore category fields that are not arrays', async () => {
@@ -216,13 +215,11 @@ describe('config utilities', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
       const loaded = await config.loadConfig(configPath);
-      expect(loaded.extraPaths?.nodeModules).toEqual([join(FAKE_HOME, 'Projects'), '/Users/other']);
-      expect(loaded.extraPaths?.projects).toEqual([join(FAKE_HOME, 'Developer')]);
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('Skipping path outside allowed directories'));
+      expect(loaded.repoPolicyError).toContain('INVALID_ROOT');
       warn.mockRestore();
     });
 
-    it('should drop non-string extra paths and cap the list at 50 entries', async () => {
+    it('should fail closed for malformed or excessive extra paths', async () => {
       const configPath = join(testConfigDir, 'too-many-paths.json');
       await writeFile(configPath, JSON.stringify({
         extraPaths: {
@@ -233,9 +230,7 @@ describe('config utilities', () => {
 
       const loaded = await config.loadConfig(configPath);
 
-      expect(loaded.extraPaths?.nodeModules).toHaveLength(50);
-      expect(loaded.extraPaths?.nodeModules?.[0]).toBe(join(FAKE_HOME, 'Projects', 'p0'));
-      expect(loaded.extraPaths?.projects).toEqual([]);
+      expect(loaded.repoPolicyError).toContain('INVALID_ROOTS');
     });
 
     it('should ignore extraPaths keys that are not set', async () => {

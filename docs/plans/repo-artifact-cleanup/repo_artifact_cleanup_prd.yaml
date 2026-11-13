@@ -1,0 +1,589 @@
+---
+version: '1.1'
+artifact: feature PRD
+metadata:
+  title: Repository Build Artifact Cleanup
+  status: implementation_ready_recommendation
+  updated_at: '2026-10-13'
+  canonical: true
+  scope: Complete repo-artifact feature set, delivered in bounded phases; this turn
+    is a planning audit.
+summary: Extend the existing scanner architecture with marker-scoped repo artifact
+  cleanup, Git/keep-path protection, execution-time validation, configurable roots,
+  rich results and streaming live review.
+authority:
+  requirements: This PRD is canonical; audit, tracker, decisions and eval cases derive
+    from it.
+  recommendations: Audit-selected design choices are recommendations, not recorded
+    user approval or authorization to begin product implementation.
+user_stories:
+- id: US1
+  role: developer
+  want: review stale node_modules and Node build output separately
+  so_that: I can reclaim generated content with appropriate safety controls.
+- id: US2
+  role: Rust developer
+  want: clean target directories beside Cargo.toml
+  so_that: I can reclaim rebuildable output.
+- id: US3
+  role: Go developer
+  want: opt in to bin/dist cleanup
+  so_that: generic names do not enter cleanup by default.
+- id: US4
+  role: operator
+  want: use explicit/configured scan roots and keep-path patterns
+  so_that: cleanup reaches my workspaces and protects selected contents.
+- id: US5
+  role: operator
+  want: selected items checked again before deletion, backup or dry-run
+  so_that: stale scans and tracked contents cannot authorize cleanup.
+- id: US6
+  role: script author
+  want: stable item metadata and JSON cleanup outcomes
+  so_that: I can audit and automate cleanup.
+- id: US7
+  role: interactive user
+  want: see live discovery and sort/search/page candidates
+  so_that: I can review large scans before explicitly confirming cleanup.
+requirements:
+  functional:
+  - id: FR1
+    text: Keep the existing node-modules category and migrate its discovery onto the
+      shared repository engine; remove markerless orphan eligibility.
+  - id: FR2
+    text: Add rust-artifacts for target beside Cargo.toml.
+  - id: FR3
+    text: Add a separate node-build-artifacts category for .next, .turbo, .parcel-cache,
+      coverage, dist, build, out and .cache beside package.json.
+  - id: FR4
+    text: Require a readable regular, non-symlink ecosystem marker in the immediate
+      parent; ancestor markers and permission errors never authorize a candidate.
+  - id: FR5
+    text: Add go-artifacts for bin and dist beside go.mod only with explicit Go opt-in.
+  - id: FR6
+    text: Use one request-scoped shared repository walk for the requested repo categories;
+      bound discovery depth, measure eligible trees once and prune dependency/Git
+      metadata traversal.
+  - id: FR7
+    text: Scan built-in roots plus extraPaths.projects; support repeatable --root
+      overrides for repo scans and preserve extraPaths.nodeModules as a Node-only
+      legacy addition.
+  - id: FR8
+    text: Add excludePaths with basename, root-relative prefix and limited glob syntax.
+      Exclusions apply to traversal, candidates and contents; any excluded descendant
+      vetoes whole-directory cleanup.
+  - id: FR9
+    text: Canonicalize and deduplicate repo candidates across roots/categories. Deduplicate
+      selected filesystem cleanup across all categories after filtering/validation;
+      preserve independently selectable scan rows.
+  - id: FR10
+    text: Revalidate only selected candidate paths against current marker, policy,
+      Git protection, identity, containment, exclusions and freshness; never introduce
+      newly discovered items during clean.
+  - id: FR11
+    text: Retain existing backup/restore routing; refuse an unrepresentable external
+      backup path without falling back to permanent deletion.
+  - id: FR12
+    text: Resolve category selection, includeEcosystems, excludeCategories, parallelScans
+      and concurrency consistently for CLI, direct scanner callers and desktop.
+  - id: FR13
+    text: Add clean --json with per-item outcomes for filesystem cleanup, aggregate
+      action outcomes for external-tool scanners, scan failures, skipped categories,
+      truthful dry-run accounting and documented exit codes.
+  - id: FR14
+    text: Repo items expose optional id, fileCount, newestEntryModifiedAt and artifact
+      evidence; keep path, size, name, isDirectory and modifiedAt compatible.
+  - id: FR15
+    text: Preserve existing scan JSON summary keys and verbose path/size keys; add
+      optional metadata fields in verbose item output.
+  - id: FR16
+    text: Add optional start/progress/candidate/warning/done scan events and AbortSignal
+      cancellation without changing the Promise-returning scanner API.
+  - id: FR17
+    text: Add opt-in live terminal review with size/mtime/path sorting, search, paging
+      and stable selections. Scanning/Enter alone cannot trigger deletion; final confirmation
+      and clean validation still apply.
+  - id: FR18
+    text: Update CLI help, config validation/init/docs, pickers, desktop settings/controller/engine,
+      and tests for new categories and per-run context.
+  safety:
+  - id: SR1
+    text: Markers classify an ecosystem; they do not by themselves prove every child
+      is generated.
+  - id: SR2
+    text: Inside a Git worktree, veto any candidate intersecting current index or
+      HEAD paths; protect gitlinks and nested .git metadata. Refresh this information
+      for the selected clean batch.
+  - id: SR3
+    text: For generic Node coverage/dist/build/out/.cache and Go bin/dist, additionally
+      require a positive ignore match in Git. In non-Git projects omit these ambiguous
+      names; recognized node_modules/.next/.turbo/.parcel-cache and Rust target remain
+      marker-qualified.
+  - id: SR4
+    text: Treat an unavailable/failing Git query for a detected repository as unknown
+      eligibility; skip it with a diagnostic, never silently treat it as non-Git.
+  - id: SR5
+    text: Reject candidate symlinks and symlink traversal below approved canonical
+      roots. Check the lexical candidate with lstat before canonicalization; recheck
+      root binding, ancestry, containment and dev/ino identity before mutation.
+  - id: SR6
+    text: Dry-run performs the same eligibility, protected-path, existence/type and
+      backup-representability checks without creating backup sessions or changing
+      files.
+  - id: SR7
+    text: For node_modules, retain the 30-day default but use max(project-directory
+      mtime, newest candidate entry mtime). A recently modified child makes an old
+      project ineligible.
+  - id: SR8
+    text: Node build output and Go output are risky with per-item review; Go remains
+      opt-in independently of risk flags. New repo categories cannot be added to unattended
+      desktop cleanup automatically.
+  - id: SR9
+    text: Do not claim atomic filesystem/Git validation, guaranteed inactivity, or
+      actual physical bytes freed from logical size estimates. Checks reduce stale-result
+      risk; final rechecks still have a race window.
+  - id: SR10
+    text: Malformed exclusion/root policy fails closed for repo cleanup; malformed
+      user config must not silently broaden roots or discard exclusions.
+  operational:
+  - id: OR1
+    text: 'Use three core repo modules: rules, walker and eligibility. Existing config/type/registry/command
+      utilities provide adapters, not a parallel configuration framework.'
+  - id: OR2
+    text: Do not copy Go shell discovery backends, unchecked streaming clean path,
+      auto-selected destructive TUI, repo-local trash or MCP authorization.
+  - id: OR3
+    text: Use argument-array Git subprocesses with timeouts, bounded/streamed output
+      and NUL parsing. Measure process count and scan time before adding discovery
+      engines or caching across runs.
+  - id: OR4
+    text: Implement one vertical slice at a time with scoped tests/checks and explicit
+      keep/revise discipline.
+rule_table:
+- category: node-modules
+  ecosystem: node
+  names:
+  - node_modules
+  marker: package.json
+  safetyLevel: moderate
+  age: max(parent mtime,newest entry mtime) >= nodeModulesDaysOld; default 30
+  requiresIgnoredDirectory: false
+- category: node-build-artifacts
+  ecosystem: node
+  names:
+  - ".next"
+  - ".turbo"
+  - ".parcel-cache"
+  marker: package.json
+  safetyLevel: risky
+  age: No additional age threshold
+  requiresIgnoredDirectory: false
+- category: node-build-artifacts
+  ecosystem: node
+  names:
+  - coverage
+  - dist
+  - build
+  - out
+  - ".cache"
+  marker: package.json
+  safetyLevel: risky
+  age: No additional age threshold
+  requiresIgnoredDirectory: true
+- category: rust-artifacts
+  ecosystem: rust
+  names:
+  - target
+  marker: Cargo.toml
+  safetyLevel: moderate
+  age: No additional age threshold
+  requiresIgnoredDirectory: false
+- category: go-artifacts
+  ecosystem: go
+  names:
+  - bin
+  - dist
+  marker: go.mod
+  safetyLevel: risky
+  age: No additional age threshold
+  requiresIgnoredDirectory: true
+policy:
+  classification: Require immediate-parent marker and an enabled rule. If the same
+    path matches enabled Node and Go rules, assign Node first; a Go-only category
+    selection assigns Go. Never emit the same canonical path twice.
+  markers: lstat must identify a readable regular file without following a marker
+    symlink; marker parse validity is not promised.
+  roots:
+    defaults:
+    - "~/Projects"
+    - "~/Developer"
+    - "~/Code"
+    - "~/dev"
+    - "~/workspace"
+    - "~/repos"
+    precedence: Nonempty explicit --root list replaces repo roots for that command.
+      Otherwise use defaults plus extraPaths.projects; add extraPaths.nodeModules
+      only for node-modules. Empty extraPaths arrays add nothing.
+    validation: Expand ~/ and relative CLI paths, resolve real paths, validate canonical
+      allowed directories against the existing HOME,/Users,/Volumes policy, reject
+      broad system/HOME root operations and record input-root to canonical-root binding.
+    overlap: Retain containing-root provenance when deduplicating candidates. A matching
+      exclusion from any applicable root vetoes a candidate; overlapping roots cannot
+      re-enable a keep path.
+    external_backup: External roots may scan and clean permanently when backup is
+      off. With backup on, outside-HOME items fail BACKUP_UNSUPPORTED_PATH; never
+      fall back to deletion.
+  exclusions:
+    grammar: Literal basename matches any component; patterns containing / are root-relative
+      prefixes; glob syntax supports *, ?, and ** as a complete path segment. ** matches
+      zero or more segments; no negation, braces or bracket syntax in v1.
+    examples:
+    - dist
+    - docs/build
+    - "**/target"
+    - "**/keep.txt"
+    invalid: Empty/absolute/traversal/unsupported patterns produce structured configuration
+      errors; repo cleanup aborts instead of silently dropping them.
+    descendants: Evaluate keep patterns on all candidate contents during the metadata/safety
+      walk. Any matching child rejects the entire candidate; repo categories offer
+      whole artifact roots, not arbitrary child deletion.
+  ecosystems: Node and Rust are enabled by default. CLI --include and config includeEcosystems
+    are additive; an explicit go-artifacts category selection also opts in. --all,
+    --unsafe and --risky never imply Go opt-in.
+  categories: Explicit selection or configured defaultCategories chooses categories;
+    excludeCategories always removes them. Registry availability is distinct from
+    default-enabled selection. CLI risky flags retain existing behavior; new Node/Go
+    output requires risky enablement.
+  desktop: Default deep categories must explicitly exclude Go and other risky categories.
+    New repo categories are not permitted for scheduled/quick cleanup; explicit deep-category
+    selection opts Go in and passes its policy context. Desktop deep cleanup remains
+    hard deletion and does not inherit CLI backupEnabled.
+  discovery: Inspect artifact names before hidden-directory pruning. Traverse .worktrees
+    and .claude/worktrees/.cursor/worktrees within the depth budget; always prune
+    .git metadata and node_modules dependency contents. Treat nested worktrees/submodules
+    as separate Git contexts. If a would-be artifact contains nested .git metadata
+    or a gitlink, reject whole-directory cleanup.
+  depth: 'projectScanMaxDepth defaults to 4 parent-directory levels, matching current
+    Node discovery: inspect children of parents at depth 0..4. Configurable range
+    0..16. Candidate contents are fully inspected independently of discovery depth.'
+  metadata: size is estimated logical regular-file bytes plus link lstat bytes; fileCount
+    counts regular files. newestEntryModifiedAt is max of lstat mtimes for root, descendant
+    directories, files and links; targets are never followed. Incomplete safety/metadata
+    inspection is reported and cannot produce an eligible candidate.
+  freshness: nodeModulesDaysOld defaults to 30; current parent-only mtime is tightened
+    with the newest candidate entry. Other output categories use marker/Git/ignore
+    checks and deliberate category controls, without extra age gating.
+  safety_limits: No active-build/process detection, physical block-size guarantee
+    or atomic protection from changes after the final check. Non-Git recognized artifact
+    names cannot be verified against a Git index.
+architecture:
+  core_modules:
+  - path: src/repo-artifacts/rules.ts
+    responsibility: Declarative rules, category/ecosystem precedence and immediate-parent
+      marker checks.
+  - path: src/repo-artifacts/walker.ts
+    responsibility: Bounded discovery, tree metrics and nested-metadata/keep-path
+      inspection; optional events and cancellation.
+  - path: src/repo-artifacts/eligibility.ts
+    responsibility: Policy normalization helpers, Git snapshots, exclude matching,
+      path containment/identity, candidate validation and structured rejection reasons.
+  adapters:
+  - 'src/types.ts: optional repo policy/evidence/event/result types and new category
+    metadata.'
+  - 'src/utils/config.ts: extend existing Config and validation; keep one config authority.'
+  - 'src/scanners/node-modules.ts and new rust-artifacts/node-build-artifacts/go-artifacts
+    scanners: thin category adapters.'
+  - 'src/scanners/index.ts: batch selected repo categories through one request-scoped
+    engine; standalone scanner.scan remains supported.'
+  - 'src/scanners/base-scanner.ts: optional validation hook/context for repo adapters;
+    non-repo scanners are not subjected to repo-marker validation.'
+  - 'src/utils/fs.ts and backup.ts: shared preflight and outcome reporting for filesystem
+    mutations.'
+  - 'src/commands and desktop engine/controller: preserve selected scan snapshots
+    and pass context to clean.'
+  execution_context: Extend clean(items,dryRun?,backupDir?,context?) additively. Store
+    immutable normalized repo policy and scan identity evidence with each repo ScanResult;
+    callers pass that context. Recheck current config exclusions/roots conservatively
+    at clean. Never store authorization/options in mutable singleton-scanner state.
+  selection: Only exact artifact candidates from the selected snapshot can be cleaned.
+    A caller-supplied ID/rule/size cannot justify a path; validators use current facts
+    and require repo identity evidence. Missing context uses safe default policy and
+    cannot enable Go.
+  git_design:
+    repository_detection: Resolve each candidate's containing worktree with Git and
+      recognize .git files as well as directories; an invalid .git boundary is a failure,
+      not non-Git.
+    scan_queries:
+    - git -C <worktree> ls-files --cached --stage -z
+    - git -C <worktree> ls-tree -r --full-tree -z <resolved-HEAD-commit>
+    - git -C <worktree> check-ignore --stdin -z (one batch for ambiguous candidate
+      directories)
+    protection: Use the union of index and HEAD paths to protect staged removals still
+      on disk, staged additions, conflicts, symlinks and gitlinks. Any path equal
+      to or beneath a candidate vetoes it. Distinguish verified unborn repositories
+      from broken HEAD/index queries.
+    process_policy: Argument arrays only; NUL-separated parsing; sanitize inherited
+      Git routing variables; disable optional locks; enforce timeout/output limits
+      and fail closed.
+    lifetime: Request-scoped caches keyed by worktree path/index identity, not common
+      Git-dir identity. Refresh index/HEAD/ignore batches for selected clean candidates;
+      benchmark this cost rather than assuming it negligible.
+    ignore_note: Ignore matching is an additional signal for generic names. It is
+      not a substitute for tracked-content or nested-repository checks.
+  validation_order:
+  - Normalize selected policy and reject malformed config.
+  - lstat lexical candidate, reject link/type change; resolve/verify approved root
+    and every descendant ancestor.
+  - Recheck immediate-parent marker and active rule/category/Go opt-in.
+  - Inspect candidate contents for keep paths, nested Git metadata, metrics and age.
+  - Apply refreshed worktree index/HEAD/ignore vetoes.
+  - Compare scan dev/ino identity; apply protected-path and backup representability
+    checks.
+  - Dedupe the validated selected filesystem plan; emit covered-child outcomes.
+  - Immediately recheck path/type/root/marker identity before calling existing remove/backup;
+    report mutation errors.
+  deduplication: Scan categories keep independently selectable parent/child rows when
+    they come from different scanner kinds. Global totals use a canonical path union
+    for overlapping filesystem candidates; external-tool estimates remain separately
+    identified. At clean, suppress a child only when its validated ancestor is also
+    selected; report SKIPPED_COVERED_BY_PARENT. If the ancestor is invalid, the independently
+    selected child remains eligible.
+  race_boundary: dev/ino catches stable path replacement, not arbitrary concurrent
+    child/index writes. Per-worktree refresh plus immediate filesystem checks reduce
+    the window but do not make rm/rename atomic.
+cli_contract:
+  common_repo_options:
+  - "--root <path> (repeatable; repo roots only)"
+  - "--include <ecosystems> (comma-separated, additive)"
+  - "--exclude <pattern> (repeatable; adds to config keep patterns)"
+  clean_json: Requires --all or --categories for deterministic noninteractive selection.
+    Actual clean also requires --yes when noninteractive; dry-run does not. Incompatible
+    live/JSON flags fail explicitly.
+  json_output: One versioned JSON document on stdout, including empty/error results.
+    Progress, diagnostics and config warnings go to stderr; suppress donation messages,
+    browser actions and interactive prompts.
+  statuses:
+  - deleted
+  - backed-up
+  - would-delete
+  - would-back-up
+  - rejected
+  - skipped
+  accounting: Expose actual freedSpace/backedUpSize/cleanedItems separately from wouldFreeSpace/wouldBackUpSize/wouldCleanItems.
+    Dry-run actual counters are zero; byte values are logical estimates. External-tool
+    scanners return action-level outcomes, without invented per-path deletion claims.
+  exit_codes: 0 for a complete scan/plan/clean (including empty); 1 for scan/validation/execution/config
+    failure; Commander usage errors follow its existing nonzero convention.
+  stable_id: Optional sha256(category + NUL + canonical path) hex ID; path stays the
+    existing picker/desktop key. IDs are identifiers, not authorization tokens.
+  streaming: Optional event callback plus AbortSignal; callback consumers receive
+    start/progress/candidate/warning/done with category/run correlation. Plain --json
+    stays a single summary, not implicit NDJSON.
+  live_ui: Root interactive --live and read-only scan --live reuse the existing picker
+    infrastructure. Sort/search/page view state is independent of the selected canonical
+    paths; nothing is preselected on entry. Enter during scanning cannot submit cleanup.
+    After scan completion, selected roots proceed through final confirmation and ordinary
+    clean validation.
+configuration_additions:
+  excludePaths: string[] keep patterns
+  includeEcosystems: "('node'|'rust'|'go')[] additive opt-ins"
+  nodeModulesDaysOld: integer 0..365; default 30
+  projectScanMaxDepth: integer 0..16; default 4
+  compatibility: extraPaths keeps its additive meaning; valid roots remain canonically
+    validated. Add category IDs to config validation from CATEGORIES rather than a
+    second hardcoded inventory.
+non_goals:
+- Porting Go terminal/raw-stty code or unchecked TUI cleanup.
+- Repo-local trash, native find/fd discovery, Go build/brew invocation or MCP authorization.
+- Deleting source directories lacking sufficient classification evidence.
+- Automatic unattended cleanup of the new repo categories.
+- Redesigning desktop backup behavior, global retention settings, or existing non-repo
+  scanners' category eligibility.
+acceptance_criteria:
+- id: AC1
+  text: Missing, unreadable, symlink or ancestor-only markers never create an eligible
+    repo candidate.
+- id: AC2
+  text: The complete rule table is classified deterministically, including hidden
+    artifacts and a Node/Go dist collision.
+- id: AC3
+  text: Go is absent from defaults; explicit inclusion/category selection enables
+    it subject to exclusions and risk rules across CLI and desktop.
+- id: AC4
+  text: Built-ins plus config additions and explicit root overrides behave identically
+    at scan/clean; overlapping roots cannot bypass an exclusion.
+- id: AC5
+  text: Excluded contents protect a candidate ancestor, tracked/index/HEAD/gitlink/nested-repository
+    contents veto candidates, and Git uncertainty fails closed.
+- id: AC6
+  text: Only selected candidates that retain their policy, identity, ancestry and
+    freshness can reach remove/backup; dry-run reports the same rejection codes.
+- id: AC7
+  text: Dry-run never creates backup files/directories; outside-HOME backup attempts
+    are rejected without destructive fallback; normal backup/restore remains functional.
+- id: AC8
+  text: Candidate and selected-plan dedupe avoid double deletion/counting without
+    hiding a child category when its parent category is unselected.
+- id: AC9
+  text: Metadata counts regular files, accounts for link bytes without following targets,
+    and uses directory/file/link mtimes including the candidate root.
+- id: AC10
+  text: JSON stdout contains one document for success, empty, partial-error and dry-run
+    cases; exit status and actual/planned metrics are explicit.
+- id: AC11
+  text: Path identity, existing aggregate result fields and scanner call compatibility
+    are preserved; CLI and desktop carry immutable per-run repo policy.
+- id: AC12
+  text: Scan events are deterministic enough for consumers, cancellation is read-only,
+    and live review preserves explicit selections through sort/search/paging.
+- id: AC13
+  text: Meaningful fixture tests cover every high-risk criterion; root and desktop
+    test/typecheck/build checks are scoped to touched slices.
+- id: AC14
+  text: Every reported gap is assigned an implementation slice; performance improvements
+    depend on measured data.
+implementation_sequence:
+- id: I1
+  title: Existing Node safety slice
+  primary_surface: node-modules scan-to-clean flow
+  files:
+  - src/repo-artifacts/*
+  - src/scanners/node-modules.ts
+  - src/scanners/base-scanner.ts
+  - src/types.ts
+  deliverables: Rules/walker/validator contract, marker error fix, Git/content exclusions,
+    recent-child freshness and identity evidence.
+  acceptance:
+  - AC1
+  - AC5
+  - AC6
+  - AC9
+  - AC11
+  checks: Focused repo/node/base fixtures; root typecheck/lint.
+- id: I2
+  title: Roots/config/dry-run execution slice
+  primary_surface: CLI and desktop repo request policy
+  files:
+  - src/utils/config.ts
+  - src/utils/fs.ts
+  - src/utils/backup.ts
+  - src/scanners/index.ts
+  - src/commands/scan.ts
+  - src/commands/clean.ts
+  - src/commands/interactive.ts
+  - src/index.ts
+  - desktop/src/main/engine.ts
+  - desktop/src/main/controller.ts
+  deliverables: Root/include/exclude flags, config wiring, immutable clean context,
+    protected/backup preflight, no dry-run mkdir, selected-plan dedupe.
+  acceptance:
+  - AC3
+  - AC4
+  - AC6
+  - AC7
+  - AC8
+  - AC11
+  checks: Focused config/commands/backup/fs/registry and desktop engine/controller
+    tests; root/desktop typecheck.
+- id: I3
+  title: Rust and Node build categories
+  primary_surface: category registration and review
+  files:
+  - src/scanners/rust-artifacts.ts
+  - src/scanners/node-build-artifacts.ts
+  - src/types.ts
+  - src/scanners/index.ts
+  - src/pickers/*
+  - desktop/src/main/settings.ts
+  - desktop/src/renderer/app.ts
+  deliverables: Rust target, separate risky Node output, positive ignore requirement
+    for generic names, hidden artifacts and defaults.
+  acceptance:
+  - AC2
+  - AC3
+  - AC5
+  - AC11
+  checks: Rule/scanner fixtures and category/picker/desktop settings tests.
+- id: I4
+  title: Opt-in Go category
+  primary_surface: Go policy and classification
+  files:
+  - src/scanners/go-artifacts.ts
+  - src/types.ts
+  - src/scanners/index.ts
+  - src/utils/config.ts
+  - desktop/src/main/settings.ts
+  deliverables: Go opt-in/risk boundaries and deterministic dist collision behavior.
+  acceptance:
+  - AC2
+  - AC3
+  - AC5
+  - AC11
+  checks: Go opt-in, collision, default deep/auto selection fixtures.
+- id: I5
+  title: Metadata and clean JSON
+  primary_surface: filesystem outcome serialization
+  files:
+  - src/types.ts
+  - src/utils/fs.ts
+  - src/utils/backup.ts
+  - src/commands/scan.ts
+  - src/commands/clean.ts
+  - src/index.ts
+  deliverables: Stable optional IDs, richer verbose scan JSON, per-item clean outcomes,
+    actual/planned accounting, external-tool action representation.
+  acceptance:
+  - AC9
+  - AC10
+  - AC11
+  checks: Metadata/JSON/error/empty/dry-run fixtures and focused external-tool compatibility
+    tests.
+- id: I6
+  title: Streaming events and live table
+  primary_surface: read-only discovery and review UI
+  files:
+  - src/repo-artifacts/walker.ts
+  - src/scanners/index.ts
+  - src/pickers/file-picker.ts
+  - src/index.ts
+  - src/commands/interactive.ts
+  - src/commands/scan.ts
+  deliverables: Events, cancellation, opt-in live sorting/search/paging and selection
+    retention with final confirmation.
+  acceptance:
+  - AC12
+  checks: Event/cancellation/view-state behavior fixtures plus terminal interaction
+    verification; add @inquirer/core as a direct dependency if its supported API is
+    used.
+- id: I7
+  title: Integrated checks, documentation and measurements
+  primary_surface: completed feature contract
+  files:
+  - README.md
+  - src/pickers/README.md
+  - desktop/README.md
+  - vitest.config.ts
+  deliverables: Document all policy/flag changes and omitted ambiguous non-Git outputs;
+    measure shared walker and Git batches; remove repo safety paths from coverage
+    exclusions.
+  acceptance:
+  - AC13
+  - AC14
+  checks: Affected root/desktop test suites, both typechecks, lint and builds; benchmark
+    small/medium/large and overlapping-root fixtures before choosing optimizations.
+bounded_iteration:
+  primary_planning_surface: repo_artifact_cleanup_prd.yaml; other planning files are
+    derived and synchronized.
+  planning_signal: ruby docs/plans/repo-artifact-cleanup/validate_plan.rb
+  retention_rule: Keep an audit revision only when artifacts parse without duplicate
+    keys, references/criterion coverage and readiness agree, and changed safety recommendations
+    have source/probe evidence.
+  implementation_signal: For each slice run its focused behavior tests and typecheck/lint;
+    integrated desktop slices also run desktop checks. Repeat or broaden when changes/failures
+    justify it.
+  stop: Audit stops at design readiness; implementation is a subsequent task.
+readiness:
+  status: ready
+  blocking_ids: []
+  meaning: The recommended design is concrete enough to implement; this is not product-code
+    verification or recorded user approval.

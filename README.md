@@ -147,7 +147,10 @@ The `.dmg` files are also on [Releases](https://github.com/guhcostan/mac-cleaner
 | `system-cache` | Application caches in ~/Library/Caches |
 | `system-logs` | System and application logs |
 | `dev-cache` | npm, yarn, pip, Xcode DerivedData, CocoaPods |
-| `node-modules` | Orphaned node_modules in old projects |
+| `node-modules` | Stale dependencies beside `package.json` (moderate) |
+| `rust-artifacts` | `target` beside `Cargo.toml` (moderate) |
+| `node-build-artifacts` | Node build output beside `package.json` (risky) |
+| `go-artifacts` | Ignored `bin`/`dist` beside `go.mod` (risky, explicit opt-in) |
 | `homebrew` | Homebrew download cache **and old formula versions** (`brew cleanup --prune=all`) |
 | `docker` | Unused images, stopped containers, build cache — **only the types you select** |
 
@@ -216,6 +219,66 @@ npx mac-cleaner-cli clean --all --yes
 ```
 
 Risky categories (downloads, iOS backups, etc) are always skipped unless you pass `--unsafe`.
+
+### Repository artifacts
+
+```bash
+# Scan only a workspace; repeat --root for additional workspaces.
+npx mac-cleaner-cli scan --category rust-artifacts --root ~/dev --json --verbose
+
+# Simulate validated Node build cleanup as one JSON document.
+npx mac-cleaner-cli clean --categories node-build-artifacts --unsafe --root ~/dev --dry-run --json
+
+# Go requires explicit inclusion or an explicit Go category, plus risky enablement.
+npx mac-cleaner-cli clean --categories go-artifacts --unsafe --root ~/dev --dry-run --json
+
+# Live review: selections start empty. A separate confirmation precedes cleanup.
+npx mac-cleaner-cli --live --root ~/dev
+npx mac-cleaner-cli scan --live --root ~/dev
+```
+
+All repository rules require a readable, regular, non-symlink marker in the **immediate parent**. Node build names are `.next`, `.turbo`, `.parcel-cache`, `coverage`, `dist`, `build`, `out`, and `.cache`. Generic Node names (`coverage`, `dist`, `build`, `out`, `.cache`) and Go `bin`/`dist` additionally require a positive Git ignore match. They are omitted in non-Git projects. A marker or ignore match does not prove that every untracked file is disposable.
+
+Git's current index and HEAD both protect tracked content, including staged additions/removals, conflicts, symlinks and submodules. Nested `.git` files/directories also protect candidate ancestors. Git failures, unreadable contents and incomplete inspection prevent eligibility. Candidate symlinks and traversal through symlinks below canonical roots are rejected. Node wins a Node/Go `dist` collision when both categories are requested; a Go-only request assigns it to Go.
+
+Default roots are `~/Projects`, `~/Developer`, `~/Code`, `~/dev`, `~/workspace`, and `~/repos`. `extraPaths.projects` adds roots for all repository categories; legacy `extraPaths.nodeModules` adds roots only for `node-modules`. A nonempty repeatable `--root` list replaces these roots for that command, without changing other scanners. Roots are canonicalized and restricted to directories below HOME, `/Users`, or `/Volumes`; broad HOME/system roots are rejected. Empty extra-path arrays add nothing.
+
+Add these settings to the existing `~/.maccleanerrc` (or `~/.config/mac-cleaner-cli/config.json`):
+
+```json
+{
+  "extraPaths": { "projects": ["~/work"], "nodeModules": [] },
+  "excludePaths": ["**/keep.txt", "docs/build"],
+  "includeEcosystems": [],
+  "nodeModulesDaysOld": 30,
+  "projectScanMaxDepth": 4,
+  "parallelScans": true,
+  "concurrency": 4
+}
+```
+
+`--exclude <pattern>` repeats and adds to configured keep paths. A basename matches any component; slash-containing patterns match root-relative prefixes on component boundaries. `*` and `?` match within a component, and `**` as a whole component matches zero or more components. Absolute paths, traversal, empty patterns, negation, braces and brackets are invalid. Any excluded descendant protects its entire artifact directory, including across overlapping roots. Malformed repository policy fails closed.
+
+Node dependencies must be at least `nodeModulesDaysOld` days old (integer 0–365, default 30), using the newer of the project-directory mtime and **every candidate entry's newest mtime**, including directories and links. `projectScanMaxDepth` is 0–16 (default 4): children of parents at depth 0 through 4 are inspected. Artifact contents are fully inspected regardless of this discovery cap. Known hidden worktree containers are traversed; dependency contents and Git metadata are pruned during discovery.
+
+Node and Rust are enabled by default. `--include go`, config `includeEcosystems: ["go"]`, or explicitly selecting `go-artifacts` opts into Go; `--all`, `--unsafe`, and `--risky` alone do not. `defaultCategories` narrows default category selection; `excludeCategories` always wins. Risky Node/Go categories start with no preselected files in interactive review. Scripted selection requires the existing explicit risky flag.
+
+Selected repository items are revalidated against their original immutable scan context, current markers/config/keep rules, refreshed Git state, canonical roots and device/inode identity before cleanup. No new discoveries are added during clean. Dry-run exercises the same validation without creating backup sessions or changing files. Outside-HOME roots may be cleaned permanently, but backup mode rejects them with `BACKUP_UNSUPPORTED_PATH`; backup failure never falls back to deletion. Validated selected ancestors cover descendants once, while independently selectable scan rows remain available.
+
+These checks reduce stale-result risk; they are not atomic with deletion, do not detect active builds, and cannot guarantee inactivity. Byte counts are **logical estimates**, including regular-file and symlink-entry sizes; they are not physical disk-block measurements.
+
+### Clean JSON and scan events
+
+`clean --json` requires `--all` or `--categories`; actual cleanup also requires `--yes`. Dry-run does not. Stdout contains one versioned document, including empty and failed runs. Diagnostics go to stderr; JSON mode does not prompt or open a browser. Exit status is 0 for a complete scan/plan/clean (including empty), 1 for scan/config/validation/execution failure; invalid CLI usage follows Commander's nonzero convention.
+
+Per-filesystem-item outcomes include category, path, status, estimated size and rejection/skip reasons. Statuses are `deleted`, `backed-up`, `would-delete`, `would-back-up`, `rejected`, or `skipped`. Covered children report `SKIPPED_COVERED_BY_PARENT` with zero duplicate accounting. External tools such as Docker and Homebrew have action-level outcomes, not invented filesystem deletion records.
+
+Existing aggregate fields remain. Actual `totalFreedSpace`, `totalBackedUpSize`, and `totalCleanedItems` are separate from `wouldFreeSpace`, `wouldBackUpSize`, and `wouldCleanItems`; dry-run actual counters are zero. Scan JSON retains `totalSize`, `totalItems`, category fields and verbose item `path`/`size`, adding optional `id`, `fileCount`, `newestEntryModifiedAt`, and artifact evidence. IDs hash category plus NUL plus canonical path; they identify rows and do not authorize cleanup.
+
+Library callers can pass `onEvent` and `signal: AbortSignal` to scanner options. Events are `start`, `progress`, `candidate`, `warning`, and `done`, correlated by `runId` and category where applicable. The registry shares one repository discovery pass per request. Cancellation returns no usable cleanup plan. The Promise API remains; repository callers pass `scanResult.context` as the additive fourth argument to `clean(items, dryRun, backupDir, context)`. Bare repository cleanup without scan evidence is refused.
+
+Live review requires a terminal and cannot be combined with JSON. Use `s`/`m`/`p` for size/newest-mtime/path sorting, `/` for search, `n`/`b` for pages, arrows to move, space to select, and `q` to cancel. Selection survives view changes. Enter during scanning cannot submit; after completion it finishes review before the ordinary final confirmation and validation. `scan --live` is read-only.
+
 
 ### Uninstall Apps
 

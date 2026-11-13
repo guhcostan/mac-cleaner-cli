@@ -555,7 +555,7 @@ function toggleRow(label: string, hint: string | null, checked: boolean, onChang
 
 function renderSettings(s: AppState): Child[] {
   const auto = s.settings.autoClean;
-  const autoCategories = s.categories.filter((c) => c.safetyLevel !== 'risky');
+  const autoCategories = s.categories.filter((c) => c.safetyLevel !== 'risky' && !['rust-artifacts', 'node-build-artifacts', 'go-artifacts'].includes(c.id));
 
   return [
     errorBanner(),

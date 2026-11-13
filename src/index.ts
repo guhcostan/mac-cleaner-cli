@@ -5,7 +5,7 @@ import { ExitPromptError } from '@inquirer/core';
 import { appInstallCommand, cleanCommand, interactiveCommand, listCategories, maintenanceCommand, scanCommand, uninstallCommand } from './commands/index.js';
 import { initConfig, configExists, listBackups, cleanOldBackups, restoreBackup, loadConfig, formatSize } from './utils/index.js';
 import { formatError, isDebugEnabled } from './utils/errors.js';
-import { CATEGORIES, type CategoryId } from './types.js';
+import { CATEGORIES, type CategoryId, type Ecosystem } from './types.js';
 import pkg from '../package.json' with { type: 'json' };
 
 function parseCategoryId(value: string): CategoryId {
@@ -19,6 +19,15 @@ function parseCategoryId(value: string): CategoryId {
 
 function parseCategoryIdList(value: string): CategoryId[] {
   return value.split(',').map((id) => parseCategoryId(id.trim()));
+}
+
+function appendOption(value: string, previous: string[] = []): string[] { return [...previous, value]; }
+function parseEcosystems(value: string): Ecosystem[] {
+  return value.split(',').map((part) => {
+    const name = part.trim();
+    if (!['node', 'rust', 'go'].includes(name)) throw new InvalidArgumentError(`Unknown ecosystem "${name}"`);
+    return name as Ecosystem;
+  });
 }
 
 /**
@@ -81,6 +90,10 @@ program
   .name('mac-cleaner-cli')
   .description('Open source CLI tool to clean your Mac')
   .version(pkg.version)
+  .option('--root <path>', 'Repository root override (repeatable)', appendOption)
+  .option('--include <ecosystems>', 'Add ecosystems (node,rust,go)', parseEcosystems)
+  .option('--exclude <pattern>', 'Keep matching repository paths (repeatable)', appendOption)
+  .option('--live', 'Review discovery live with sorting, search and paging')
   .option('-r, --risky', 'Include risky categories (downloads, iOS backups, etc)')
   .option('-f, --file-picker', 'Force file picker for ALL categories')
   .option('-A, --absolute-paths', 'Show absolute paths instead of truncated notations')
@@ -89,10 +102,14 @@ program
   .action(action(async (options) => {
     const config = await loadConfig();
     await interactiveCommand({
+      live: options.live ?? program.opts().live,
+      roots: [...(program.opts().root ?? []), ...(options.root ?? [])],
+      includeEcosystems: [...(program.opts().include ?? []), ...(options.include ?? [])],
+      excludePaths: [...(program.opts().exclude ?? []), ...(options.exclude ?? [])],
       includeRisky: options.risky,
       filePicker: options.filePicker ?? config.filePicker,
       absolutePaths: options.absolutePaths,
-      dryRun: options.dryRun,
+      dryRun: options.dryRun ?? program.opts().dryRun,
       noProgress: !options.progress,
     });
   }));
@@ -100,12 +117,20 @@ program
 program
   .command('scan')
   .description('Scan for cleanable files without deleting anything')
+  .option('--root <path>', 'Repository root override (repeatable)', appendOption)
+  .option('--include <ecosystems>', 'Add ecosystems (node,rust,go)', parseEcosystems)
+  .option('--exclude <pattern>', 'Keep matching repository paths (repeatable)', appendOption)
+  .option('--live', 'Live read-only review (interactive terminal only)')
   .option('-c, --category <id>', 'Scan a single category', parseCategoryId)
   .option('-v, --verbose', 'Show the largest items in each category')
   .option('--json', 'Output results as JSON (for scripts and integrations)')
   .option('--no-progress', 'Disable progress bar')
   .action(action(async (options) => {
     await scanCommand({
+      live: options.live ?? program.opts().live,
+      roots: [...(program.opts().root ?? []), ...(options.root ?? [])],
+      includeEcosystems: [...(program.opts().include ?? []), ...(options.include ?? [])],
+      excludePaths: [...(program.opts().exclude ?? []), ...(options.exclude ?? [])],
       category: options.category,
       verbose: options.verbose,
       json: options.json,
@@ -116,6 +141,10 @@ program
 program
   .command('clean')
   .description('Clean cleanable files (non-interactive with --all or --categories)')
+  .option('--root <path>', 'Repository root override (repeatable)', appendOption)
+  .option('--include <ecosystems>', 'Add ecosystems (node,rust,go)', parseEcosystems)
+  .option('--exclude <pattern>', 'Keep matching repository paths (repeatable)', appendOption)
+  .option('--json', 'Output one JSON result; requires --all/--categories and --yes for actual cleanup')
   .option('-a, --all', 'Clean all non-risky categories without selection')
   .option('-c, --categories <ids>', 'Comma-separated category ids to clean (e.g. trash,browser-cache)', parseCategoryIdList)
   .option('-y, --yes', 'Skip confirmation prompt')
@@ -124,10 +153,15 @@ program
   .option('--no-progress', 'Disable progress bar')
   .action(action(async (options) => {
     await cleanCommand({
+      json: options.json,
+      live: options.live ?? program.opts().live,
+      roots: [...(program.opts().root ?? []), ...(options.root ?? [])],
+      includeEcosystems: [...(program.opts().include ?? []), ...(options.include ?? [])],
+      excludePaths: [...(program.opts().exclude ?? []), ...(options.exclude ?? [])],
       all: options.all,
       categories: options.categories,
       yes: options.yes,
-      dryRun: options.dryRun,
+      dryRun: options.dryRun ?? program.opts().dryRun,
       unsafe: options.unsafe,
       noProgress: !options.progress,
     });
@@ -142,7 +176,7 @@ program
   .action(action(async (options) => {
     await uninstallCommand({
       yes: options.yes,
-      dryRun: options.dryRun,
+      dryRun: options.dryRun ?? program.opts().dryRun,
       noProgress: !options.progress,
     });
   }));
@@ -161,7 +195,7 @@ program
       purgeable: options.purgeable,
       timemachine: options.timemachine,
       yes: options.yes,
-      dryRun: options.dryRun,
+      dryRun: options.dryRun ?? program.opts().dryRun,
     });
   }));
 

@@ -48,3 +48,15 @@ describe('settings', () => {
     expect(next.autoClean.categories).toEqual(['trash']);
   });
 });
+
+it('blocks new repository categories in quick/scheduled cleanup, while Rust enters deep defaults', () => {
+  const next = mergeSettings(DEFAULT_SETTINGS, { autoClean: { categories: ['rust-artifacts', 'node-build-artifacts', 'trash'] } });
+  expect(next.autoClean.categories).toEqual(['trash']);
+  expect(DEFAULT_DEEP_CATEGORIES).toContain('rust-artifacts');
+  expect(DEFAULT_DEEP_CATEGORIES).not.toContain('node-build-artifacts');
+});
+
+it('never enables Go in default deep scans or unattended cleanup', () => {
+  expect(DEFAULT_DEEP_CATEGORIES).not.toContain('go-artifacts');
+  expect(mergeSettings(DEFAULT_SETTINGS, { autoClean: { categories: ['go-artifacts'] } }).autoClean.categories).toEqual([]);
+});

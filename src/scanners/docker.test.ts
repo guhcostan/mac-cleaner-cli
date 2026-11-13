@@ -69,8 +69,10 @@ describe('DockerScanner', () => {
 
     const result = await scanner.clean(items, true);
 
-    expect(result.cleanedItems).toBe(2);
-    expect(result.freedSpace).toBe(1500000000);
+    expect(result.cleanedItems).toBe(0);
+    expect(result.wouldCleanItems).toBe(2);
+    expect(result.freedSpace).toBe(0);
+    expect(result.wouldFreeSpace).toBe(1500000000);
     expect(result.errors).toHaveLength(0);
     // spawn should not be called in dry run
     expect(mockSpawn).not.toHaveBeenCalled();

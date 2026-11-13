@@ -1,0 +1,622 @@
+{
+  "version": "1.1",
+  "feature": "repo-artifact-cleanup",
+  "canonical_contract": "repo_artifact_cleanup_prd.yaml",
+  "forbidden_claims": [
+    "A matching directory name or marker proves all contents disposable.",
+    "Ignore matching alone protects tracked contents.",
+    "All Go scan JSON includes the live UI metadata.",
+    "Dry-run is equivalent without checking backup/type/existence paths.",
+    "Validation eliminates all filesystem or Git races.",
+    "Logical size equals physical space actually freed.",
+    "Planning syntax checks are passing product tests or user approval."
+  ],
+  "cases": [
+    {
+      "id": "EV1",
+      "story_ids": [
+        "US1",
+        "US5"
+      ],
+      "requirement_ids": [
+        "FR1",
+        "FR4",
+        "SR1"
+      ],
+      "criterion_ids": [
+        "AC1"
+      ],
+      "prompt_or_scenario": "Old nonempty node_modules beside missing/unreadable/symlink package.json; repeat with marker in ancestor only.",
+      "expected_behavior": "Do not emit an eligible orphan candidate.",
+      "assertions": [
+        "Missing marker omits candidate.",
+        "Inaccessible marker creates a diagnostic, not eligibility.",
+        "No catch-all error path labels it cleanable."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV2",
+      "story_ids": [
+        "US1",
+        "US2",
+        "US3"
+      ],
+      "requirement_ids": [
+        "FR2",
+        "FR3",
+        "FR5",
+        "FR4"
+      ],
+      "criterion_ids": [
+        "AC1",
+        "AC2"
+      ],
+      "prompt_or_scenario": "Create every rule directory beside the required marker and identical names in unmarked/ancestor-marked locations.",
+      "expected_behavior": "Only matching immediate-parent rules qualify; category mapping is stable.",
+      "assertions": [
+        "All table names covered, including .next/.turbo/.cache.",
+        "Rust/Node/Go marker types cannot activate each other's rules.",
+        "Node has precedence for enabled Node/Go dist; Go-only category scans assign Go."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV3",
+      "story_ids": [
+        "US3"
+      ],
+      "requirement_ids": [
+        "FR5",
+        "FR12",
+        "SR8"
+      ],
+      "criterion_ids": [
+        "AC3"
+      ],
+      "prompt_or_scenario": "Default and explicit-Go CLI/direct/desktop scans; include risk flag or --all alone; exclude Go by config.",
+      "expected_behavior": "Go inclusion is explicit and independent of risk flags.",
+      "assertions": [
+        "Default scans/deep defaults omit Go.",
+        "Explicit include or explicit Go category opts in.",
+        "excludeCategories wins.",
+        "No new repo category is allowed in scheduled/quick desktop cleanup."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV4",
+      "story_ids": [
+        "US4"
+      ],
+      "requirement_ids": [
+        "FR7",
+        "FR12",
+        "FR18"
+      ],
+      "criterion_ids": [
+        "AC4",
+        "AC11"
+      ],
+      "prompt_or_scenario": "Defaults plus projects/legacy nodeModules config, empty extras, then repeated --root for a command.",
+      "expected_behavior": "Extras append; explicit roots override only repo roots.",
+      "assertions": [
+        "~/dev remains scanned after config --init.",
+        "Legacy nodeModules extras do not enable other ecosystems.",
+        "Invalid canonical roots fail policy validation.",
+        "Non-repo scanner search paths do not change."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV5",
+      "story_ids": [
+        "US4",
+        "US5"
+      ],
+      "requirement_ids": [
+        "FR8",
+        "SR10"
+      ],
+      "criterion_ids": [
+        "AC4",
+        "AC5"
+      ],
+      "prompt_or_scenario": "Apply basename/prefix/glob keep patterns, zero-segment ** matches, malformed patterns and overlapping roots.",
+      "expected_behavior": "Keep rules remain conservative and deterministic.",
+      "assertions": [
+        "**/target matches target at root and below.",
+        "Prefix docs/build cannot match docs/building.",
+        "Malformed config/CLI patterns fail instead of being silently discarded.",
+        "A second root cannot bypass an exclusion."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV6",
+      "story_ids": [
+        "US4",
+        "US5"
+      ],
+      "requirement_ids": [
+        "FR8",
+        "FR10",
+        "SR10"
+      ],
+      "criterion_ids": [
+        "AC5",
+        "AC6"
+      ],
+      "prompt_or_scenario": "Candidate dist contains dist/keep.txt excluded by pattern; another child contains a nested .git directory/file.",
+      "expected_behavior": "The whole candidate is ineligible.",
+      "assertions": [
+        "No backup/removal of dist.",
+        "Rejected reason identifies excluded content or nested repository.",
+        "Pruning does not hide evidence required to veto the candidate."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV7",
+      "story_ids": [
+        "US5"
+      ],
+      "requirement_ids": [
+        "SR2",
+        "SR3"
+      ],
+      "criterion_ids": [
+        "AC5"
+      ],
+      "prompt_or_scenario": "Ignore dist but force-track a descendant; add tracked symlink/conflict/staged-addition and staged-removal-still-on-disk fixtures.",
+      "expected_behavior": "All tracked overlaps veto candidate regardless of ignore matches.",
+      "assertions": [
+        "Index and HEAD union protects paths.",
+        "NUL parsing preserves tabs/newlines.",
+        "Ignore match is never sufficient by itself."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV8",
+      "story_ids": [
+        "US5"
+      ],
+      "requirement_ids": [
+        "SR2",
+        "SR4",
+        "OR3"
+      ],
+      "criterion_ids": [
+        "AC5"
+      ],
+      "prompt_or_scenario": "Worktree uses .git file; submodule gitlink overlaps artifact; Git executable/query/index/HEAD fails; unborn repo has staged files.",
+      "expected_behavior": "Correct worktree context is queried and uncertainty fails closed.",
+      "assertions": [
+        "Different worktree indexes are not shared by common Git-dir key.",
+        "Gitlinks protect candidate ancestors.",
+        "Verified unborn state is distinguished from a broken query.",
+        "Query timeout/output limit/missing Git for a detected repo rejects candidates."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV9",
+      "story_ids": [
+        "US1",
+        "US3"
+      ],
+      "requirement_ids": [
+        "FR3",
+        "FR5",
+        "SR1",
+        "SR3"
+      ],
+      "criterion_ids": [
+        "AC2",
+        "AC5"
+      ],
+      "prompt_or_scenario": "Generic output names are ignored/unignored in Git or exist in a non-Git marked project.",
+      "expected_behavior": "Generic names require marker plus positive ignore evidence and tracked-content veto.",
+      "assertions": [
+        "Non-Git generic dist/build/bin are omitted.",
+        "Recognized non-Git node_modules/.next/target remain marker-qualified.",
+        "No claim that marker/ignore proves every untracked file disposable."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV10",
+      "story_ids": [
+        "US5"
+      ],
+      "requirement_ids": [
+        "FR10",
+        "SR5",
+        "SR9"
+      ],
+      "criterion_ids": [
+        "AC6"
+      ],
+      "prompt_or_scenario": "After scan replace candidate with a new directory at same path, remove marker, replace a parent with a symlink or change root binding.",
+      "expected_behavior": "Only original selected candidates that retain identity/policy can mutate.",
+      "assertions": [
+        "dev/ino mismatch produces rejection.",
+        "lstat occurs before following candidate canonicalization.",
+        "Ancestry/root containment is rechecked.",
+        "No atomic/zero-race guarantee is advertised."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV11",
+      "story_ids": [
+        "US1",
+        "US5"
+      ],
+      "requirement_ids": [
+        "SR7",
+        "FR14"
+      ],
+      "criterion_ids": [
+        "AC6",
+        "AC9"
+      ],
+      "prompt_or_scenario": "Project directory appears old but a nested existing file, empty directory or symlink entry is recent; include exact age boundary.",
+      "expected_behavior": "Recent candidate activity makes node_modules ineligible.",
+      "assertions": [
+        "Effective age uses max project/newest candidate entry time.",
+        "30-day default and configured threshold are honored.",
+        "Newest entry includes directories and root, without following symlinks."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV12",
+      "story_ids": [
+        "US5"
+      ],
+      "requirement_ids": [
+        "SR5",
+        "SR6",
+        "FR10"
+      ],
+      "criterion_ids": [
+        "AC6",
+        "AC7"
+      ],
+      "prompt_or_scenario": "Select protected, missing, replaced and out-of-root paths in dry-run and real cleanup.",
+      "expected_behavior": "Both paths reject the same stable states.",
+      "assertions": [
+        "PROTECTED/MISSING/REPLACED/out-of-root reasons are structured.",
+        "Dry-run performs no filesystem mutation.",
+        "Invalid repo item metadata/ID cannot authorize arbitrary descendants."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV13",
+      "story_ids": [
+        "US4",
+        "US5"
+      ],
+      "requirement_ids": [
+        "FR11",
+        "SR6"
+      ],
+      "criterion_ids": [
+        "AC7"
+      ],
+      "prompt_or_scenario": "Backup enabled with outside-HOME project root; also a protected path and an eligible home artifact.",
+      "expected_behavior": "Backup feasibility is checked in simulation and actual execution.",
+      "assertions": [
+        "Outside-HOME yields BACKUP_UNSUPPORTED_PATH and is not deleted.",
+        "Dry-run does not call ensureBackupDir/mkdir/rename/cp/rm.",
+        "Eligible HOME backup retains restore mapping.",
+        "Failed backup never falls back to delete."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV14",
+      "story_ids": [
+        "US5"
+      ],
+      "requirement_ids": [
+        "FR11",
+        "FR18"
+      ],
+      "criterion_ids": [
+        "AC7",
+        "AC11"
+      ],
+      "prompt_or_scenario": "Normal HOME artifact backup followed by restore, including copy fallback and failed backup case.",
+      "expected_behavior": "Existing backup contract remains usable for validated candidates.",
+      "assertions": [
+        "backedUpSize is separate from freedSpace.",
+        "Restore returns the original artifact.",
+        "Failure outcome identifies the affected path."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV15",
+      "story_ids": [
+        "US1",
+        "US5"
+      ],
+      "requirement_ids": [
+        "FR9"
+      ],
+      "criterion_ids": [
+        "AC8"
+      ],
+      "prompt_or_scenario": "Select worktree parent plus node_modules child, then child alone, then invalid parent plus valid child.",
+      "expected_behavior": "Dedupe only valid selected ancestor overlaps.",
+      "assertions": [
+        "Independent scan rows remain selectable.",
+        "Child-alone request stays cleanable.",
+        "A rejected ancestor does not suppress an independently selected child.",
+        "Covered-child result has zero duplicate byte/item accounting."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV16",
+      "story_ids": [
+        "US2",
+        "US6"
+      ],
+      "requirement_ids": [
+        "FR6",
+        "FR14"
+      ],
+      "criterion_ids": [
+        "AC9"
+      ],
+      "prompt_or_scenario": "Tree with regular files, empty directories, hardlinks, symlinks and unreadable descendants.",
+      "expected_behavior": "Metadata follows logical-size and newest-entry semantics; incomplete inspection blocks eligibility.",
+      "assertions": [
+        "Regular fileCount excludes symlinks.",
+        "Link lstat bytes count without following link target.",
+        "Root/dir/file/link mtimes contribute to newestEntryModifiedAt.",
+        "No physical freed-space guarantee follows from logical size."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV17",
+      "story_ids": [
+        "US6"
+      ],
+      "requirement_ids": [
+        "FR13",
+        "FR15"
+      ],
+      "criterion_ids": [
+        "AC10"
+      ],
+      "prompt_or_scenario": "Serialize successful, empty, skipped, scan-error and partially failing clean --json output.",
+      "expected_behavior": "One parseable document carries outcomes and errors with correct exit status.",
+      "assertions": [
+        "No progress/donation/pretty summary contaminates stdout.",
+        "Per-item filesystem results include category/path/status/reason.",
+        "Existing scan summary and verbose path/size keys remain.",
+        "Empty scan failures do not print an already-clean success."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV18",
+      "story_ids": [
+        "US6"
+      ],
+      "requirement_ids": [
+        "FR13",
+        "SR6"
+      ],
+      "criterion_ids": [
+        "AC7",
+        "AC10"
+      ],
+      "prompt_or_scenario": "Run deterministic JSON dry-run with deletion and backup routing, then actual clean.",
+      "expected_behavior": "Planned and actual results are explicitly separate.",
+      "assertions": [
+        "Dry-run actual cleanedItems/freedSpace/backedUpSize are zero.",
+        "would-delete/would-back-up outcomes and planned metrics are present.",
+        "Noninteractive actual JSON clean without --yes fails without prompting.",
+        "JSON mode still respects risk and ecosystem policy."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV19",
+      "story_ids": [
+        "US6"
+      ],
+      "requirement_ids": [
+        "FR13",
+        "OR2"
+      ],
+      "criterion_ids": [
+        "AC10",
+        "AC11"
+      ],
+      "prompt_or_scenario": "JSON clean uses Homebrew/Docker external cleanup scanners with dry-run/partial failure.",
+      "expected_behavior": "External actions are represented at action/category level.",
+      "assertions": [
+        "Do not fabricate per-path eligibility or exact file deletion for external tools.",
+        "supportsBackup=false behavior remains explicit.",
+        "No new real external cleanup runs in test fixtures."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV20",
+      "story_ids": [
+        "US1",
+        "US5"
+      ],
+      "requirement_ids": [
+        "FR10",
+        "FR12",
+        "FR18"
+      ],
+      "criterion_ids": [
+        "AC6",
+        "AC11"
+      ],
+      "prompt_or_scenario": "Two overlapping concurrent scans use different roots/include/exclude policy; desktop deep preview is followed by validation.",
+      "expected_behavior": "Each clean uses its own selected snapshot and current safety vetoes.",
+      "assertions": [
+        "No singleton last-scan authorization state.",
+        "No validation rescan adds new items not shown in preview.",
+        "Original first three clean arguments stay compatible.",
+        "Direct scan callers resolve safe config defaults; bare clean cannot opt Go in."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV21",
+      "story_ids": [
+        "US6"
+      ],
+      "requirement_ids": [
+        "FR14",
+        "FR15"
+      ],
+      "criterion_ids": [
+        "AC9",
+        "AC11"
+      ],
+      "prompt_or_scenario": "Same category/canonical path appears in CLI/desktop/picker and repeated scans; change path/category.",
+      "expected_behavior": "Identity is stable for the same category/path while existing path selection still works.",
+      "assertions": [
+        "Stable ID uses deterministic hash with unambiguous separator.",
+        "Paths and existing item fields remain.",
+        "IDs are not deletion credentials."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV22",
+      "story_ids": [
+        "US1",
+        "US2",
+        "US4"
+      ],
+      "requirement_ids": [
+        "FR6",
+        "FR18"
+      ],
+      "criterion_ids": [
+        "AC2",
+        "AC4",
+        "AC13"
+      ],
+      "prompt_or_scenario": "Mixed ecosystem scan with hidden build names/worktree containers, orphan dependencies, max-depth boundaries and overlap roots.",
+      "expected_behavior": "Discovery respects exact depth semantics and shares work per request.",
+      "assertions": [
+        "Artifacts are recognized before dot-directory pruning.",
+        "Do not descend dependency/Git metadata trees.",
+        "Inspect candidates beside parents at depth 0..4 with default depth.",
+        "Candidate contents are fully checked regardless of discovery cap."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV23",
+      "story_ids": [
+        "US7"
+      ],
+      "requirement_ids": [
+        "FR16"
+      ],
+      "criterion_ids": [
+        "AC12"
+      ],
+      "prompt_or_scenario": "Collect event callbacks during mixed scan, partial root failure and cancellation.",
+      "expected_behavior": "Events correlate to run/category and cancelled scans never trigger cleanup.",
+      "assertions": [
+        "One start and terminal done per run; candidate/warning counts agree with summary.",
+        "Aborted scan does not publish a complete clean plan.",
+        "Single-document JSON mode is preserved."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV24",
+      "story_ids": [
+        "US7"
+      ],
+      "requirement_ids": [
+        "FR17",
+        "SR8"
+      ],
+      "criterion_ids": [
+        "AC12"
+      ],
+      "prompt_or_scenario": "Live review receives candidates while user changes sort/search/page and selects explicit paths.",
+      "expected_behavior": "View changes preserve selected identities and cannot initiate mutation.",
+      "assertions": [
+        "Initial selections are empty.",
+        "Enter while scanning cannot submit deletion.",
+        "Sort ties use canonical path for deterministic ordering.",
+        "After completion, user sees selection and confirms before validator/mutation."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV25",
+      "story_ids": [
+        "US1",
+        "US2",
+        "US3",
+        "US4",
+        "US5",
+        "US6",
+        "US7"
+      ],
+      "requirement_ids": [
+        "OR1",
+        "OR4",
+        "FR18"
+      ],
+      "criterion_ids": [
+        "AC11",
+        "AC13",
+        "AC14"
+      ],
+      "prompt_or_scenario": "Review integrated CLI/desktop adapter changes and execute affected fixture suites/typechecks/builds.",
+      "expected_behavior": "All surfaces implement the same policy contract and checks match the changed scope.",
+      "assertions": [
+        "New IDs/config help/docs and risk defaults are consistent.",
+        "Node discovery/safety paths receive meaningful coverage.",
+        "Root checks are supplemented with desktop checks when those files change."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    },
+    {
+      "id": "EV26",
+      "story_ids": [
+        "US4",
+        "US7"
+      ],
+      "requirement_ids": [
+        "OR3",
+        "OR4"
+      ],
+      "criterion_ids": [
+        "AC14"
+      ],
+      "prompt_or_scenario": "Benchmark implemented shared walker plus Git checks on representative fixture sizes, recording process counts and overlap-root work.",
+      "expected_behavior": "Collect evidence before selecting performance changes.",
+      "assertions": [
+        "No benchmark is claimed from this planning audit.",
+        "Git subprocess count scales with worktrees/batches, not each candidate.",
+        "Record wall time/memory/candidate inspection cost and compare only equivalent policies."
+      ],
+      "evidence_level": "planned implementation behavior; not yet executed"
+    }
+  ]
+}

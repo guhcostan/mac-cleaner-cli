@@ -1,8 +1,9 @@
 import chalk from 'chalk';
+import { cleanSelectedResults } from '../utils/cleanup.js';
 import confirm from '@inquirer/confirm';
 import checkbox from '@inquirer/checkbox';
 import { spawn } from 'child_process';
-import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel } from '../types.js';
+import type { CategoryId, CleanSummary, CleanableItem, ScanResult, SafetyLevel, RepoRequestOptions } from '../types.js';
 import { runAllScans, runScans, getScanner, getAllScanners } from '../scanners/index.js';
 import { formatSize, createScanProgress, createCleanProgress, sanitizeDisplayName, loadConfig, ensureBackupDir, getBackupDir } from '../utils/index.js';
 import { printScanErrors } from './scan.js';
@@ -39,7 +40,9 @@ function openUrl(url: string): void {
   }).unref();
 }
 
-interface CleanCommandOptions {
+interface CleanCommandOptions extends RepoRequestOptions {
+  json?: boolean;
+  live?: boolean;
   all?: boolean;
   yes?: boolean;
   dryRun?: boolean;
@@ -63,6 +66,8 @@ interface CategoryChoice {
 }
 
 export async function cleanCommand(options: CleanCommandOptions): Promise<CleanSummary | null> {
+  if (options.json) return cleanJsonCommand(options);
+  if (options.live) throw new Error('Use root --live for interactive cleanup review');
   const showProgress = !options.noProgress && process.stdout.isTTY;
   const categoryIds = options.categories?.length
     ? options.categories
@@ -70,8 +75,9 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
   const scanProgress = showProgress ? createScanProgress(categoryIds.length) : null;
 
   const scanOptions = {
-    parallel: true,
-    concurrency: 4,
+    roots: options.roots,
+    includeEcosystems: options.includeEcosystems,
+    excludePaths: options.excludePaths,
     onProgress: (completed: number, _total: number, scanner: { category: { name: string } }) => {
       scanProgress?.update(completed, `Scanning ${scanner.category.name}...`);
     },
@@ -85,7 +91,9 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
 
   printScanErrors(summary.results);
 
-  if (summary.totalSize === 0) {
+  if (summary.results.some((r) => r.error)) process.exitCode = 1;
+  if (summary.totalItems === 0) {
+    if (summary.results.some((r) => r.error)) return null;
     console.log(chalk.green('\n✓ Your Mac is already clean!\n'));
     return null;
   }
@@ -140,17 +148,6 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
     }
   }
 
-  if (options.dryRun) {
-    console.log(chalk.cyan('\n[DRY RUN] Would clean the following:'));
-    for (const { categoryId, items } of selectedItems) {
-      const scanner = getScanner(categoryId);
-      const size = items.reduce((sum, i) => sum + i.size, 0);
-      console.log(`  ${scanner.category.name}: ${items.length} items (${formatSize(size)})`);
-    }
-    console.log(chalk.cyan(`\n[DRY RUN] Would free ${formatSize(totalToClean)}\n`));
-    return null;
-  }
-
   // The `clean` subcommand honours `backupEnabled` exactly like the interactive
   // flow does. Backing up in one entry point and deleting permanently in the
   // other would be worse than not backing up at all: the user's expectation
@@ -180,38 +177,22 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
 
   const backupDir =
     backupEnabled && selectedItems.some(({ categoryId }) => getScanner(categoryId)?.supportsBackup !== false)
-      ? await ensureBackupDir()
+      ? (options.dryRun ? `${getBackupDir()}/dry-run` : await ensureBackupDir())
       : undefined;
 
   const cleanProgress = showProgress ? createCleanProgress(selectedItems.length) : null;
 
-  const cleanResults: CleanSummary = {
-    results: [],
-    totalFreedSpace: 0,
-    totalBackedUpSize: 0,
-    backupDir,
-    totalCleanedItems: 0,
-    totalErrors: 0,
-  };
-
-  let cleanedCount = 0;
-  for (const { categoryId, items } of selectedItems) {
-    const scanner = getScanner(categoryId);
-    cleanProgress?.update(cleanedCount, `Cleaning ${scanner.category.name}...`);
-
-    const scannerBackupDir = scanner.supportsBackup === false ? undefined : backupDir;
-    const result = await scanner.clean(items, options.dryRun, scannerBackupDir);
-    cleanResults.results.push(result);
-    cleanResults.totalFreedSpace += result.freedSpace;
-    cleanResults.totalBackedUpSize = (cleanResults.totalBackedUpSize ?? 0) + (result.backedUpSize ?? 0);
-    cleanResults.totalCleanedItems += result.cleanedItems;
-    cleanResults.totalErrors += result.errors.length;
-    cleanedCount++;
-  }
+  const cleanResults = await cleanSelectedResults(selectedItems.map(({ categoryId, items }) => ({
+    ...summary.results.find((r) => r.category.id === categoryId)!, items,
+  })), getScanner, {
+    dryRun: options.dryRun, backupDir,
+    onProgress: (completed, result) => cleanProgress?.update(completed, `Cleaning ${result.category.name}...`),
+  });
 
   cleanProgress?.finish();
 
-  await printCleanResults(cleanResults);
+  if (options.dryRun) console.log(`[DRY RUN] Would free ${formatSize(cleanResults.wouldFreeSpace ?? 0)}; would back up ${formatSize(cleanResults.wouldBackUpSize ?? 0)}`);
+  else await printCleanResults(cleanResults);
 
   // Failures during deletion must be visible to callers (CI, cron, scripts)
   if (cleanResults.totalErrors > 0) {
@@ -219,6 +200,37 @@ export async function cleanCommand(options: CleanCommandOptions): Promise<CleanS
   }
 
   return cleanResults;
+}
+
+/** One stdout document, even for an empty, invalid or partially failed run. */
+async function cleanJsonCommand(options: CleanCommandOptions): Promise<CleanSummary> {
+  let result: CleanSummary = { results: [], totalFreedSpace: 0, totalBackedUpSize: 0, totalCleanedItems: 0, totalErrors: 0, wouldFreeSpace: 0, wouldBackUpSize: 0, wouldCleanItems: 0 };
+  const errors: { category?: CategoryId; error: string }[] = [];
+  const skippedCategories: { category: CategoryId; reason: string }[] = [];
+  let warnings: { category: CategoryId; path: string; reason: string }[] = [];
+  try {
+    if (options.live) throw new Error('--live and --json cannot be combined');
+    if (!options.all && !options.categories?.length) throw new Error('JSON_SELECTION_REQUIRED: use --all or --categories');
+    if (!options.dryRun && !options.yes) throw new Error('JSON_CONFIRMATION_REQUIRED: actual JSON cleanup requires --yes');
+    const request = { roots: options.roots, includeEcosystems: options.includeEcosystems, excludePaths: options.excludePaths };
+    const scanned = options.categories?.length ? await runScans(options.categories, request) : await runAllScans(request);
+    warnings = scanned.results.flatMap((r) => (r.warnings ?? []).map((w) => ({ category: r.category.id, ...w })));
+    const selected = scanned.results.filter((r) => {
+      if (r.error) errors.push({ category: r.category.id, error: r.error });
+      const reason = r.skipped ?? (!options.unsafe && r.category.safetyLevel === 'risky' ? 'RISK_NOT_ENABLED' : undefined);
+      if (reason) skippedCategories.push({ category: r.category.id, reason });
+      return !reason && r.items.length > 0;
+    });
+    const config = await loadConfig();
+    if (config.repoPolicyError) throw new Error(config.repoPolicyError);
+    const backup = config.backupEnabled && selected.some((r) => getScanner(r.category.id).supportsBackup !== false);
+    const backupDir = backup ? (options.dryRun ? `${getBackupDir()}/dry-run` : await ensureBackupDir()) : undefined;
+    result = await cleanSelectedResults(selected, getScanner, { dryRun: options.dryRun, backupDir });
+  } catch (error) { errors.push({ error: error instanceof Error ? error.message : String(error) }); }
+  result.totalErrors += errors.length;
+  console.log(JSON.stringify({ version: 1, dryRun: !!options.dryRun, sizeBasis: 'estimated-logical-bytes', ...result, errors, warnings, skippedCategories }, null, 2));
+  if (result.totalErrors > 0) process.exitCode = 1;
+  return result;
 }
 
 async function selectItemsInteractively(

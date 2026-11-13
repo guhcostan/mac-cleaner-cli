@@ -39,7 +39,7 @@ describe('scanCategories', () => {
   it('turns a scanner crash into an error result', async () => {
     const registry = { trash: fakeScanner('trash', [], { failScan: true }) };
     const [result] = await scanCategories(registry, ['trash']);
-    expect(result.error).toBe('boom');
+    expect(result.error).toContain('boom');
     expect(result.items).toEqual([]);
   });
 });
@@ -57,7 +57,7 @@ describe('cleanScanResults', () => {
     expect(record.freedSpace).toBe(115);
     expect(record.cleanedItems).toBe(3);
     expect(record.categories.map((c) => c.id)).toEqual(['system-logs', 'trash']);
-    expect(trash.clean).toHaveBeenCalledWith(results[0].items, false);
+    expect(trash.clean).toHaveBeenCalledWith(results[0].items, false, undefined, undefined);
   });
 
   it('applies the item filter and skips categories left empty', async () => {

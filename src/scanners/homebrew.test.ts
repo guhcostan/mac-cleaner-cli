@@ -181,8 +181,10 @@ describe('HomebrewScanner', () => {
     it('should not touch anything during a dry run', async () => {
       const result = await scanner.clean([cacheItem], true);
 
-      expect(result.cleanedItems).toBe(1);
-      expect(result.freedSpace).toBe(1000);
+      expect(result.cleanedItems).toBe(0);
+      expect(result.wouldCleanItems).toBe(1);
+      expect(result.freedSpace).toBe(0);
+      expect(result.wouldFreeSpace).toBe(1000);
       expect(result.errors).toHaveLength(0);
       expect(spawnCalls).toHaveLength(0);
     });

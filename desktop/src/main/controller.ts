@@ -17,6 +17,7 @@ import {
   type ProgressEvent,
   type ScannerRegistry,
 } from './engine.js';
+import { isAllowedInAutoClean } from './settings.js';
 import { isAutoCleanDue, nextAutoCleanAt } from './schedule.js';
 import type { Store } from './store.js';
 
@@ -154,7 +155,7 @@ export class CleanerController {
 
   private async runLightClean(mode: RunMode): Promise<RunRecord> {
     const { settings } = this.deps.store;
-    const ids = this.validIds(settings.autoClean.categories);
+    const ids = this.validIds(settings.autoClean.categories).filter(isAllowedInAutoClean);
 
     const record = await this.exclusive(mode, async () => {
       const results = await scanCategories(this.deps.registry, ids, (e) => this.setProgress(mode, e));

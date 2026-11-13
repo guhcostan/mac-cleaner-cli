@@ -1,3 +1,6 @@
+// All backup/restore fixtures are isolated from the real home directory.
+const { fixtureHome } = vi.hoisted(() => ({ fixtureHome: `/private/tmp/mac-cleaner-base-${process.pid}` }));
+vi.mock('os', async (original) => ({ ...await original<typeof import('os')>(), homedir: () => fixtureHome }));
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtemp, writeFile, rm, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
@@ -98,8 +101,10 @@ describe('BaseScanner', () => {
 
       const result = await scanner.clean(items, true);
 
-      expect(result.cleanedItems).toBe(1);
-      expect(result.freedSpace).toBe(7);
+      expect(result.cleanedItems).toBe(0);
+      expect(result.freedSpace).toBe(0);
+      expect(result.wouldFreeSpace).toBe(7);
+      expect(result.wouldCleanItems).toBe(1);
     });
 
     it('should summarize failures by error code', async () => {
@@ -115,7 +120,8 @@ describe('BaseScanner', () => {
       const result = await scanner.clean(items);
 
       expect(result.cleanedItems).toBe(1);
-      expect(result.errors).toEqual(['Failed to remove 2 items (2 ENOENT)']);
+      expect(result.errors).toHaveLength(2);
+      expect(result.errors.every((e) => e.includes('ENOENT'))).toBe(true);
     });
   });
 });
