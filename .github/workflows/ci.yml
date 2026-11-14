@@ -103,16 +103,34 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Type check
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Test
+        run: bun run test
+
       - name: Build
         run: bun run build
 
       - name: Publish to npm
-        run: npm publish --access public --provenance
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN_INPUT: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN_INPUT" ]; then
+            if NODE_AUTH_TOKEN="$NPM_TOKEN_INPUT" npm publish --access public --provenance; then
+              exit 0
+            fi
+            echo "::warning::Publishing with NPM_TOKEN failed (token may be expired); falling back to npm OIDC Trusted Publishing."
+          fi
+          rm -f "$NPM_CONFIG_USERCONFIG" "${RUNNER_TEMP}/.npmrc"
+          unset NODE_AUTH_TOKEN NPM_CONFIG_USERCONFIG
+          npm publish --access public --provenance
