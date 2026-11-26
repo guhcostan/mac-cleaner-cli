@@ -9,9 +9,13 @@ on:
     - cron: '0 6 * * 1'
 
 jobs:
+  pick:
+    uses: guhcostan/ci-fallback/.github/workflows/pick.yml@main
+
   analyze:
     name: Analyze
-    runs-on: ubuntu-latest
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.local == 'true' && github.run_attempt == '1' && fromJSON('["self-hosted","macOS","ARM64"]') || 'ubuntu-latest' }}
     permissions:
       actions: read
       contents: read

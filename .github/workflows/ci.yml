@@ -12,8 +12,12 @@ permissions:
   contents: read
 
 jobs:
+  pick:
+    uses: guhcostan/ci-fallback/.github/workflows/pick.yml@main
+
   test:
-    runs-on: macos-latest
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.local == 'true' && github.run_attempt == '1' && fromJSON('["self-hosted","macOS","ARM64"]') || 'macos-latest' }}
     
     strategy:
       matrix:
@@ -85,8 +89,8 @@ jobs:
           check_app "$RUNNER_TEMP/script-apps"
 
   publish:
-    needs: test
-    runs-on: macos-latest
+    needs: [pick, test]
+    runs-on: ${{ needs.pick.outputs.local == 'true' && github.run_attempt == '1' && fromJSON('["self-hosted","macOS","ARM64"]') || 'macos-latest' }}
     if: github.event_name == 'release'
 
     permissions:

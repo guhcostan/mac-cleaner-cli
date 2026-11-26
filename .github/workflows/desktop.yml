@@ -23,8 +23,12 @@ on:
         type: string
 
 jobs:
+  pick:
+    uses: guhcostan/ci-fallback/.github/workflows/pick.yml@main
+
   build:
-    runs-on: macos-latest
+    needs: pick
+    runs-on: ${{ needs.pick.outputs.local == 'true' && github.run_attempt == '1' && fromJSON('["self-hosted","macOS","ARM64"]') || 'macos-latest' }}
 
     permissions:
       contents: write
