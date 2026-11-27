@@ -1,4 +1,4 @@
-# Re-runs jobs that failed on the self-hosted notebook on GitHub-hosted runners.
+# Re-runs notebook failures and confirmed timeouts on GitHub-hosted runners.
 # See https://github.com/guhcostan/ci-fallback
 name: runner-fallback
 
@@ -12,6 +12,7 @@ on:
 
 permissions:
   actions: write
+  checks: read
 
 jobs:
   rerun:
